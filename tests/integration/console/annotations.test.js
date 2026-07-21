@@ -17,7 +17,7 @@ process.env.CDS_CONFIG = JSON.stringify({
 const cds = require('@sap/cds')
 
 const app = path.join(__dirname, '../../sample/bookshop')
-const { POST, PATCH, expect } = cds.test(app)
+const { POST, PATCH, DELETE, expect } = cds.test(app)
 
 describe('@n8n.trigger — annotation-driven flow (console kind)', () => {
   let n8n
@@ -78,5 +78,25 @@ describe('@n8n.trigger — annotation-driven flow (console kind)', () => {
     expect(shipped[0].payload).to.have.property('quantity', 3)
     // Alias applied.
     expect(shipped[0].payload).to.have.property('bookId')
+  })
+
+  it('sends the full pre-delete row on DELETE via the prefetch stash', async () => {
+    const { data: order } = await POST('/odata/v4/admin/Orders', {
+      quantity: 7,
+      status: 'new',
+    })
+    n8n.executions.length = 0
+
+    await DELETE(`/odata/v4/admin/Orders(${order.ID})`)
+
+    const deleted = n8n.executions.filter((e) => e.workflow === 'order-deleted')
+    expect(deleted, 'DELETE trigger should fire exactly once').to.have.length(1)
+    // Without the before-DELETE prefetch, `quantity` and `status` would be
+    // missing here because the after-handler runs against a row that's gone.
+    expect(deleted[0].payload).to.deep.include({
+      ID: order.ID,
+      quantity: 7,
+      status: 'new',
+    })
   })
 })
