@@ -11,7 +11,7 @@ process.env.CDS_CONFIG = JSON.stringify({
       kind: 'rest-n8n-service',
       // Disable the outbox so `emit('trigger')` runs synchronously against
       // the REST service's on-handler — that's where the branching lives.
-      outbox: false,
+      outboxed: false,
       credentials: { baseUrl: 'http://unused.invalid' },
     },
   },

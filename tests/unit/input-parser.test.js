@@ -34,15 +34,15 @@ describe('parsePath', () => {
 })
 
 describe('parseInputsArray', () => {
-  it('handles simple and aliased entries', () => {
+  it('handles simple entries', () => {
     expect(
       parseInputsArray([
         { '=': '$self.ID' },
-        { path: { '=': '$self.total' }, as: 'orderAmount' },
+        { '=': '$self.total' },
       ]),
     ).toEqual([
-      { path: ['ID'], alias: undefined },
-      { path: ['total'], alias: 'orderAmount' },
+      { path: ['ID'] },
+      { path: ['total'] },
     ])
   })
   it('returns [] for undefined / empty inputs', () => {
@@ -54,21 +54,20 @@ describe('parseInputsArray', () => {
 describe('buildInputTree', () => {
   it('emits a scalar node', () => {
     const tree = buildInputTree(
-      [{ path: ['ID'], alias: undefined }],
+      [{ path: ['ID'] }],
       makeContext({ ID: { isAssocOrComp: false } }),
     )
-    expect(tree).toEqual([{ sourceElement: 'ID', targetVariable: undefined }])
+    expect(tree).toEqual([{ sourceElement: 'ID' }])
   })
 
   it('emits an expand-all composition node', () => {
     const tree = buildInputTree(
-      [{ path: ['items'], alias: undefined }],
+      [{ path: ['items'] }],
       makeContext({ items: { isAssocOrComp: true, children: {} } }),
     )
     expect(tree).toEqual([
       {
         sourceElement: 'items',
-        targetVariable: undefined,
         associatedInputElements: [],
       },
     ])
@@ -77,7 +76,7 @@ describe('buildInputTree', () => {
   it('emits a composition with specific nested fields (wildcard NOT injected when only nested)', () => {
     const tree = buildInputTree(
       [
-        { path: ['items', 'title'], alias: undefined },
+        { path: ['items', 'title'] },
       ],
       makeContext({
         items: {
@@ -89,9 +88,8 @@ describe('buildInputTree', () => {
     expect(tree).toEqual([
       {
         sourceElement: 'items',
-        targetVariable: undefined,
         associatedInputElements: [
-          { sourceElement: 'title', targetVariable: undefined },
+          { sourceElement: 'title' },
         ],
       },
     ])
@@ -100,8 +98,8 @@ describe('buildInputTree', () => {
   it('injects wildcard when combining expand-all with specific nested fields', () => {
     const tree = buildInputTree(
       [
-        { path: ['items'], alias: undefined },
-        { path: ['items', 'title'], alias: undefined },
+        { path: ['items'] },
+        { path: ['items', 'title'] },
       ],
       makeContext({
         items: {
@@ -113,40 +111,11 @@ describe('buildInputTree', () => {
     expect(tree).toEqual([
       {
         sourceElement: 'items',
-        targetVariable: undefined,
         associatedInputElements: [
           { sourceElement: WILDCARD },
-          { sourceElement: 'title', targetVariable: undefined },
+          { sourceElement: 'title' },
         ],
       },
-    ])
-  })
-
-  it('produces two nodes for multi-alias scalar', () => {
-    const tree = buildInputTree(
-      [
-        { path: ['ID'], alias: 'OrderId' },
-        { path: ['ID'], alias: 'RefId' },
-      ],
-      makeContext({ ID: { isAssocOrComp: false } }),
-    )
-    expect(tree).toEqual([
-      { sourceElement: 'ID', targetVariable: 'OrderId' },
-      { sourceElement: 'ID', targetVariable: 'RefId' },
-    ])
-  })
-
-  it('produces additional aliased sibling nodes for scalar with alias + non-alias', () => {
-    const tree = buildInputTree(
-      [
-        { path: ['ID'], alias: undefined },
-        { path: ['ID'], alias: 'OrderId' },
-      ],
-      makeContext({ ID: { isAssocOrComp: false } }),
-    )
-    expect(tree).toEqual([
-      { sourceElement: 'ID', targetVariable: undefined },
-      { sourceElement: 'ID', targetVariable: 'OrderId' },
     ])
   })
 })

@@ -135,7 +135,7 @@ describe('validateTriggerAnnotations — record form', () => {
     expect(plugin.messages.some((m) => /each entry/i.test(m.message))).toBe(true)
   })
 
-  it('accepts simple and aliased inputs entries', () => {
+  it('accepts simple inputs entries', () => {
     const plugin = makePlugin()
     validateTriggerAnnotations(
       'Orders',
@@ -144,11 +144,27 @@ describe('validateTriggerAnnotations — record form', () => {
         '@n8n.trigger.on': 'CREATE',
         '@n8n.trigger.inputs': [
           { '=': '$self.ID' },
-          { path: { '=': '$self.total' }, as: 'amount' },
+          { '=': '$self.total' },
         ],
       }),
       plugin,
     )
     expect(plugin.messages.filter((m) => m.severity === 'error')).toEqual([])
+  })
+
+  it('rejects aliased inputs entries (aliasing not supported)', () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      'Orders',
+      ent({
+        '@n8n.trigger.workflow': 'wf',
+        '@n8n.trigger.on': 'CREATE',
+        '@n8n.trigger.inputs': [
+          { path: { '=': '$self.total' }, as: 'amount' },
+        ],
+      }),
+      plugin,
+    )
+    expect(plugin.messages.some((m) => m.severity === 'error' && /Aliasing is not supported/i.test(m.message))).toBe(true)
   })
 })

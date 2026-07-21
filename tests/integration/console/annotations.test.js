@@ -9,7 +9,7 @@ process.env.CDS_CONFIG = JSON.stringify({
   requires: {
     N8nService: {
       kind: 'console-n8n-service',
-      outbox: false,
+      outboxed: false,
     },
   },
 })
@@ -43,7 +43,7 @@ describe('@n8n.trigger — annotation-driven flow (console kind)', () => {
       price: 10.5,
     })
     expect(status).to.equal(201)
-    // Console service records executions synchronously (outbox: false).
+    // Console service records executions synchronously (outboxed: false).
     const created = n8n.executions.filter((e) => e.workflow === 'book-created')
     expect(created).to.have.length(1)
     expect(created[0].payload).to.include({ title: 'Moby Dick', author: 'Herman Melville' })
@@ -73,11 +73,10 @@ describe('@n8n.trigger — annotation-driven flow (console kind)', () => {
 
     const shipped = n8n.executions.filter((e) => e.workflow === 'order-shipped')
     expect(shipped).to.have.length(1)
-    // Payload should carry only the mapped columns (ID + quantity + bookId alias).
+    // Payload carries only the mapped columns (ID + quantity + book_ID).
     expect(shipped[0].payload).to.have.property('ID', order.ID)
     expect(shipped[0].payload).to.have.property('quantity', 3)
-    // Alias applied.
-    expect(shipped[0].payload).to.have.property('bookId')
+    expect(shipped[0].payload).to.have.property('book_ID')
   })
 
   it('sends the full pre-delete row on DELETE via the prefetch stash', async () => {

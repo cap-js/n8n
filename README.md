@@ -169,8 +169,8 @@ surfaced for symmetry with the Java plugin and for future flexibility.
 
 ### Retry semantics
 
-Failed webhook calls are retried by the CAP outbox - but only when the
-failure is worth retrying:
+Failed webhook calls are retried by the CAP outbox (persistent queue backed
+by the application database) - but only when the failure is worth retrying:
 
 | Failure                     | Retried by the outbox? |
 | --------------------------- | ---------------------- |
@@ -240,8 +240,7 @@ condition evaluates false, no trigger is fired.
 
 ### Input mapping
 
-Same semantics as `@cap-js/process`. Without `inputs`, all direct scalar
-attributes are sent.
+Without `inputs`, all direct scalar attributes are sent.
 
 ```cds
 @n8n.trigger: {
@@ -249,10 +248,10 @@ attributes are sent.
   on: 'UPDATE',
   inputs: [
     $self.ID,                                       // scalar
-    { path: $self.total, as: 'orderAmount' },       // alias
+    $self.total,                                    // scalar
     $self.items,                                    // expand all child fields
     $self.items.ID,                                 // combined: wildcard + specific
-    { path: $self.items.title, as: 'ItemTitle' }
+    $self.items.title
   ]
 }
 entity Shipments as projection on my.Shipments;
@@ -262,6 +261,10 @@ Special values:
 
 - `$self` alone means "all scalar fields of the current entity".
 - `$self.assoc` alone expands all direct attributes of the associated entity.
+
+n8n webhooks receive free-form JSON and do not enforce any schema, so field
+aliases are not supported. If you need to rename a field for downstream nodes,
+use the Edit Fields node inside the n8n workflow.
 
 ### Multiple triggers per entity
 
@@ -311,8 +314,8 @@ The `N8nService` model (`srv/N8nService.cds`):
 - `workflow` and `on` must be present together in the record form.
 - `on` must be `CREATE | UPDATE | DELETE`, a declared bound action of the
   entity, or `*`.
-- `inputs` must be an array of `{ '=': '$self.…' }` or
-  `{ path: { '=': '…' }, as: '…' }` entries.
+- `inputs` must be an array of `{ '=': '$self.…' }` entries. Aliasing is not
+  supported; use the Edit Fields node in n8n to rename downstream.
 - `if` must be a CDS expression.
 - The string-shorthand form must be a non-empty string.
 
