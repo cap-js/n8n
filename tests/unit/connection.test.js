@@ -51,6 +51,8 @@ describe('resolveN8nConnection', () => {
     }
     const c = await resolveN8nConnection(SVC)
     expect(c.baseUrl).toBe('https://n8n.example.com')
+    expect(c.apiKey).toBe('top-secret')
+    // Legacy `headers` field is preserved for backward compatibility.
     expect(c.headers).toEqual({ 'X-N8N-API-KEY': 'top-secret' })
   })
 
@@ -62,7 +64,7 @@ describe('resolveN8nConnection', () => {
     }
     const c = await resolveN8nConnection(SVC)
     expect(c.baseUrl).toBe('https://from-env.example.com')
-    expect(c.headers).toEqual({ 'X-N8N-API-KEY': 'env-key' })
+    expect(c.apiKey).toBe('env-key')
   })
 
   it('resolves env vars when no credentials configured', async () => {
@@ -71,7 +73,7 @@ describe('resolveN8nConnection', () => {
     process.env.N8N_API_KEY = 'plain-env-key'
     const c = await resolveN8nConnection(SVC)
     expect(c.baseUrl).toBe('https://from-plain-env.example.com')
-    expect(c.headers).toEqual({ 'X-N8N-API-KEY': 'plain-env-key' })
+    expect(c.apiKey).toBe('plain-env-key')
   })
 
   it('falls back to localhost:5678 in development profile', async () => {
@@ -80,7 +82,7 @@ describe('resolveN8nConnection', () => {
     process.env.NODE_ENV = 'development'
     const c = await resolveN8nConnection(SVC)
     expect(c.baseUrl).toBe('http://localhost:5678')
-    expect(c.headers).toEqual({})
+    expect(c.apiKey).toBeUndefined()
   })
 
   it('throws when no config resolves and not in development', async () => {

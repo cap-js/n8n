@@ -63,7 +63,7 @@ describe('createN8nClient — timeouts', () => {
 
     const client = createN8nClient(async () => ({
       baseUrl: 'http://localhost:5678',
-      headers: {},
+      apiKey: undefined,
       timeout: { connect: 10, read: 10 },
     }))
 
@@ -79,7 +79,7 @@ describe('createN8nClient — timeouts', () => {
 
     const client = createN8nClient(async () => ({
       baseUrl: 'http://localhost:5678',
-      headers: {},
+      apiKey: undefined,
       timeout: { connect: 100, read: 100 },
     }))
 
@@ -101,7 +101,7 @@ describe('createN8nClient — retryable error marking', () => {
   function buildClient() {
     return createN8nClient(async () => ({
       baseUrl: 'http://localhost:5678',
-      headers: {},
+      apiKey: undefined,
       timeout: { connect: 100, read: 100 },
     }))
   }
@@ -163,7 +163,7 @@ describe('createN8nClient — retryable error marking', () => {
 
     const client = createN8nClient(async () => ({
       baseUrl: 'http://localhost:5678',
-      headers: {},
+      apiKey: undefined,
       timeout: { connect: 5, read: 5 },
     }))
 
@@ -189,5 +189,57 @@ describe('createN8nClient — retryable error marking', () => {
     }
     expect(caught).toBeDefined()
     expect(caught.retryable).toBe(false)
+  })
+})
+
+describe('createN8nClient — auth headers', () => {
+  let captured
+  let originalFetch
+  beforeEach(() => {
+    captured = []
+    originalFetch = globalThis.fetch
+    globalThis.fetch = async (url, options) => {
+      captured.push({ url, options })
+      return new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } })
+    }
+  })
+  afterEach(() => {
+    globalThis.fetch = originalFetch
+  })
+
+  it('sends both X-N8N-API-KEY and X-Webhook-Secret on webhook POSTs', async () => {
+    const client = createN8nClient(async () => ({
+      baseUrl: 'http://localhost:5678',
+      apiKey: 'top-secret',
+      timeout: { connect: 50, read: 50 },
+    }))
+    await client.trigger('wf', {})
+    expect(captured).toHaveLength(1)
+    expect(captured[0].options.headers).toMatchObject({
+      'X-N8N-API-KEY': 'top-secret',
+      'X-Webhook-Secret': 'top-secret',
+    })
+  })
+
+  it('omits auth headers on webhook POSTs when no api key is configured', async () => {
+    const client = createN8nClient(async () => ({
+      baseUrl: 'http://localhost:5678',
+      apiKey: undefined,
+      timeout: { connect: 50, read: 50 },
+    }))
+    await client.trigger('wf', {})
+    expect(captured[0].options.headers).not.toHaveProperty('X-N8N-API-KEY')
+    expect(captured[0].options.headers).not.toHaveProperty('X-Webhook-Secret')
+  })
+
+  it('sends only X-N8N-API-KEY on executions API calls', async () => {
+    const client = createN8nClient(async () => ({
+      baseUrl: 'http://localhost:5678',
+      apiKey: 'top-secret',
+      timeout: { connect: 50, read: 50 },
+    }))
+    await client.getExecution('e-1')
+    expect(captured[0].options.headers).toMatchObject({ 'X-N8N-API-KEY': 'top-secret' })
+    expect(captured[0].options.headers).not.toHaveProperty('X-Webhook-Secret')
   })
 })
