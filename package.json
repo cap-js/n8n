@@ -1,29 +1,33 @@
 {
-  "name": "@cap-js/REPO-NAME",
-  "version": "1.0.0",
-  "description": "CAP cds-plugin REPO-DESCRIPTION",
-  "license": "Apache-2.0",
-  "author": "AUTHOR",
-  "homepage": "https://cap.cloud.sap/",
+  "name": "@cap-js/n8n",
+  "version": "0.1.0",
+  "description": "CAP Plugin to trigger n8n workflows from CAP applications via annotations and a programmatic service.",
   "main": "cds-plugin.js",
-  "scripts": {
-    "lint": "npx eslint .",
-    "test": "npx jest --silent",
-    "test:hybrid": "cds bind --exec -- npx jest",
-    "prettier": "npx -y prettier@3 --write .",
-    "prettier:check": "npx -y prettier@3 --check .",
-    "watch:sample": "cd tests/bookshop && cds watch"
-  },
   "files": [
-    "index.cds",
-    "lib",
-    "db",
-    "srv"
+    "cds-plugin.js",
+    "lib/",
+    "srv/*.cds",
+    "srv/*.js"
   ],
-  "devDependencies": {
-    "@cap-js/cds-test": ">=0",
-    "@cap-js/sqlite": "^2"
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:cov": "vitest run --coverage",
+    "test:live": "vitest run tests/integration/rest",
+    "test:console": "vitest run tests/integration/console tests/unit",
+    "lint": "node -e \"console.log('no linter configured yet')\""
   },
+  "keywords": [
+    "cds",
+    "cap",
+    "n8n",
+    "workflow",
+    "automation",
+    "sap"
+  ],
+  "author": "SAP SE (https://www.sap.com)",
+  "license": "Apache-2.0",
+  "type": "commonjs",
   "peerDependencies": {
     "@sap/cds": ">=8"
   },
@@ -31,29 +35,53 @@
     "node": ">=20.0.0"
   },
   "workspaces": [
-    "tests/bookshop/"
+    "tests/sample/bookshop"
   ],
+  "dependencies": {
+    "@sap-cloud-sdk/connectivity": "^4.5.1",
+    "@sap-cloud-sdk/http-client": "^4.5.1"
+  },
+  "devDependencies": {
+    "@cap-js/cds-test": "^1.0.0",
+    "@cap-js/sqlite": "^2.0.0",
+    "@sap/cds": "^9.0.0",
+    "@sap/cds-dk": "^9.0.0",
+    "vitest": "^2.1.0"
+  },
   "cds": {
     "requires": {
-      "emojis": {
+      "N8nService": {
+        "kind": "rest-n8n-service",
+        "credentials": {
+          "baseUrl": "env:N8N_BASE_URL",
+          "apiKey": "env:N8N_API_KEY"
+        },
         "[development]": {
-          "kind": "emojis-local"
-        },
-        "[hybrid]": {
-          "kind": "emojis-prod"
-        },
-        "[production]": {
-          "kind": "emojis-prod"
+          "credentials": {
+            "baseUrl": "http://localhost:5678"
+          }
         }
       },
       "kinds": {
-        "emojis-local": {
-          "impl": "@cap-js/REPO-NAME/srv/basic"
+        "rest-n8n-service": {
+          "model": "@cap-js/n8n/srv/N8nService",
+          "impl": "@cap-js/n8n/srv/restN8nService",
+          "outbox": true,
+          "vcap": {
+            "tag": "n8n"
+          }
         },
-        "emojis-prod": {
-          "impl": "@cap-js/REPO-NAME/srv/prod"
+        "console-n8n-service": {
+          "model": "@cap-js/n8n/srv/consoleN8nService",
+          "impl": "@cap-js/n8n/srv/consoleN8nService",
+          "outbox": true
         }
       }
     }
+  },
+  "allowScripts": {
+    "better-sqlite3@12.11.1": true,
+    "fsevents@2.3.3": true,
+    "esbuild@0.21.5": true
   }
 }

@@ -1,0 +1,44 @@
+{
+  "name": "Book Created",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "book-created",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [ 240, 300 ],
+      "webhookId": "book-created"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            { "name": "receivedAt", "value": "={{ $now }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2",
+      "name": "Set",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [ 440, 300 ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [ { "node": "Set", "type": "main", "index": 0 } ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "versionId": "1"
+}

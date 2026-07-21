@@ -3,5 +3,11 @@ node_modules/
 gen/
 package-lock.json
 .env
+.env.local
 .cdsrc-private.json
+.cds-services.json
 resources/*
+coverage/
+*.log
+tests/sample/bookshop/.n8n-data/
+tests/sample/bookshop/gen/

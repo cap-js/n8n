@@ -1,0 +1,15 @@
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: bookshop-n8n
+    ports:
+      - "5678:5678"
+    environment:
+      # Disable auth for local dev only. Do NOT do this in any shared/staging env.
+      - N8N_SECURE_COOKIE=false
+      - N8N_RUNNERS_ENABLED=true
+      - GENERIC_TIMEZONE=UTC
+    volumes:
+      - ./.n8n-data:/home/node/.n8n
+      - ./workflows:/workflows:ro
+    restart: unless-stopped
