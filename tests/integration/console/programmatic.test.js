@@ -6,7 +6,7 @@ process.env.CDS_CONFIG = JSON.stringify({
   requires: {
     N8nService: {
       kind: 'console-n8n-service',
-      outbox: false,
+      outboxed: false,
     },
   },
 })

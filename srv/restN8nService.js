@@ -15,9 +15,11 @@ const LOG = cds.log(N8N_LOGGER_PREFIX)
  *   - Outbox replays (persistent outbox delivers via `service.handle(msg)`,
  *     which flows through registered `on()` handlers)
  *
- * The service is registered with `outbox: true` in package.json, so the
- * connect proxy returned by `cds.connect.to('N8nService')` persists emitted
- * events transactionally and dispatches them after commit.
+ * The service is registered with `outboxed: { kind: 'persistent-queue' }` in
+ * package.json, so the connect proxy returned by `cds.connect.to('N8nService')`
+ * persists emitted events transactionally in the CAP outbox table and
+ * dispatches them after commit. Failed deliveries are retried by the outbox
+ * with backoff.
  */
 class N8nService extends cds.Service {
   async init() {

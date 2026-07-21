@@ -23,7 +23,7 @@
       "N8nService": {
         "[test]": {
           "kind": "console-n8n-service",
-          "outbox": false
+          "outboxed": false
         }
       }
     }

@@ -14,7 +14,7 @@ service AdminService {
     inputs: [
       $self.ID,
       $self.quantity,
-      { path: $self.book_ID, as: 'bookId' }
+      $self.book_ID
     ]
   }
   // The DELETE trigger relies on the plugin's prefetch: at after-handler

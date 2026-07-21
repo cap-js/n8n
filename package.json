@@ -66,7 +66,9 @@
         "rest-n8n-service": {
           "model": "@cap-js/n8n/srv/N8nService",
           "impl": "@cap-js/n8n/srv/restN8nService",
-          "outbox": true,
+          "outboxed": {
+            "kind": "persistent-queue"
+          },
           "vcap": {
             "tag": "n8n"
           }
@@ -74,7 +76,9 @@
         "console-n8n-service": {
           "model": "@cap-js/n8n/srv/consoleN8nService",
           "impl": "@cap-js/n8n/srv/consoleN8nService",
-          "outbox": true
+          "outboxed": {
+            "kind": "in-memory-queue"
+          }
         }
       }
     }
