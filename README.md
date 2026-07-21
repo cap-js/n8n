@@ -1,6 +1,6 @@
-# CAP — n8n Plugin
+# CAP - n8n Plugin
 
-CAP plugin to trigger [n8n](https://n8n.io/) workflows from CAP applications —
+CAP plugin to trigger [n8n](https://n8n.io/) workflows from CAP applications -
 declaratively via `@n8n.trigger` annotations and programmatically via a
 `N8nService` you can `cds.connect.to`. Modeled on
 [`@cap-js/process`](https://github.com/cap-js/process).
@@ -51,7 +51,7 @@ npm run watch
 ```
 
 The `[development]` profile defaults the plugin's `baseUrl` to
-`http://localhost:5678` — no configuration required.
+`http://localhost:5678` - no configuration required.
 
 ### Profiles & credentials
 
@@ -60,7 +60,7 @@ The plugin ships two service kinds:
 | Kind                    | Used when                            | Behavior                                                                     |
 | ----------------------- | ------------------------------------ | ---------------------------------------------------------------------------- |
 | `rest-n8n-service`      | default (dev / hybrid / production)  | Real HTTP calls against an n8n instance.                                     |
-| `console-n8n-service`   | opt-in — set `kind` explicitly       | Log-only impl. In-memory execution store for tests / offline development.    |
+| `console-n8n-service`   | opt-in - set `kind` explicitly       | Log-only impl. In-memory execution store for tests / offline development.    |
 
 The default profile matrix is:
 
@@ -88,17 +88,17 @@ The default profile matrix is:
 1. Bound / inline `credentials.{baseUrl, apiKey}` (accepts `env:VAR` refs)
 2. BTP destination via `credentials.destination` or top-level `destination`
 3. Environment variables `N8N_BASE_URL` + `N8N_API_KEY`
-4. Dev-only fallback `http://localhost:5678` (development profile only —
+4. Dev-only fallback `http://localhost:5678` (development profile only -
    throws in any other profile)
 
-**Hybrid** — bind against a user-provided service with `cds bind`:
+**Hybrid** - bind against a user-provided service with `cds bind`:
 
 ```bash
 cf create-user-provided-service n8n -p '{"baseUrl":"https://your.n8n.cloud","apiKey":"eyJ..."}'
 cds bind N8nService -2 n8n
 ```
 
-**Production** — the same user-provided service (tagged `n8n`) is picked up
+**Production** - the same user-provided service (tagged `n8n`) is picked up
 via VCAP, or use a BTP destination named `n8n`.
 
 **Opt into console kind** (e.g. for a `[test]` profile):
@@ -170,15 +170,15 @@ surfaced for symmetry with the Java plugin and for future flexibility.
 
 ### Retry semantics
 
-Failed webhook calls are retried by the CAP outbox — but only when the
+Failed webhook calls are retried by the CAP outbox - but only when the
 failure is worth retrying:
 
 | Failure                     | Retried by the outbox? |
 | --------------------------- | ---------------------- |
-| Network error / DNS / socket | **Yes** — n8n was unreachable. |
-| Read timeout                 | **Yes** — no response before the deadline. |
-| HTTP 4xx                     | No — misconfiguration; retrying won't fix it. |
-| HTTP 5xx                     | No — n8n received the call but the workflow failed. |
+| Network error / DNS / socket | **Yes** - n8n was unreachable. |
+| Read timeout                 | **Yes** - no response before the deadline. |
+| HTTP 4xx                     | No - misconfiguration; retrying won't fix it. |
+| HTTP 5xx                     | No - n8n received the call but the workflow failed. |
 
 Non-retryable failures are logged at `ERROR` and the outbox marks the message
 done, keeping the queue clean.
@@ -199,14 +199,14 @@ endpoint:
 
 ### Triggering a workflow
 
-**String shorthand** — fires on CREATE + UPDATE:
+**String shorthand** - fires on CREATE + UPDATE:
 
 ```cds
 @n8n.trigger: 'book-created'
 entity Books as projection on my.Books;
 ```
 
-**Record form** — pick events explicitly:
+**Record form** - pick events explicitly:
 
 ```cds
 @n8n.trigger: {
@@ -281,7 +281,7 @@ entity Books as projection on my.Books;
 ```js
 const n8n = await cds.connect.to('N8nService')
 
-// Fire a webhook — routed through the outbox, POSTed after commit
+// Fire a webhook - routed through the outbox, POSTed after commit
 await n8n.emit('trigger', {
   workflow: 'book-created',
   payload:  { title: 'Moby Dick', quantity: 3 }
@@ -328,13 +328,13 @@ The `N8nService` model (`srv/N8nService.cds`):
 Deliberately excluded to keep the first release small and to avoid pretending
 n8n supports semantics it doesn't:
 
-- **No `cancel` / `suspend` / `resume`** — n8n has no first-class equivalents.
-- **No `businessKey` correlation** — could later be simulated via execution tags.
-- **No `cds import --from n8n`** — string webhook paths cover the MVP; typed
+- **No `cancel` / `suspend` / `resume`** - n8n has no first-class equivalents.
+- **No `businessKey` correlation** - could later be simulated via execution tags.
+- **No `cds import --from n8n`** - string webhook paths cover the MVP; typed
   imports are on the roadmap.
-- **No Fiori draft events** (`SAVE`, `EDIT`, `NEW`, `PATCH`, `DISCARD`) —
+- **No Fiori draft events** (`SAVE`, `EDIT`, `NEW`, `PATCH`, `DISCARD`) -
   only CRUD + bound actions for now.
-- **No `READ` event triggers** — high volume, easy to create feedback loops.
+- **No `READ` event triggers** - high volume, easy to create feedback loops.
   Use bound actions or CDS events instead.
 
 ---
@@ -373,12 +373,12 @@ npm run test:live  # add: real REST calls against localhost:5678 (docker up firs
 
 Test layout:
 
-- `tests/unit/**` — pure JS tests: input parser, annotation scanner,
+- `tests/unit/**` - pure JS tests: input parser, annotation scanner,
   build validations, connection resolver, n8n client URL builder.
-- `tests/integration/console/**` — runs the sample bookshop with the
+- `tests/integration/console/**` - runs the sample bookshop with the
   `console-n8n-service` kind. Verifies annotation-driven dispatch,
   `.if` gating, `.inputs` mapping, and the programmatic API.
-- `tests/integration/rest/**` — skips gracefully when
+- `tests/integration/rest/**` - skips gracefully when
   `http://localhost:5678/healthz` is unreachable. Enable it by starting the
   docker container in `tests/sample/bookshop`.
 
