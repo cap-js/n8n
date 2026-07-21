@@ -2,8 +2,7 @@
 
 CAP plugin to trigger [n8n](https://n8n.io/) workflows from CAP applications -
 declaratively via `@n8n.trigger` annotations and programmatically via a
-`N8nService` you can `cds.connect.to`. Modeled on
-[`@cap-js/process`](https://github.com/cap-js/process).
+`N8nService` you can `cds.connect.to`.
 
 - [Setup](#setup)
   - [Local development with docker](#local-development-with-docker)
@@ -47,7 +46,7 @@ docker compose up -d
 Then start CAP:
 
 ```bash
-npm run watch
+cds watch
 ```
 
 The `[development]` profile defaults the plugin's `baseUrl` to
