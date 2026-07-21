@@ -39,6 +39,26 @@ describe('buildWebhookUrl', () => {
       buildWebhookUrl('http://ignored', 'https://cloud.n8n.io/webhook/x'),
     ).toBe('https://cloud.n8n.io/webhook/x')
   })
+  it('uses /webhook-test prefix when useTestWebhook is true', () => {
+    expect(
+      buildWebhookUrl('http://localhost:5678', 'book-created', { useTestWebhook: true }),
+    ).toBe('http://localhost:5678/webhook-test/book-created')
+  })
+  it('uses /webhook prefix when useTestWebhook is false or omitted', () => {
+    expect(
+      buildWebhookUrl('http://localhost:5678', 'book-created', { useTestWebhook: false }),
+    ).toBe('http://localhost:5678/webhook/book-created')
+    expect(buildWebhookUrl('http://localhost:5678', 'book-created', {})).toBe(
+      'http://localhost:5678/webhook/book-created',
+    )
+  })
+  it('honours absolute URLs regardless of useTestWebhook', () => {
+    expect(
+      buildWebhookUrl('http://ignored', 'https://cloud.n8n.io/webhook/x', {
+        useTestWebhook: true,
+      }),
+    ).toBe('https://cloud.n8n.io/webhook/x')
+  })
 })
 
 describe('createN8nClient — timeouts', () => {
@@ -241,5 +261,42 @@ describe('createN8nClient — auth headers', () => {
     await client.getExecution('e-1')
     expect(captured[0].options.headers).toMatchObject({ 'X-N8N-API-KEY': 'top-secret' })
     expect(captured[0].options.headers).not.toHaveProperty('X-Webhook-Secret')
+  })
+})
+
+describe('createN8nClient — test webhook flag', () => {
+  let captured
+  let originalFetch
+  beforeEach(() => {
+    captured = []
+    originalFetch = globalThis.fetch
+    globalThis.fetch = async (url, options) => {
+      captured.push({ url, options })
+      return new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } })
+    }
+  })
+  afterEach(() => {
+    globalThis.fetch = originalFetch
+  })
+
+  it('routes to /webhook when useTestWebhook is absent', async () => {
+    const client = createN8nClient(async () => ({
+      baseUrl: 'http://localhost:5678',
+      apiKey: undefined,
+      timeout: { connect: 50, read: 50 },
+    }))
+    await client.trigger('book-created', {})
+    expect(captured[0].url).toBe('http://localhost:5678/webhook/book-created')
+  })
+
+  it('routes to /webhook-test when useTestWebhook is true', async () => {
+    const client = createN8nClient(async () => ({
+      baseUrl: 'http://localhost:5678',
+      apiKey: undefined,
+      timeout: { connect: 50, read: 50 },
+      useTestWebhook: true,
+    }))
+    await client.trigger('book-created', {})
+    expect(captured[0].url).toBe('http://localhost:5678/webhook-test/book-created')
   })
 })

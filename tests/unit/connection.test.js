@@ -1,7 +1,11 @@
 'use strict'
 
 const cds = require('@sap/cds')
-const { resolveN8nConnection, resolveTimeouts } = require('../../lib/api/connection')
+const {
+  resolveN8nConnection,
+  resolveTimeouts,
+  resolveUseTestWebhook,
+} = require('../../lib/api/connection')
 const {
   DEFAULT_CONNECT_TIMEOUT_MS,
   DEFAULT_READ_TIMEOUT_MS,
@@ -35,6 +39,7 @@ describe('resolveN8nConnection', () => {
     delete process.env.N8N_API_KEY
     delete process.env.N8N_CONNECT_TIMEOUT_MS
     delete process.env.N8N_READ_TIMEOUT_MS
+    delete process.env.N8N_USE_TEST_WEBHOOK
   })
 
   afterEach(() => {
@@ -102,6 +107,34 @@ describe('resolveN8nConnection', () => {
       read: DEFAULT_READ_TIMEOUT_MS,
     })
   })
+
+  it('defaults useTestWebhook to false', async () => {
+    cds.env.requires[SVC] = {
+      credentials: { baseUrl: 'https://n8n.example.com' },
+    }
+    const c = await resolveN8nConnection(SVC)
+    expect(c.useTestWebhook).toBe(false)
+  })
+
+  it('honours credentials.useTestWebhook when explicitly true', async () => {
+    cds.env.requires[SVC] = {
+      credentials: {
+        baseUrl: 'https://n8n.example.com',
+        useTestWebhook: true,
+      },
+    }
+    const c = await resolveN8nConnection(SVC)
+    expect(c.useTestWebhook).toBe(true)
+  })
+
+  it('honours the N8N_USE_TEST_WEBHOOK env var when credentials omit the flag', async () => {
+    cds.env.requires[SVC] = {
+      credentials: { baseUrl: 'https://n8n.example.com' },
+    }
+    process.env.N8N_USE_TEST_WEBHOOK = 'true'
+    const c = await resolveN8nConnection(SVC)
+    expect(c.useTestWebhook).toBe(true)
+  })
 })
 
 describe('resolveTimeouts', () => {
@@ -161,5 +194,45 @@ describe('resolveTimeouts', () => {
       connect: DEFAULT_CONNECT_TIMEOUT_MS,
       read: DEFAULT_READ_TIMEOUT_MS,
     })
+  })
+})
+
+describe('resolveUseTestWebhook', () => {
+  let originalEnv
+  beforeEach(() => {
+    originalEnv = { ...process.env }
+    delete process.env.N8N_USE_TEST_WEBHOOK
+  })
+  afterEach(() => {
+    process.env = originalEnv
+  })
+
+  it('returns false by default', () => {
+    expect(resolveUseTestWebhook({})).toBe(false)
+  })
+
+  it('honours credentials.useTestWebhook set to true', () => {
+    expect(resolveUseTestWebhook({ credentials: { useTestWebhook: true } })).toBe(true)
+  })
+
+  it('accepts string forms in credentials.useTestWebhook', () => {
+    expect(resolveUseTestWebhook({ credentials: { useTestWebhook: 'true' } })).toBe(true)
+    expect(resolveUseTestWebhook({ credentials: { useTestWebhook: '1' } })).toBe(true)
+    expect(resolveUseTestWebhook({ credentials: { useTestWebhook: 'false' } })).toBe(false)
+  })
+
+  it('falls back to N8N_USE_TEST_WEBHOOK env var when credentials omit the flag', () => {
+    process.env.N8N_USE_TEST_WEBHOOK = 'true'
+    expect(resolveUseTestWebhook({})).toBe(true)
+  })
+
+  it('lets credentials override the env var', () => {
+    process.env.N8N_USE_TEST_WEBHOOK = 'true'
+    expect(resolveUseTestWebhook({ credentials: { useTestWebhook: false } })).toBe(false)
+  })
+
+  it('honours the destination-provided flag when nothing else specifies it', () => {
+    const dest = { originalProperties: { 'URL.useTestWebhook': 'true' } }
+    expect(resolveUseTestWebhook({}, dest)).toBe(true)
   })
 })
