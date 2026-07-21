@@ -3,6 +3,7 @@
 const {
   buildWebhookUrl,
   normalizeWebhookPath,
+  createN8nClient,
 } = require('../../lib/api/n8n-client')
 
 describe('normalizeWebhookPath', () => {
@@ -37,5 +38,53 @@ describe('buildWebhookUrl', () => {
     expect(
       buildWebhookUrl('http://ignored', 'https://cloud.n8n.io/webhook/x'),
     ).toBe('https://cloud.n8n.io/webhook/x')
+  })
+})
+
+describe('createN8nClient — timeouts', () => {
+  let originalFetch
+  beforeEach(() => {
+    originalFetch = globalThis.fetch
+  })
+  afterEach(() => {
+    globalThis.fetch = originalFetch
+  })
+
+  it('aborts when the request exceeds the resolved timeout', async () => {
+    globalThis.fetch = (url, options) =>
+      new Promise((_resolve, reject) => {
+        // Never resolves on its own; rely on the caller's abort signal.
+        options?.signal?.addEventListener('abort', () => {
+          const err = new Error('aborted')
+          err.name = 'AbortError'
+          reject(err)
+        })
+      })
+
+    const client = createN8nClient(async () => ({
+      baseUrl: 'http://localhost:5678',
+      headers: {},
+      timeout: { connect: 10, read: 10 },
+    }))
+
+    await expect(client.trigger('wf', { x: 1 })).rejects.toThrow()
+  })
+
+  it('passes through when the response arrives before the deadline', async () => {
+    globalThis.fetch = async () =>
+      new Response(JSON.stringify({ executionId: 'e-1' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+
+    const client = createN8nClient(async () => ({
+      baseUrl: 'http://localhost:5678',
+      headers: {},
+      timeout: { connect: 100, read: 100 },
+    }))
+
+    const res = await client.trigger('wf', { x: 1 })
+    expect(res.ok).toBe(true)
+    expect(res.executionId).toBe('e-1')
   })
 })
