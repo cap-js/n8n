@@ -88,3 +88,106 @@ describe('createN8nClient — timeouts', () => {
     expect(res.executionId).toBe('e-1')
   })
 })
+
+describe('createN8nClient — retryable error marking', () => {
+  let originalFetch
+  beforeEach(() => {
+    originalFetch = globalThis.fetch
+  })
+  afterEach(() => {
+    globalThis.fetch = originalFetch
+  })
+
+  function buildClient() {
+    return createN8nClient(async () => ({
+      baseUrl: 'http://localhost:5678',
+      headers: {},
+      timeout: { connect: 100, read: 100 },
+    }))
+  }
+
+  it('marks HTTP 4xx as non-retryable', async () => {
+    globalThis.fetch = async () =>
+      new Response('bad workflow', { status: 404, statusText: 'Not Found' })
+
+    let caught
+    try {
+      await buildClient().trigger('missing', {})
+    } catch (err) {
+      caught = err
+    }
+    expect(caught).toBeDefined()
+    expect(caught.retryable).toBe(false)
+  })
+
+  it('marks HTTP 5xx as non-retryable', async () => {
+    globalThis.fetch = async () =>
+      new Response('boom', { status: 500, statusText: 'Server Error' })
+
+    let caught
+    try {
+      await buildClient().trigger('wf', {})
+    } catch (err) {
+      caught = err
+    }
+    expect(caught).toBeDefined()
+    expect(caught.retryable).toBe(false)
+  })
+
+  it('marks network failures as retryable', async () => {
+    globalThis.fetch = async () => {
+      const err = new TypeError('fetch failed')
+      err.cause = new Error('ECONNREFUSED')
+      throw err
+    }
+
+    let caught
+    try {
+      await buildClient().trigger('wf', {})
+    } catch (err) {
+      caught = err
+    }
+    expect(caught).toBeDefined()
+    expect(caught.retryable).toBe(true)
+  })
+
+  it('marks abort/timeout errors as retryable', async () => {
+    globalThis.fetch = (url, options) =>
+      new Promise((_resolve, reject) => {
+        options?.signal?.addEventListener('abort', () => {
+          const err = new Error('aborted')
+          err.name = 'AbortError'
+          reject(err)
+        })
+      })
+
+    const client = createN8nClient(async () => ({
+      baseUrl: 'http://localhost:5678',
+      headers: {},
+      timeout: { connect: 5, read: 5 },
+    }))
+
+    let caught
+    try {
+      await client.trigger('wf', {})
+    } catch (err) {
+      caught = err
+    }
+    expect(caught).toBeDefined()
+    expect(caught.retryable).toBe(true)
+  })
+
+  it('marks HTTP errors on getExecution as non-retryable', async () => {
+    globalThis.fetch = async () =>
+      new Response('nope', { status: 401, statusText: 'Unauthorized' })
+
+    let caught
+    try {
+      await buildClient().getExecution('e-1')
+    } catch (err) {
+      caught = err
+    }
+    expect(caught).toBeDefined()
+    expect(caught.retryable).toBe(false)
+  })
+})
