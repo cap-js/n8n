@@ -29,7 +29,7 @@
   "license": "Apache-2.0",
   "type": "commonjs",
   "peerDependencies": {
-    "@sap/cds": ">=8"
+    "@sap/cds": ">=9"
   },
   "engines": {
     "node": ">=20.0.0"
@@ -42,11 +42,11 @@
     "@sap-cloud-sdk/http-client": "^4.5.1"
   },
   "devDependencies": {
-    "@cap-js/cds-test": "^1.0.0",
-    "@cap-js/sqlite": "^2.0.0",
-    "@sap/cds": "^9.0.0",
-    "@sap/cds-dk": "^9.0.0",
-    "vitest": "^2.1.0"
+    "@cap-js/cds-test": "^1",
+    "@cap-js/sqlite": "^3",
+    "@sap/cds": "^10",
+    "@sap/cds-dk": "^10",
+    "vitest": "^4"
   },
   "cds": {
     "requires": {
