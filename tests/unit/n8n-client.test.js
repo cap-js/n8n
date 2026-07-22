@@ -4,6 +4,7 @@ const {
   buildWebhookUrl,
   normalizeWebhookPath,
   createN8nClient,
+  redactSecrets,
 } = require('../../lib/api/n8n-client')
 
 describe('normalizeWebhookPath', () => {
@@ -16,10 +17,18 @@ describe('normalizeWebhookPath', () => {
   it('preserves webhook-test/… prefix (n8n test URLs)', () => {
     expect(normalizeWebhookPath('webhook-test/my-hook')).toBe('webhook-test/my-hook')
   })
-  it('returns absolute URLs unchanged', () => {
-    expect(normalizeWebhookPath('https://x.y/webhook/my-hook')).toBe(
-      'https://x.y/webhook/my-hook',
-    )
+  it('rejects absolute URLs (SSRF hardening)', () => {
+    expect(() => normalizeWebhookPath('https://x.y/webhook/my-hook')).toThrow(/relative path/i)
+    expect(() => normalizeWebhookPath('http://internal/x')).toThrow(/relative path/i)
+  })
+  it('rejects protocol-relative URLs', () => {
+    expect(() => normalizeWebhookPath('//evil.example/x')).toThrow(/relative path/i)
+  })
+  it('rejects newline characters', () => {
+    expect(() => normalizeWebhookPath('my-hook\r\nInjected: header')).toThrow(/newline/i)
+  })
+  it('rejects ".." path segments', () => {
+    expect(() => normalizeWebhookPath('../api/v1/workflows')).toThrow(/\.\./)
   })
 })
 
@@ -34,10 +43,10 @@ describe('buildWebhookUrl', () => {
       'http://localhost:5678/webhook/book-created',
     )
   })
-  it('returns absolute workflow URL unchanged', () => {
-    expect(
+  it('rejects absolute workflow values (SSRF)', () => {
+    expect(() =>
       buildWebhookUrl('http://ignored', 'https://cloud.n8n.io/webhook/x'),
-    ).toBe('https://cloud.n8n.io/webhook/x')
+    ).toThrow(/relative path/i)
   })
   it('uses /webhook-test prefix when useTestWebhook is true', () => {
     expect(
@@ -51,13 +60,6 @@ describe('buildWebhookUrl', () => {
     expect(buildWebhookUrl('http://localhost:5678', 'book-created', {})).toBe(
       'http://localhost:5678/webhook/book-created',
     )
-  })
-  it('honours absolute URLs regardless of useTestWebhook', () => {
-    expect(
-      buildWebhookUrl('http://ignored', 'https://cloud.n8n.io/webhook/x', {
-        useTestWebhook: true,
-      }),
-    ).toBe('https://cloud.n8n.io/webhook/x')
   })
 })
 
@@ -340,5 +342,60 @@ describe('createN8nClient — test webhook flag', () => {
     }))
     await client.trigger('book-created', {})
     expect(captured[0].url).toBe('http://localhost:5678/webhook-test/book-created')
+  })
+})
+
+describe('redactSecrets', () => {
+  it('redacts X-N8N-API-KEY values', () => {
+    const body = '{"received":{"X-N8N-API-KEY":"eyJabc"}}'
+    expect(redactSecrets(body)).not.toContain('eyJabc')
+    expect(redactSecrets(body)).toMatch(/\[REDACTED\]/)
+  })
+  it('redacts Authorization values case-insensitively', () => {
+    const body = 'authorization: Bearer secret-token-123'
+    expect(redactSecrets(body)).not.toContain('secret-token-123')
+  })
+  it('redacts X-Webhook-Secret values', () => {
+    const body = '"x-webhook-secret":"whs_xyz"'
+    expect(redactSecrets(body)).not.toContain('whs_xyz')
+  })
+  it('returns empty string for null/undefined/empty input', () => {
+    expect(redactSecrets('')).toBe('')
+    expect(redactSecrets(null)).toBe('')
+    expect(redactSecrets(undefined)).toBe('')
+  })
+})
+
+describe('createN8nClient — error body sanitisation', () => {
+  let originalFetch
+  beforeEach(() => {
+    originalFetch = globalThis.fetch
+  })
+  afterEach(() => {
+    globalThis.fetch = originalFetch
+  })
+
+  it('redacts credentials echoed back in a 4xx response body', async () => {
+    globalThis.fetch = async () =>
+      new Response('{"received":{"X-N8N-API-KEY":"top-secret-echoed"}}', {
+        status: 400,
+        statusText: 'Bad Request',
+      })
+
+    const client = createN8nClient(async () => ({
+      baseUrl: 'http://localhost:5678',
+      apiKey: 'top-secret-echoed',
+      timeout: { connect: 50, read: 50 },
+    }))
+
+    let caught
+    try {
+      await client.trigger('wf', {})
+    } catch (err) {
+      caught = err
+    }
+    expect(caught).toBeDefined()
+    expect(caught.message).not.toContain('top-secret-echoed')
+    expect(caught.message).toMatch(/\[REDACTED\]/)
   })
 })
