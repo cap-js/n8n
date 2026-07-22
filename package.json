@@ -29,7 +29,13 @@
   "license": "Apache-2.0",
   "type": "commonjs",
   "peerDependencies": {
-    "@sap/cds": ">=9"
+    "@sap/cds": ">=9",
+    "@sap-cloud-sdk/connectivity": "^4"
+  },
+  "peerDependenciesMeta": {
+    "@sap-cloud-sdk/connectivity": {
+      "optional": true
+    }
   },
   "engines": {
     "node": ">=20.0.0"
@@ -37,13 +43,10 @@
   "workspaces": [
     "tests/sample/bookshop"
   ],
-  "dependencies": {
-    "@sap-cloud-sdk/connectivity": "^4.5.1",
-    "@sap-cloud-sdk/http-client": "^4.5.1"
-  },
   "devDependencies": {
     "@cap-js/cds-test": "^1",
     "@cap-js/sqlite": "^3",
+    "@sap-cloud-sdk/connectivity": "^4.5.1",
     "@sap/cds": "^10",
     "@sap/cds-dk": "^10",
     "vitest": "^4"

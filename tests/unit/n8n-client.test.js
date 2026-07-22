@@ -262,6 +262,48 @@ describe('createN8nClient — auth headers', () => {
     expect(captured[0].options.headers).toMatchObject({ 'X-N8N-API-KEY': 'top-secret' })
     expect(captured[0].options.headers).not.toHaveProperty('X-Webhook-Secret')
   })
+
+  it('merges destination authHeaders under the n8n-specific headers on webhook POSTs', async () => {
+    const client = createN8nClient(async () => ({
+      baseUrl: 'http://localhost:5678',
+      apiKey: 'top-secret',
+      authHeaders: { Authorization: 'Bearer outer-token' },
+      timeout: { connect: 50, read: 50 },
+    }))
+    await client.trigger('wf', {})
+    expect(captured[0].options.headers).toMatchObject({
+      'Authorization': 'Bearer outer-token',
+      'X-N8N-API-KEY': 'top-secret',
+      'X-Webhook-Secret': 'top-secret',
+    })
+  })
+
+  it('merges destination authHeaders on executions API calls', async () => {
+    const client = createN8nClient(async () => ({
+      baseUrl: 'http://localhost:5678',
+      apiKey: 'top-secret',
+      authHeaders: { Authorization: 'Bearer outer-token' },
+      timeout: { connect: 50, read: 50 },
+    }))
+    await client.getExecution('e-1')
+    expect(captured[0].options.headers).toMatchObject({
+      'Authorization': 'Bearer outer-token',
+      'X-N8N-API-KEY': 'top-secret',
+    })
+  })
+
+  it('X-N8N-API-KEY wins over an incoming X-N8N-API-KEY from authHeaders', async () => {
+    // Ensures a destination custom header cannot silently replace the api key
+    // the plugin already resolved. Applies to webhook trigger POSTs.
+    const client = createN8nClient(async () => ({
+      baseUrl: 'http://localhost:5678',
+      apiKey: 'plugin-resolved-key',
+      authHeaders: { 'X-N8N-API-KEY': 'stale-header-key' },
+      timeout: { connect: 50, read: 50 },
+    }))
+    await client.trigger('wf', {})
+    expect(captured[0].options.headers['X-N8N-API-KEY']).toBe('plugin-resolved-key')
+  })
 })
 
 describe('createN8nClient — test webhook flag', () => {

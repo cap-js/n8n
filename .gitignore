@@ -11,3 +11,6 @@ coverage/
 *.log
 tests/sample/bookshop/.n8n-data/
 tests/sample/bookshop/gen/
+
+# added by cds
+.cdsrc-private.json

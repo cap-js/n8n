@@ -135,6 +135,45 @@ describe('resolveN8nConnection', () => {
     const c = await resolveN8nConnection(SVC)
     expect(c.useTestWebhook).toBe(true)
   })
+
+  describe('destination-based resolution', () => {
+    it('uses the destination even when a leftover baseUrl is present in credentials', async () => {
+      // Simulate the plugin's own [development] default polluting credentials
+      // alongside a user-configured destination — destination must win.
+      cds.env.requires[SVC] = {
+        credentials: {
+          baseUrl: 'http://localhost:5678',
+          destination: 'managed-n8n',
+        },
+      }
+
+      // Monkey-patch the destination module for this test only.
+      const destModule = require('../../lib/auth/destination')
+      const original = destModule.resolveDestination
+      destModule.resolveDestination = async (name) => ({
+        url: `https://managed.example.com/api/${name}`,
+        originalProperties: {
+          destinationConfiguration: {
+            'URL.headers.X-N8N-API-KEY': 'key-from-destination',
+          },
+        },
+        authHeaders: { Authorization: 'Bearer outer-token' },
+      })
+
+      try {
+        // Re-require the connection module so it picks up the patched destination.
+        delete require.cache[require.resolve('../../lib/api/connection')]
+        const { resolveN8nConnection: fresh } = require('../../lib/api/connection')
+        const c = await fresh(SVC)
+        expect(c.baseUrl).toBe('https://managed.example.com/api/managed-n8n')
+        expect(c.apiKey).toBe('key-from-destination')
+        expect(c.authHeaders).toEqual({ Authorization: 'Bearer outer-token' })
+      } finally {
+        destModule.resolveDestination = original
+        delete require.cache[require.resolve('../../lib/api/connection')]
+      }
+    })
+  })
 })
 
 describe('resolveTimeouts', () => {
