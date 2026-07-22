@@ -18,7 +18,7 @@ process.env.CDS_CONFIG = JSON.stringify({
 })
 
 const cds = require('@sap/cds')
-const { markRetryable } = require('../../../lib/api/n8n-client')
+const { markUnrecoverable } = require('../../../lib/api/n8n-client')
 
 const app = path.join(__dirname, '../../sample/bookshop')
 const { expect } = cds.test(app)
@@ -40,10 +40,11 @@ describe('restN8nService — retry branching', () => {
     impl.client = originalClient
   })
 
-  it('surfaces retryable errors from the client back to the caller', async () => {
+  it('surfaces retryable (transport) errors from the client back to the caller', async () => {
     impl.client = {
       async trigger() {
-        throw markRetryable(new Error('ECONNREFUSED'), true)
+        // Unmarked error — outbox treats as retryable.
+        throw new Error('ECONNREFUSED')
       },
     }
 
@@ -57,12 +58,12 @@ describe('restN8nService — retry branching', () => {
     expect(String(caught.message)).to.match(/ECONNREFUSED/)
   })
 
-  it('swallows non-retryable HTTP errors and returns { ok: false }', async () => {
+  it('swallows unrecoverable HTTP errors and returns { ok: false }', async () => {
     impl.client = {
       async trigger() {
         const err = new Error('404 Not Found')
         err.code = 404
-        throw markRetryable(err, false)
+        throw markUnrecoverable(err)
       },
     }
 

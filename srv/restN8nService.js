@@ -80,26 +80,28 @@ class N8nService extends cds.Service {
  * Decides whether an error from the n8n client should propagate (so the CAP
  * outbox schedules a retry) or be swallowed (so the message is marked done).
  *
- * Non-retryable failures (HTTP 4xx/5xx) mean n8n rejected the call on its own
- * terms; another attempt would produce the same rejection and only waste the
- * queue. Retryable failures (network errors, timeouts) mean n8n never got a
- * chance to see the request, and are worth retrying with backoff.
+ * The CAP outbox uses `err.unrecoverable === true` as its terminal signal —
+ * see `@sap/cds/libx/queue/processing.js`. HTTP 4xx/5xx failures mean n8n
+ * received the call on its own terms; another attempt would produce the
+ * same rejection and only waste the queue, so they are surfaced as a
+ * resolved `{ ok:false }` result. Network errors, timeouts, and anything
+ * else transport-layer is left to propagate — the outbox retries them with
+ * backoff.
  */
 function handleTriggerError(workflow, err) {
-  const retryable = err?.retryable !== false
   const wf = safeForLog(workflow)
-  if (retryable) {
+  if (err?.unrecoverable === true) {
     LOG.error(
-      `n8n webhook for workflow ${wf} failed (will retry): ${safeForLog(err?.message ?? err)}`,
+      `n8n webhook for workflow ${wf} rejected by n8n (no retry): ${safeForLog(err?.message ?? err)}`,
     )
-    throw err
+    // Return a synthetic "not ok" result so callers awaiting the emit see a
+    // deterministic value instead of a swallowed rejection.
+    return { ok: false, status: err?.code ?? err?.status ?? 0, error: err?.message ?? String(err) }
   }
   LOG.error(
-    `n8n webhook for workflow ${wf} rejected by n8n (no retry): ${safeForLog(err?.message ?? err)}`,
+    `n8n webhook for workflow ${wf} failed (will retry): ${safeForLog(err?.message ?? err)}`,
   )
-  // Return a synthetic "not ok" result so callers awaiting the emit see a
-  // deterministic value instead of a swallowed rejection.
-  return { ok: false, status: err?.code ?? err?.status ?? 0, error: err?.message ?? String(err) }
+  throw err
 }
 
 module.exports = N8nService
