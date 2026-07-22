@@ -111,7 +111,7 @@ describe('createN8nClient — timeouts', () => {
   })
 })
 
-describe('createN8nClient — retryable error marking', () => {
+describe('createN8nClient — unrecoverable error marking', () => {
   let originalFetch
   beforeEach(() => {
     originalFetch = globalThis.fetch
@@ -128,7 +128,7 @@ describe('createN8nClient — retryable error marking', () => {
     }))
   }
 
-  it('marks HTTP 4xx as non-retryable', async () => {
+  it('marks HTTP 4xx as unrecoverable', async () => {
     globalThis.fetch = async () =>
       new Response('bad workflow', { status: 404, statusText: 'Not Found' })
 
@@ -139,10 +139,10 @@ describe('createN8nClient — retryable error marking', () => {
       caught = err
     }
     expect(caught).toBeDefined()
-    expect(caught.retryable).toBe(false)
+    expect(caught.unrecoverable).toBe(true)
   })
 
-  it('marks HTTP 5xx as non-retryable', async () => {
+  it('marks HTTP 5xx as unrecoverable', async () => {
     globalThis.fetch = async () =>
       new Response('boom', { status: 500, statusText: 'Server Error' })
 
@@ -153,10 +153,10 @@ describe('createN8nClient — retryable error marking', () => {
       caught = err
     }
     expect(caught).toBeDefined()
-    expect(caught.retryable).toBe(false)
+    expect(caught.unrecoverable).toBe(true)
   })
 
-  it('marks network failures as retryable', async () => {
+  it('does NOT mark network failures as unrecoverable (outbox retries them)', async () => {
     globalThis.fetch = async () => {
       const err = new TypeError('fetch failed')
       err.cause = new Error('ECONNREFUSED')
@@ -170,10 +170,10 @@ describe('createN8nClient — retryable error marking', () => {
       caught = err
     }
     expect(caught).toBeDefined()
-    expect(caught.retryable).toBe(true)
+    expect(caught.unrecoverable).toBeUndefined()
   })
 
-  it('marks abort/timeout errors as retryable', async () => {
+  it('does NOT mark abort/timeout errors as unrecoverable', async () => {
     globalThis.fetch = (url, options) =>
       new Promise((_resolve, reject) => {
         options?.signal?.addEventListener('abort', () => {
@@ -196,10 +196,10 @@ describe('createN8nClient — retryable error marking', () => {
       caught = err
     }
     expect(caught).toBeDefined()
-    expect(caught.retryable).toBe(true)
+    expect(caught.unrecoverable).toBeUndefined()
   })
 
-  it('marks HTTP errors on getExecution as non-retryable', async () => {
+  it('marks HTTP errors on getExecution as unrecoverable', async () => {
     globalThis.fetch = async () =>
       new Response('nope', { status: 401, statusText: 'Unauthorized' })
 
@@ -210,7 +210,7 @@ describe('createN8nClient — retryable error marking', () => {
       caught = err
     }
     expect(caught).toBeDefined()
-    expect(caught.retryable).toBe(false)
+    expect(caught.unrecoverable).toBe(true)
   })
 })
 
