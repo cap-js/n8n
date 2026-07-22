@@ -2,10 +2,28 @@
 
 const cds = require('@sap/cds')
 const { N8N_LOGGER_PREFIX } = require('../lib/constants')
-const { createN8nClient } = require('../lib/api/n8n-client')
+const { createN8nClient, safeForLog } = require('../lib/api/n8n-client')
 const { resolveN8nConnection } = require('../lib/api/connection')
 
 const LOG = cds.log(N8N_LOGGER_PREFIX)
+
+/**
+ * Rejects workflow values that could pivot the request off the resolved n8n
+ * base URL. The path is re-normalised inside the client, but validating here
+ * short-circuits misuse before touching the network.
+ */
+function assertRelativeWorkflow(workflow) {
+  if (typeof workflow !== 'string' || workflow.trim() === '') {
+    throw cds.error(400, 'Missing required parameter: workflow')
+  }
+  const trimmed = workflow.trim()
+  if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed) || trimmed.startsWith('//')) {
+    throw cds.error(400, `workflow must be a relative path, not a URL: ${safeForLog(trimmed)}`)
+  }
+  if (/[\r\n]/.test(trimmed)) {
+    throw cds.error(400, 'workflow must not contain newline characters')
+  }
+}
 
 /**
  * REST implementation of `N8nService`.
@@ -29,10 +47,8 @@ class N8nService extends cds.Service {
 
     this.on('trigger', async (req) => {
       const { workflow, payload } = req.data ?? {}
-      if (!workflow) {
-        throw cds.error(400, 'Missing required parameter: workflow')
-      }
-      LOG.info(`Triggering n8n workflow: ${workflow}`)
+      assertRelativeWorkflow(workflow)
+      LOG.info(`Triggering n8n workflow: ${safeForLog(workflow)}`)
       try {
         return await this.client.trigger(workflow, payload)
       } catch (err) {
@@ -71,14 +87,15 @@ class N8nService extends cds.Service {
  */
 function handleTriggerError(workflow, err) {
   const retryable = err?.retryable !== false
+  const wf = safeForLog(workflow)
   if (retryable) {
     LOG.error(
-      `n8n webhook for workflow ${workflow} failed (will retry): ${err?.message ?? err}`,
+      `n8n webhook for workflow ${wf} failed (will retry): ${safeForLog(err?.message ?? err)}`,
     )
     throw err
   }
   LOG.error(
-    `n8n webhook for workflow ${workflow} rejected by n8n (no retry): ${err?.message ?? err}`,
+    `n8n webhook for workflow ${wf} rejected by n8n (no retry): ${safeForLog(err?.message ?? err)}`,
   )
   // Return a synthetic "not ok" result so callers awaiting the emit see a
   // deterministic value instead of a swallowed rejection.
