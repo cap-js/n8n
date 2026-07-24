@@ -23,7 +23,9 @@
       "db": {
         "kind": "sqlite",
         "impl": "@cap-js/sqlite",
-        "credentials": { "url": ":memory:" }
+        "credentials": {
+          "url": ":memory:"
+        }
       },
       "N8nService": {
         "[test]": {

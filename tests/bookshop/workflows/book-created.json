@@ -12,15 +12,13 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
-      "position": [ 240, 300 ],
+      "position": [240, 300],
       "webhookId": "book-created"
     },
     {
       "parameters": {
         "values": {
-          "string": [
-            { "name": "receivedAt", "value": "={{ $now }}" }
-          ]
+          "string": [{ "name": "receivedAt", "value": "={{ $now }}" }]
         },
         "options": {}
       },
@@ -28,14 +26,12 @@
       "name": "Set",
       "type": "n8n-nodes-base.set",
       "typeVersion": 1,
-      "position": [ 440, 300 ]
+      "position": [440, 300]
     }
   ],
   "connections": {
     "Webhook": {
-      "main": [
-        [ { "node": "Set", "type": "main", "index": 0 } ]
-      ]
+      "main": [[{ "node": "Set", "type": "main", "index": 0 }]]
     }
   },
   "active": true,

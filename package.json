@@ -24,7 +24,9 @@
     "test:live": "vitest run tests/integration/rest",
     "test:console": "vitest run tests/integration/console tests/unit",
     "test:hybrid": "cds bind --exec -- vitest run",
-    "lint": "node -e \"console.log('no linter configured yet')\""
+    "lint": "npx eslint .",
+    "prettier": "npx -y prettier@3 --write .",
+    "prettier:check": "npx -y prettier@3 --check ."
   },
   "keywords": [
     "cds",

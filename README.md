@@ -57,10 +57,10 @@ The `[development]` profile defaults the plugin's `baseUrl` to
 
 The plugin ships two service kinds:
 
-| Kind                    | Used when                            | Behavior                                                                     |
-| ----------------------- | ------------------------------------ | ---------------------------------------------------------------------------- |
-| `rest-n8n-service`      | default (dev / hybrid / production)  | Real HTTP calls against an n8n instance.                                     |
-| `console-n8n-service`   | opt-in - set `kind` explicitly       | Log-only impl. In-memory execution store for tests / offline development.    |
+| Kind                  | Used when                           | Behavior                                                                  |
+| --------------------- | ----------------------------------- | ------------------------------------------------------------------------- |
+| `rest-n8n-service`    | default (dev / hybrid / production) | Real HTTP calls against an n8n instance.                                  |
+| `console-n8n-service` | opt-in - set `kind` explicitly      | Log-only impl. In-memory execution store for tests / offline development. |
 
 The default profile matrix is:
 
@@ -72,14 +72,14 @@ The default profile matrix is:
         "kind": "rest-n8n-service",
         "credentials": {
           "baseUrl": "env:N8N_BASE_URL",
-          "apiKey":  "env:N8N_API_KEY"
+          "apiKey": "env:N8N_API_KEY",
         },
         "[development]": {
-          "credentials": { "baseUrl": "http://localhost:5678" }
-        }
-      }
-    }
-  }
+          "credentials": { "baseUrl": "http://localhost:5678" },
+        },
+      },
+    },
+  },
 }
 ```
 
@@ -108,10 +108,10 @@ via VCAP, or use a BTP destination named `n8n`.
   "cds": {
     "requires": {
       "N8nService": {
-        "[test]": { "kind": "console-n8n-service" }
-      }
-    }
-  }
+        "[test]": { "kind": "console-n8n-service" },
+      },
+    },
+  },
 }
 ```
 
@@ -119,9 +119,9 @@ via VCAP, or use a BTP destination named `n8n`.
 
 n8n exposes two webhook prefixes:
 
-| Prefix          | When to use                                                                                     |
-| --------------- | ----------------------------------------------------------------------------------------------- |
-| `/webhook`      | Published workflows. Always active. Handles bulk calls. **Default.**                            |
+| Prefix          | When to use                                                                                                                                        |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/webhook`      | Published workflows. Always active. Handles bulk calls. **Default.**                                                                               |
 | `/webhook-test` | One-shot capture for workflow authoring. Requires clicking "Listen for Test Event" in the n8n UI before each call, and only fires once per arming. |
 
 Toggle via the `useTestWebhook` flag on the service credentials:
@@ -133,11 +133,11 @@ Toggle via the `useTestWebhook` flag on the service credentials:
       "N8nService": {
         "credentials": {
           "baseUrl": "http://localhost:5678",
-          "useTestWebhook": true
-        }
-      }
-    }
-  }
+          "useTestWebhook": true,
+        },
+      },
+    },
+  },
 }
 ```
 
@@ -157,8 +157,8 @@ Override via credentials or env vars:
 ```jsonc
 {
   "credentials": {
-    "timeout": { "connect": 2000, "read": 8000 }
-  }
+    "timeout": { "connect": 2000, "read": 8000 },
+  },
 }
 ```
 
@@ -173,11 +173,11 @@ surfaced for symmetry with the Java plugin and for future flexibility.
 Failed webhook calls are retried by the CAP outbox (persistent queue backed
 by the application database) - but only when the failure is worth retrying:
 
-| Failure                     | Retried by the outbox? |
-| --------------------------- | ---------------------- |
-| Network error / DNS / socket | **Yes** - n8n was unreachable. |
-| Read timeout                 | **Yes** - no response before the deadline. |
-| HTTP 4xx                     | No - misconfiguration; retrying won't fix it. |
+| Failure                      | Retried by the outbox?                              |
+| ---------------------------- | --------------------------------------------------- |
+| Network error / DNS / socket | **Yes** - n8n was unreachable.                      |
+| Read timeout                 | **Yes** - no response before the deadline.          |
+| HTTP 4xx                     | No - misconfiguration; retrying won't fix it.       |
 | HTTP 5xx                     | No - n8n received the call but the workflow failed. |
 
 Non-retryable failures are logged at `ERROR` and the outbox marks the message
@@ -188,10 +188,10 @@ done, keeping the queue clean.
 The `apiKey` credential is sent as HTTP headers, with different semantics per
 endpoint:
 
-| Endpoint            | Header(s) sent                               | Why |
-| ------------------- | -------------------------------------------- | --- |
-| `/webhook/…` POSTs  | `X-N8N-API-KEY` **and** `X-Webhook-Secret`   | n8n workflows can validate whichever header they choose; sending both interoperates with workflows written for either the Node plugin's or Java plugin's convention. |
-| `/api/v1/…` GETs    | `X-N8N-API-KEY` only                         | n8n's public REST API validates the canonical header specifically. |
+| Endpoint           | Header(s) sent                             | Why                                                                                                                                                                  |
+| ------------------ | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/webhook/…` POSTs | `X-N8N-API-KEY` **and** `X-Webhook-Secret` | n8n workflows can validate whichever header they choose; sending both interoperates with workflows written for either the Node plugin's or Java plugin's convention. |
+| `/api/v1/…` GETs   | `X-N8N-API-KEY` only                       | n8n's public REST API validates the canonical header specifically.                                                                                                   |
 
 ---
 
@@ -282,26 +282,26 @@ entity Books as projection on my.Books;
 ## Programmatic API
 
 ```js
-const n8n = await cds.connect.to('N8nService')
+const n8n = await cds.connect.to("N8nService")
 
 // Fire a webhook - routed through the outbox, POSTed after commit
-await n8n.emit('trigger', {
-  path:    'book-created',
-  payload: { title: 'Moby Dick', quantity: 3 }
+await n8n.emit("trigger", {
+  path: "book-created",
+  payload: { title: "Moby Dick", quantity: 3 },
 })
 
 // Query executions (synchronous)
-const list = await n8n.send('listExecutions', { workflowId: 'abcd' })
-const one  = await n8n.send('getExecution',   { executionId: 'exec-42' })
+const list = await n8n.send("listExecutions", { workflowId: "abcd" })
+const one = await n8n.send("getExecution", { executionId: "exec-42" })
 ```
 
 The `N8nService` model (`srv/N8nService.cds`):
 
-| Operation        | Type     | Purpose                                                       |
-| ---------------- | -------- | ------------------------------------------------------------- |
-| `trigger`        | event    | POST `{baseUrl}/webhook/<path>` with `payload`                |
-| `getExecution`   | function | GET `/api/v1/executions/{id}?includeData=true`                |
-| `listExecutions` | function | GET `/api/v1/executions?workflowId={id}&includeData=true`     |
+| Operation        | Type     | Purpose                                                   |
+| ---------------- | -------- | --------------------------------------------------------- |
+| `trigger`        | event    | POST `{baseUrl}/webhook/<path>` with `payload`            |
+| `getExecution`   | function | GET `/api/v1/executions/{id}?includeData=true`            |
+| `listExecutions` | function | GET `/api/v1/executions?workflowId={id}&includeData=true` |
 
 ---
 
