@@ -8,12 +8,12 @@ service N8nService {
 
   /**
    * Fires an n8n production webhook.
-   *  - workflow: the webhook path segment (POSTed to `{baseUrl}/webhook/<workflow>`)
+   *  - path    : the webhook path segment (POSTed to `{baseUrl}/webhook/<path>`)
    *  - payload : arbitrary JSON body sent to the webhook
    */
   event trigger {
-    @mandatory workflow : String(256);
-    payload             : AnyType;
+    @mandatory path : String(256);
+    payload         : AnyType;
   }
 
   /**

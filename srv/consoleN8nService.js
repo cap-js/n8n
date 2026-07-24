@@ -16,14 +16,14 @@ const LOG = cds.log(N8N_LOGGER_PREFIX)
  */
 class ConsoleN8nService extends cds.Service {
   async init() {
-    /** @type {Array<{id:string,workflow:string,payload:unknown,startedAt:string,finishedAt:string,status:string}>} */
+    /** @type {Array<{id:string,path:string,payload:unknown,startedAt:string,finishedAt:string,status:string}>} */
     this.executions = []
     this._counter = 0
 
     this.on('trigger', async (req) => {
-      const { workflow, payload } = req.data ?? {}
-      if (!workflow) {
-        throw cds.error(400, 'Missing required parameter: workflow')
+      const { path, payload } = req.data ?? {}
+      if (!path) {
+        throw cds.error(400, 'Missing required parameter: path')
       }
 
       this._counter += 1
@@ -32,7 +32,7 @@ class ConsoleN8nService extends cds.Service {
       const record = {
         id,
         executionId: id,
-        workflow,
+        path,
         payload,
         startedAt: now,
         finishedAt: now,
@@ -41,7 +41,7 @@ class ConsoleN8nService extends cds.Service {
       this.executions.push(record)
 
       LOG.info(
-        `[console] would POST /webhook/${workflow} — payload: ${safeJson(payload)}`,
+        `[console] would POST /webhook/${path} — payload: ${safeJson(payload)}`,
       )
 
       return { ok: true, status: 200, executionId: id, body: { executionId: id } }
@@ -64,7 +64,9 @@ class ConsoleN8nService extends cds.Service {
       if (!workflowId) {
         throw cds.error(400, 'Missing required parameter: workflowId')
       }
-      return this.executions.filter((e) => e.workflow === workflowId)
+      // Console implementation stores no separate n8n workflow ID; treat the
+      // webhook path as the identifier for filtering purposes.
+      return this.executions.filter((e) => e.path === workflowId)
     })
 
     return super.init()
