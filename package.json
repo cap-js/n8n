@@ -3,6 +3,14 @@
   "version": "0.1.0",
   "description": "CAP Plugin to trigger n8n workflows from CAP applications via annotations and a programmatic service.",
   "main": "cds-plugin.js",
+  "homepage": "https://cap.cloud.sap/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cap-js/n8n.git"
+  },
+  "bugs": {
+    "url": "https://github.com/cap-js/n8n/issues"
+  },
   "files": [
     "cds-plugin.js",
     "lib/",
