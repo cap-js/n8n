@@ -1,6 +1,9 @@
 # Bookshop sample — @cap-js/n8n
 
-Minimal CAP application demonstrating the `@cap-js/n8n` plugin.
+Full CAP application demonstrating the `@cap-js/n8n` plugin — includes
+the standard `sap.capire.bookshop` model (Books, Authors, Genres) with
+seeded data, two Fiori launchpad tiles (`admin-books`, `browse`), and an
+additional `Orders` entity used to showcase the plugin.
 
 ## What it shows
 
@@ -9,6 +12,8 @@ Minimal CAP application demonstrating the `@cap-js/n8n` plugin.
 - **Record form** — `@n8n.process.start: { path, on, if, inputs }` on `Orders`
   fires only when an order transitions to `status = 'shipped'`, and sends
   only a subset of fields.
+- **DELETE prefetch** — `#deleted` qualifier on `Orders` fires an
+  `order-deleted` webhook with the pre-delete row payload.
 - **Profile-driven config** — `[development]` targets a local n8n docker
   container at `http://localhost:5678` with no auth. Hybrid/production
   profiles resolve credentials from `cds bind`, BTP destinations, or env vars.
@@ -25,12 +30,12 @@ docker compose up -d
 
 # 3) Start CAP
 npm install
-npm run watch
+cds watch tests/bookshop
 
-# 4) POST a book:
+# 4) POST a book (author_ID references seeded Authors data):
 curl -X POST http://localhost:4004/odata/v4/admin/Books \
      -H 'Content-Type: application/json' \
-     -d '{ "title": "Moby Dick", "author": "H. Melville" }'
+     -d '{ "ID": 999, "title": "Moby Dick", "author_ID": 101 }'
 ```
 
 The CAP transaction commits, the CAP outbox then dispatches a POST to

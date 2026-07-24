@@ -16,7 +16,7 @@ process.env.CDS_CONFIG = JSON.stringify({
 
 const cds = require('@sap/cds')
 
-const app = path.join(__dirname, '../../sample/bookshop')
+const app = path.join(__dirname, '../../bookshop')
 const { POST, PATCH, DELETE, expect } = cds.test(app)
 
 describe('@n8n.process.start — annotation-driven flow (console kind)', () => {
@@ -37,8 +37,9 @@ describe('@n8n.process.start — annotation-driven flow (console kind)', () => {
 
   it('fires the "book-created" webhook on CREATE (string shorthand)', async () => {
     const { status } = await POST('/odata/v4/admin/Books', {
+      ID: 9001,
       title: 'Moby Dick',
-      author: 'Herman Melville',
+      author_ID: 101,
       stock: 5,
       price: 10.5,
     })
@@ -46,7 +47,7 @@ describe('@n8n.process.start — annotation-driven flow (console kind)', () => {
     // Console service records executions synchronously (outboxed: false).
     const created = n8n.executions.filter((e) => e.path === 'book-created')
     expect(created).to.have.length(1)
-    expect(created[0].payload).to.include({ title: 'Moby Dick', author: 'Herman Melville' })
+    expect(created[0].payload).to.include({ title: 'Moby Dick', author_ID: 101 })
   })
 
   it('does NOT fire "order-shipped" when status is not "shipped"', async () => {

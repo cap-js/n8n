@@ -9,7 +9,7 @@ process.env.N8N_BASE_URL = process.env.N8N_BASE_URL || 'http://localhost:5678'
 const cds = require('@sap/cds')
 const { createN8nClient } = require('../../../lib/api/n8n-client')
 
-const app = path.join(__dirname, '../../sample/bookshop')
+const app = path.join(__dirname, '../../bookshop')
 
 const N8N_URL = process.env.N8N_BASE_URL
 const API_KEY = process.env.N8N_API_KEY
@@ -36,7 +36,7 @@ describe('n8n REST integration (skips when localhost:5678 is unreachable)', () =
       // eslint-disable-next-line no-console
       console.warn(
         `[live-trigger] Skipping — no n8n instance reachable at ${N8N_URL}. ` +
-          `Start docker (see tests/sample/bookshop/README.md) to enable this suite.`,
+          `Start docker (see tests/bookshop/README.md) to enable this suite.`,
       )
     }
   })
@@ -60,7 +60,7 @@ describe('n8n REST integration (skips when localhost:5678 is unreachable)', () =
       // eslint-disable-next-line no-console
       console.warn(
         `[live-trigger] webhook POST to ${webhookPath} failed: ${err.message}. ` +
-          `Import & activate tests/sample/bookshop/workflows/book-created.json.`,
+          `Import & activate tests/bookshop/workflows/book-created.json.`,
       )
     }
   })

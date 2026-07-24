@@ -1,12 +1,36 @@
 {
   "name": "bookshop",
   "version": "1.0.0",
-  "description": "A simple CAP project.",
+  "description": "Bookshop sample demonstrating @cap-js/n8n annotation-driven and programmatic workflow triggering.",
+  "private": true,
   "dependencies": {
-    "@cap-js/REPO-NAME": "file:../../."
+    "@cap-js/n8n": "file:../../."
+  },
+  "devDependencies": {
+    "@sap/cds-dk": "^10"
+  },
+  "scripts": {
+    "start": "cds-serve",
+    "watch": "cds watch",
+    "import-workflows": "node scripts/import-workflows.js"
   },
   "sapux": [
     "app/admin-books",
     "app/browse"
-  ]
+  ],
+  "cds": {
+    "requires": {
+      "db": {
+        "kind": "sqlite",
+        "impl": "@cap-js/sqlite",
+        "credentials": { "url": ":memory:" }
+      },
+      "N8nService": {
+        "[test]": {
+          "kind": "console-n8n-service",
+          "outboxed": false
+        }
+      }
+    }
+  }
 }

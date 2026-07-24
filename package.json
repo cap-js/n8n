@@ -15,6 +15,7 @@
     "test:cov": "vitest run --coverage",
     "test:live": "vitest run tests/integration/rest",
     "test:console": "vitest run tests/integration/console tests/unit",
+    "test:hybrid": "cds bind --exec -- vitest run",
     "lint": "node -e \"console.log('no linter configured yet')\""
   },
   "keywords": [
@@ -41,7 +42,7 @@
     "node": ">=20.0.0"
   },
   "workspaces": [
-    "tests/sample/bookshop"
+    "tests/bookshop/"
   ],
   "devDependencies": {
     "@cap-js/cds-test": "^1",

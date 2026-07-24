@@ -9,8 +9,8 @@ package-lock.json
 resources/*
 coverage/
 *.log
-tests/sample/bookshop/.n8n-data/
-tests/sample/bookshop/gen/
+tests/bookshop/.n8n-data/
+tests/bookshop/gen/
 
 # added by cds
 .cdsrc-private.json

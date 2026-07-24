@@ -13,7 +13,7 @@ process.env.CDS_CONFIG = JSON.stringify({
 
 const cds = require('@sap/cds')
 
-const app = path.join(__dirname, '../../sample/bookshop')
+const app = path.join(__dirname, '../../bookshop')
 const { expect } = cds.test(app)
 
 describe('N8nService — programmatic API (console kind)', () => {
