@@ -8,20 +8,20 @@ const { resolveN8nConnection } = require('../lib/api/connection')
 const LOG = cds.log(N8N_LOGGER_PREFIX)
 
 /**
- * Rejects workflow values that could pivot the request off the resolved n8n
+ * Rejects path values that could pivot the request off the resolved n8n
  * base URL. The path is re-normalised inside the client, but validating here
  * short-circuits misuse before touching the network.
  */
-function assertRelativeWorkflow(workflow) {
-  if (typeof workflow !== 'string' || workflow.trim() === '') {
-    throw cds.error(400, 'Missing required parameter: workflow')
+function assertRelativePath(path) {
+  if (typeof path !== 'string' || path.trim() === '') {
+    throw cds.error(400, 'Missing required parameter: path')
   }
-  const trimmed = workflow.trim()
+  const trimmed = path.trim()
   if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed) || trimmed.startsWith('//')) {
-    throw cds.error(400, `workflow must be a relative path, not a URL: ${safeForLog(trimmed)}`)
+    throw cds.error(400, `path must be a relative path, not a URL: ${safeForLog(trimmed)}`)
   }
   if (/[\r\n]/.test(trimmed)) {
-    throw cds.error(400, 'workflow must not contain newline characters')
+    throw cds.error(400, 'path must not contain newline characters')
   }
 }
 
@@ -46,13 +46,13 @@ class N8nService extends cds.Service {
     this.client = createN8nClient(() => resolveN8nConnection(this.name))
 
     this.on('trigger', async (req) => {
-      const { workflow, payload } = req.data ?? {}
-      assertRelativeWorkflow(workflow)
-      LOG.info(`Triggering n8n workflow: ${safeForLog(workflow)}`)
+      const { path, payload } = req.data ?? {}
+      assertRelativePath(path)
+      LOG.info(`Triggering n8n webhook path: ${safeForLog(path)}`)
       try {
-        return await this.client.trigger(workflow, payload)
+        return await this.client.trigger(path, payload)
       } catch (err) {
-        return handleTriggerError(workflow, err)
+        return handleTriggerError(path, err)
       }
     })
 
@@ -88,18 +88,18 @@ class N8nService extends cds.Service {
  * else transport-layer is left to propagate — the outbox retries them with
  * backoff.
  */
-function handleTriggerError(workflow, err) {
-  const wf = safeForLog(workflow)
+function handleTriggerError(path, err) {
+  const p = safeForLog(path)
   if (err?.unrecoverable === true) {
     LOG.error(
-      `n8n webhook for workflow ${wf} rejected by n8n (no retry): ${safeForLog(err?.message ?? err)}`,
+      `n8n webhook for path ${p} rejected by n8n (no retry): ${safeForLog(err?.message ?? err)}`,
     )
     // Return a synthetic "not ok" result so callers awaiting the emit see a
     // deterministic value instead of a swallowed rejection.
     return { ok: false, status: err?.code ?? err?.status ?? 0, error: err?.message ?? String(err) }
   }
   LOG.error(
-    `n8n webhook for workflow ${wf} failed (will retry): ${safeForLog(err?.message ?? err)}`,
+    `n8n webhook for path ${p} failed (will retry): ${safeForLog(err?.message ?? err)}`,
   )
   throw err
 }
