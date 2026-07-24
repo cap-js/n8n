@@ -18,7 +18,6 @@ declaratively via `@n8n.process.start` annotations and programmatically via a
   - [Multiple triggers per entity](#multiple-triggers-per-entity)
 - [Programmatic API](#programmatic-api)
 - [Build-time validation](#build-time-validation)
-- [Cross-plugin compatibility](#cross-plugin-compatibility)
 - [MVP scope & limitations](#mvp-scope--limitations)
 - [Development](#development)
 
@@ -338,36 +337,6 @@ n8n supports semantics it doesn't:
   only CRUD + bound actions for now.
 - **No `READ` event triggers** - high volume, easy to create feedback loops.
   Use bound actions or CDS events instead.
-
----
-
-## Cross-plugin compatibility
-
-A sister CAP plugin exists for Java applications:
-[`cds-feature-n8n`](https://github.com/SAP/cap-n8n). The two now share the
-same annotation name (`@n8n.process.start`) and path key (`path`), so a
-single CDS model is portable between them for the shared subset. The Node
-plugin extends the annotation vocabulary in a few ways the Java plugin does
-not currently implement:
-
-| Aspect                | This plugin (Node)                         | `cds-feature-n8n` (Java)          |
-| --------------------- | ------------------------------------------ | --------------------------------- |
-| Annotation name       | `@n8n.process.start`                       | `@n8n.process.start`              |
-| Path key              | `path`                                     | `path`                            |
-| Multiple triggers     | qualifier form (`#name`)                   | array form (`[ {…}, {…} ]`)       |
-| Conditional dispatch  | `if: (…)`                                  | not supported                     |
-| String shorthand      | `@n8n.process.start: 'wf'`                 | not supported                     |
-| Wildcard `on: '*'`    | supported                                  | not supported                     |
-| BTP destinations      | supported                                  | not supported                     |
-| Executions REST API   | `getExecution`, `listExecutions`           | not exposed                       |
-| Auth header (webhook) | `X-N8N-API-KEY` **and** `X-Webhook-Secret` | `X-Webhook-Secret`                |
-
-Migration note: the two plugins currently differ in how multiple triggers are
-attached to a single entity. This plugin uses CDS qualifiers
-(`@n8n.process.start #one`, `@n8n.process.start #two`); the Java plugin
-accepts an array literal (`@n8n.process.start: [ {…}, {…} ]`). Rewrite
-between the two forms when porting a CDS model.
-
 
 ---
 
