@@ -10,7 +10,7 @@ export default [
     },
   },
   {
-    files: ["tests/**"],
+    files: ["tests/**", "scripts/**"],
     rules: {
       "no-console": "off",
       "no-undef": "off",

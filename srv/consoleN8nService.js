@@ -1,7 +1,7 @@
-'use strict'
+"use strict"
 
-const cds = require('@sap/cds')
-const { N8N_LOGGER_PREFIX } = require('../lib/constants')
+const cds = require("@sap/cds")
+const { N8N_LOGGER_PREFIX } = require("../lib/constants")
 
 const LOG = cds.log(N8N_LOGGER_PREFIX)
 
@@ -20,10 +20,10 @@ class ConsoleN8nService extends cds.Service {
     this.executions = []
     this._counter = 0
 
-    this.on('trigger', async (req) => {
+    this.on("trigger", async (req) => {
       const { path, payload } = req.data ?? {}
       if (!path) {
-        throw cds.error(400, 'Missing required parameter: path')
+        throw cds.error(400, "Missing required parameter: path")
       }
 
       this._counter += 1
@@ -36,21 +36,19 @@ class ConsoleN8nService extends cds.Service {
         payload,
         startedAt: now,
         finishedAt: now,
-        status: 'success',
+        status: "success",
       }
       this.executions.push(record)
 
-      LOG.info(
-        `[console] would POST /webhook/${path} — payload: ${safeJson(payload)}`,
-      )
+      LOG.info(`[console] would POST /webhook/${path} — payload: ${safeJson(payload)}`)
 
       return { ok: true, status: 200, executionId: id, body: { executionId: id } }
     })
 
-    this.on('getExecution', async (req) => {
+    this.on("getExecution", async (req) => {
       const { executionId } = req.data ?? {}
       if (!executionId) {
-        throw cds.error(400, 'Missing required parameter: executionId')
+        throw cds.error(400, "Missing required parameter: executionId")
       }
       const exec = this.executions.find((e) => e.id === executionId)
       if (!exec) {
@@ -59,10 +57,10 @@ class ConsoleN8nService extends cds.Service {
       return exec
     })
 
-    this.on('listExecutions', async (req) => {
+    this.on("listExecutions", async (req) => {
       const { workflowId } = req.data ?? {}
       if (!workflowId) {
-        throw cds.error(400, 'Missing required parameter: workflowId')
+        throw cds.error(400, "Missing required parameter: workflowId")
       }
       // Console implementation stores no separate n8n workflow ID; treat the
       // webhook path as the identifier for filtering purposes.
@@ -77,7 +75,7 @@ function safeJson(value) {
   try {
     return JSON.stringify(value)
   } catch {
-    return '[unserialisable payload]'
+    return "[unserialisable payload]"
   }
 }
 

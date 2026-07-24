@@ -1,9 +1,9 @@
-'use strict'
+"use strict"
 
-const cds = require('@sap/cds')
-const { N8N_LOGGER_PREFIX } = require('../lib/constants')
-const { createN8nClient, safeForLog } = require('../lib/api/n8n-client')
-const { resolveN8nConnection } = require('../lib/api/connection')
+const cds = require("@sap/cds")
+const { N8N_LOGGER_PREFIX } = require("../lib/constants")
+const { createN8nClient, safeForLog } = require("../lib/api/n8n-client")
+const { resolveN8nConnection } = require("../lib/api/connection")
 
 const LOG = cds.log(N8N_LOGGER_PREFIX)
 
@@ -13,15 +13,15 @@ const LOG = cds.log(N8N_LOGGER_PREFIX)
  * short-circuits misuse before touching the network.
  */
 function assertRelativePath(path) {
-  if (typeof path !== 'string' || path.trim() === '') {
-    throw cds.error(400, 'Missing required parameter: path')
+  if (typeof path !== "string" || path.trim() === "") {
+    throw cds.error(400, "Missing required parameter: path")
   }
   const trimmed = path.trim()
-  if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed) || trimmed.startsWith('//')) {
+  if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed) || trimmed.startsWith("//")) {
     throw cds.error(400, `path must be a relative path, not a URL: ${safeForLog(trimmed)}`)
   }
   if (/[\r\n]/.test(trimmed)) {
-    throw cds.error(400, 'path must not contain newline characters')
+    throw cds.error(400, "path must not contain newline characters")
   }
 }
 
@@ -45,7 +45,7 @@ class N8nService extends cds.Service {
     // Runtime consumers should never reach past `this.on(...)`.
     this.client = createN8nClient(() => resolveN8nConnection(this.name))
 
-    this.on('trigger', async (req) => {
+    this.on("trigger", async (req) => {
       const { path, payload } = req.data ?? {}
       assertRelativePath(path)
       LOG.info(`Triggering n8n webhook path: ${safeForLog(path)}`)
@@ -56,18 +56,18 @@ class N8nService extends cds.Service {
       }
     })
 
-    this.on('getExecution', async (req) => {
+    this.on("getExecution", async (req) => {
       const { executionId } = req.data ?? {}
       if (!executionId) {
-        throw cds.error(400, 'Missing required parameter: executionId')
+        throw cds.error(400, "Missing required parameter: executionId")
       }
       return this.client.getExecution(executionId)
     })
 
-    this.on('listExecutions', async (req) => {
+    this.on("listExecutions", async (req) => {
       const { workflowId } = req.data ?? {}
       if (!workflowId) {
-        throw cds.error(400, 'Missing required parameter: workflowId')
+        throw cds.error(400, "Missing required parameter: workflowId")
       }
       return this.client.listExecutions(workflowId)
     })
@@ -98,9 +98,7 @@ function handleTriggerError(path, err) {
     // deterministic value instead of a swallowed rejection.
     return { ok: false, status: err?.code ?? err?.status ?? 0, error: err?.message ?? String(err) }
   }
-  LOG.error(
-    `n8n webhook for path ${p} failed (will retry): ${safeForLog(err?.message ?? err)}`,
-  )
+  LOG.error(`n8n webhook for path ${p} failed (will retry): ${safeForLog(err?.message ?? err)}`)
   throw err
 }
 
