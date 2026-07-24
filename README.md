@@ -1,7 +1,7 @@
 # CAP - n8n Plugin
 
 CAP plugin to trigger [n8n](https://n8n.io/) workflows from CAP applications -
-declaratively via `@n8n.trigger` annotations and programmatically via a
+declaratively via `@n8n.process.start` annotations and programmatically via a
 `N8nService` you can `cds.connect.to`.
 
 - [Setup](#setup)
@@ -201,16 +201,16 @@ endpoint:
 **String shorthand** - fires on CREATE + UPDATE:
 
 ```cds
-@n8n.trigger: 'book-created'
+@n8n.process.start: 'book-created'
 entity Books as projection on my.Books;
 ```
 
 **Record form** - pick events explicitly:
 
 ```cds
-@n8n.trigger: {
-  workflow: 'order-shipped',
-  on: 'UPDATE'                           // CREATE | UPDATE | DELETE | <boundAction> | '*'
+@n8n.process.start: {
+  path: 'order-shipped',
+  on:   'UPDATE'                         // CREATE | UPDATE | DELETE | <boundAction> | '*'
 }
 entity Orders as projection on my.Orders;
 ```
@@ -227,10 +227,10 @@ than just the keys.
 ### Conditional triggers
 
 ```cds
-@n8n.trigger: {
-  workflow: 'order-shipped',
-  on: 'UPDATE',
-  if: (status = 'shipped')
+@n8n.process.start: {
+  path: 'order-shipped',
+  on:   'UPDATE',
+  if:   (status = 'shipped')
 }
 entity Orders as projection on my.Orders;
 ```
@@ -243,9 +243,9 @@ condition evaluates false, no trigger is fired.
 Without `inputs`, all direct scalar attributes are sent.
 
 ```cds
-@n8n.trigger: {
-  workflow: 'shipment-ready',
-  on: 'UPDATE',
+@n8n.process.start: {
+  path: 'shipment-ready',
+  on:   'UPDATE',
   inputs: [
     $self.ID,                                       // scalar
     $self.total,                                    // scalar
@@ -271,8 +271,8 @@ use the Edit Fields node inside the n8n workflow.
 Use CDS qualifiers to attach several triggers:
 
 ```cds
-@n8n.trigger #created:  { workflow: 'wf-created',   on: 'CREATE' }
-@n8n.trigger #archived: { workflow: 'wf-archived',  on: 'DELETE' }
+@n8n.process.start #created:  { path: 'wf-created',   on: 'CREATE' }
+@n8n.process.start #archived: { path: 'wf-archived',  on: 'DELETE' }
 entity Books as projection on my.Books;
 ```
 
@@ -285,8 +285,8 @@ const n8n = await cds.connect.to('N8nService')
 
 // Fire a webhook - routed through the outbox, POSTed after commit
 await n8n.emit('trigger', {
-  workflow: 'book-created',
-  payload:  { title: 'Moby Dick', quantity: 3 }
+  path:    'book-created',
+  payload: { title: 'Moby Dick', quantity: 3 }
 })
 
 // Query executions (synchronous)
@@ -296,22 +296,22 @@ const one  = await n8n.send('getExecution',   { executionId: 'exec-42' })
 
 The `N8nService` model (`srv/N8nService.cds`):
 
-| Operation        | Type    | Purpose                                                            |
-| ---------------- | ------- | ------------------------------------------------------------------ |
-| `trigger`        | event   | POST `{baseUrl}/webhook/<workflow>` with `payload`                 |
-| `getExecution`   | function | GET `/api/v1/executions/{id}?includeData=true`                    |
-| `listExecutions` | function | GET `/api/v1/executions?workflowId={id}&includeData=true`         |
+| Operation        | Type     | Purpose                                                       |
+| ---------------- | -------- | ------------------------------------------------------------- |
+| `trigger`        | event    | POST `{baseUrl}/webhook/<path>` with `payload`                |
+| `getExecution`   | function | GET `/api/v1/executions/{id}?includeData=true`                |
+| `listExecutions` | function | GET `/api/v1/executions?workflowId={id}&includeData=true`     |
 
 ---
 
 ## Build-time validation
 
-`cds build` validates `@n8n.trigger.*` annotations. The plugin registers a
-`n8n-validation` task via `cds.build.register`.
+`cds build` validates `@n8n.process.start.*` annotations. The plugin registers
+a `n8n-validation` task via `cds.build.register`.
 
 **Errors** (stop the build):
 
-- `workflow` and `on` must be present together in the record form.
+- `path` and `on` must be present together in the record form.
 - `on` must be `CREATE | UPDATE | DELETE`, a declared bound action of the
   entity, or `*`.
 - `inputs` must be an array of `{ '=': '$self.…' }` entries. Aliasing is not
@@ -321,7 +321,7 @@ The `N8nService` model (`srv/N8nService.cds`):
 
 **Warnings** (build succeeds, message logged):
 
-- Unknown sub-keys under `@n8n.trigger.*`.
+- Unknown sub-keys under `@n8n.process.start.*`.
 
 ---
 
@@ -344,24 +344,30 @@ n8n supports semantics it doesn't:
 ## Cross-plugin compatibility
 
 A sister CAP plugin exists for Java applications:
-[`cds-feature-n8n`](https://github.com/SAP/cap-n8n). The two share the same
-intent but expose different surfaces:
+[`cds-feature-n8n`](https://github.com/SAP/cap-n8n). The two now share the
+same annotation name (`@n8n.process.start`) and path key (`path`), so a
+single CDS model is portable between them for the shared subset. The Node
+plugin extends the annotation vocabulary in a few ways the Java plugin does
+not currently implement:
 
 | Aspect                | This plugin (Node)                         | `cds-feature-n8n` (Java)          |
 | --------------------- | ------------------------------------------ | --------------------------------- |
-| Annotation name       | `@n8n.trigger`                             | `@n8n.process.start`              |
-| Path key              | `workflow`                                 | `path`                            |
+| Annotation name       | `@n8n.process.start`                       | `@n8n.process.start`              |
+| Path key              | `path`                                     | `path`                            |
+| Multiple triggers     | qualifier form (`#name`)                   | array form (`[ {…}, {…} ]`)       |
 | Conditional dispatch  | `if: (…)`                                  | not supported                     |
-| String shorthand      | `@n8n.trigger: 'wf'`                       | not supported                     |
+| String shorthand      | `@n8n.process.start: 'wf'`                 | not supported                     |
 | Wildcard `on: '*'`    | supported                                  | not supported                     |
 | BTP destinations      | supported                                  | not supported                     |
 | Executions REST API   | `getExecution`, `listExecutions`           | not exposed                       |
 | Auth header (webhook) | `X-N8N-API-KEY` **and** `X-Webhook-Secret` | `X-Webhook-Secret`                |
 
-The two plugins consume different annotation names, so a single CDS model
-cannot be shared verbatim. When migrating between them, translate
-`@n8n.trigger.workflow` ↔ `@n8n.process.start.path` and rewrite
-`if`/`inputs`/qualifier forms accordingly.
+Migration note: the two plugins currently differ in how multiple triggers are
+attached to a single entity. This plugin uses CDS qualifiers
+(`@n8n.process.start #one`, `@n8n.process.start #two`); the Java plugin
+accepts an array literal (`@n8n.process.start: [ {…}, {…} ]`). Rewrite
+between the two forms when porting a CDS model.
+
 
 ---
 
