@@ -14,7 +14,7 @@ module.exports = class AdminService extends cds.ApplicationService {
     // Example: emit a custom event on the outboxed n8n service.
     // this.after('CREATE', 'Orders', async (order) => {
     //   await n8n.emit('trigger', {
-    //     workflow: 'custom-order-webhook',
+    //     path: 'custom-order-webhook',
     //     payload: { orderId: order.ID, quantity: order.quantity }
     //   })
     // })

@@ -49,9 +49,9 @@ describe('n8n REST integration (skips when localhost:5678 is unreachable)', () =
     if (!live) return
     const client = createN8nClient(async () => ({ baseUrl: N8N_URL, headers: HEADERS }))
     // The sample bookshop's workflow uses webhook path `book-created`.
-    const workflow = 'book-created'
+    const webhookPath = 'book-created'
     try {
-      const res = await client.trigger(workflow, { title: 'test', author: 'integ' })
+      const res = await client.trigger(webhookPath, { title: 'test', author: 'integ' })
       expect(res.ok).toBe(true)
     } catch (err) {
       // A 404 here typically means the workflow is not imported / activated
@@ -59,7 +59,7 @@ describe('n8n REST integration (skips when localhost:5678 is unreachable)', () =
       // this is exactly what a fresh docker instance looks like.
       // eslint-disable-next-line no-console
       console.warn(
-        `[live-trigger] webhook POST to ${workflow} failed: ${err.message}. ` +
+        `[live-trigger] webhook POST to ${webhookPath} failed: ${err.message}. ` +
           `Import & activate tests/sample/bookshop/workflows/book-created.json.`,
       )
     }

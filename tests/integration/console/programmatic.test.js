@@ -31,32 +31,32 @@ describe('N8nService — programmatic API (console kind)', () => {
 
   it('emit("trigger") records a synthetic execution', async () => {
     await n8n.emit('trigger', {
-      workflow: 'manual-hook',
+      path: 'manual-hook',
       payload: { greeting: 'hi' },
     })
     expect(impl.executions).to.have.length(1)
-    expect(impl.executions[0]).to.include({ workflow: 'manual-hook' })
+    expect(impl.executions[0]).to.include({ path: 'manual-hook' })
     expect(impl.executions[0].payload).to.deep.equal({ greeting: 'hi' })
   })
 
   it('send("getExecution") returns a stored execution', async () => {
-    await n8n.emit('trigger', { workflow: 'wf-a', payload: { x: 1 } })
+    await n8n.emit('trigger', { path: 'wf-a', payload: { x: 1 } })
     const id = impl.executions[0].id
     const exec = await n8n.send('getExecution', { executionId: id })
     expect(exec.id).to.equal(id)
-    expect(exec.workflow).to.equal('wf-a')
+    expect(exec.path).to.equal('wf-a')
   })
 
-  it('send("listExecutions") filters by workflow', async () => {
-    await n8n.emit('trigger', { workflow: 'wf-x', payload: {} })
-    await n8n.emit('trigger', { workflow: 'wf-y', payload: {} })
-    await n8n.emit('trigger', { workflow: 'wf-x', payload: {} })
+  it('send("listExecutions") filters by webhook path', async () => {
+    await n8n.emit('trigger', { path: 'wf-x', payload: {} })
+    await n8n.emit('trigger', { path: 'wf-y', payload: {} })
+    await n8n.emit('trigger', { path: 'wf-x', payload: {} })
     const list = await n8n.send('listExecutions', { workflowId: 'wf-x' })
     expect(list).to.have.length(2)
-    for (const e of list) expect(e.workflow).to.equal('wf-x')
+    for (const e of list) expect(e.path).to.equal('wf-x')
   })
 
-  it('rejects trigger without workflow parameter', async () => {
+  it('rejects trigger without path parameter', async () => {
     let err
     try {
       await n8n.emit('trigger', { payload: {} })
@@ -64,6 +64,6 @@ describe('N8nService — programmatic API (console kind)', () => {
       err = e
     }
     expect(err).to.exist
-    expect(String(err.message)).to.match(/workflow/i)
+    expect(String(err.message)).to.match(/path/i)
   })
 })

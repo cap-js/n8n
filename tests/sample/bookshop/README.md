@@ -4,9 +4,9 @@ Minimal CAP application demonstrating the `@cap-js/n8n` plugin.
 
 ## What it shows
 
-- **String shorthand** — `@n8n.trigger: 'book-created'` on `Books` fires the
-  `book-created` webhook on CREATE and UPDATE.
-- **Record form** — `@n8n.trigger: { workflow, on, if, inputs }` on `Orders`
+- **String shorthand** — `@n8n.process.start: 'book-created'` on `Books` fires
+  the `book-created` webhook on CREATE and UPDATE.
+- **Record form** — `@n8n.process.start: { path, on, if, inputs }` on `Orders`
   fires only when an order transitions to `status = 'shipped'`, and sends
   only a subset of fields.
 - **Profile-driven config** — `[development]` targets a local n8n docker

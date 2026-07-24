@@ -28,13 +28,13 @@ function ent(annotations, actions) {
 describe('validateTriggerAnnotations — string shorthand', () => {
   it('accepts a non-empty string', () => {
     const plugin = makePlugin()
-    validateTriggerAnnotations('Foo', ent({ '@n8n.trigger': 'my-hook' }), plugin)
+    validateTriggerAnnotations('Foo', ent({ '@n8n.process.start': 'my-hook' }), plugin)
     expect(plugin.messages).toEqual([])
   })
 
   it('rejects empty string', () => {
     const plugin = makePlugin()
-    validateTriggerAnnotations('Foo', ent({ '@n8n.trigger': '' }), plugin)
+    validateTriggerAnnotations('Foo', ent({ '@n8n.process.start': '' }), plugin)
     expect(plugin.messages.some((m) => m.severity === 'Error')).toBe(true)
   })
 })
@@ -45,19 +45,19 @@ describe('validateTriggerAnnotations — record form', () => {
     validateTriggerAnnotations(
       'Orders',
       ent({
-        '@n8n.trigger.workflow': 'wf',
-        '@n8n.trigger.on': 'CREATE',
+        '@n8n.process.start.path': 'wf',
+        '@n8n.process.start.on': 'CREATE',
       }),
       plugin,
     )
     expect(plugin.messages).toEqual([])
   })
 
-  it('reports error when only workflow is set', () => {
+  it('reports error when only path is set', () => {
     const plugin = makePlugin()
     validateTriggerAnnotations(
       'Orders',
-      ent({ '@n8n.trigger.workflow': 'wf' }),
+      ent({ '@n8n.process.start.path': 'wf' }),
       plugin,
     )
     expect(plugin.messages.some((m) => /must be present together/i.test(m.message))).toBe(true)
@@ -67,7 +67,7 @@ describe('validateTriggerAnnotations — record form', () => {
     const plugin = makePlugin()
     validateTriggerAnnotations(
       'Orders',
-      ent({ '@n8n.trigger.on': 'CREATE' }),
+      ent({ '@n8n.process.start.on': 'CREATE' }),
       plugin,
     )
     expect(plugin.messages.some((m) => /must be present together/i.test(m.message))).toBe(true)
@@ -78,8 +78,8 @@ describe('validateTriggerAnnotations — record form', () => {
     validateTriggerAnnotations(
       'Orders',
       ent({
-        '@n8n.trigger.workflow': 'wf',
-        '@n8n.trigger.on': 'READ',
+        '@n8n.process.start.path': 'wf',
+        '@n8n.process.start.on': 'READ',
       }),
       plugin,
     )
@@ -92,8 +92,8 @@ describe('validateTriggerAnnotations — record form', () => {
       'Orders',
       ent(
         {
-          '@n8n.trigger.workflow': 'wf',
-          '@n8n.trigger.on': 'archive',
+          '@n8n.process.start.path': 'wf',
+          '@n8n.process.start.on': 'archive',
         },
         { archive: {} },
       ),
@@ -107,9 +107,9 @@ describe('validateTriggerAnnotations — record form', () => {
     validateTriggerAnnotations(
       'Orders',
       ent({
-        '@n8n.trigger.workflow': 'wf',
-        '@n8n.trigger.on': 'CREATE',
-        '@n8n.trigger.bogus': 'value',
+        '@n8n.process.start.path': 'wf',
+        '@n8n.process.start.on': 'CREATE',
+        '@n8n.process.start.bogus': 'value',
       }),
       plugin,
     )
@@ -121,9 +121,9 @@ describe('validateTriggerAnnotations — record form', () => {
     validateTriggerAnnotations(
       'Orders',
       ent({
-        '@n8n.trigger.workflow': 'wf',
-        '@n8n.trigger.on': 'CREATE',
-        '@n8n.trigger.inputs': 'foo',
+        '@n8n.process.start.path': 'wf',
+        '@n8n.process.start.on': 'CREATE',
+        '@n8n.process.start.inputs': 'foo',
       }),
       plugin,
     )
@@ -135,9 +135,9 @@ describe('validateTriggerAnnotations — record form', () => {
     validateTriggerAnnotations(
       'Orders',
       ent({
-        '@n8n.trigger.workflow': 'wf',
-        '@n8n.trigger.on': 'CREATE',
-        '@n8n.trigger.inputs': [{ foo: 'bar' }],
+        '@n8n.process.start.path': 'wf',
+        '@n8n.process.start.on': 'CREATE',
+        '@n8n.process.start.inputs': [{ foo: 'bar' }],
       }),
       plugin,
     )
@@ -149,9 +149,9 @@ describe('validateTriggerAnnotations — record form', () => {
     validateTriggerAnnotations(
       'Orders',
       ent({
-        '@n8n.trigger.workflow': 'wf',
-        '@n8n.trigger.on': 'CREATE',
-        '@n8n.trigger.inputs': [
+        '@n8n.process.start.path': 'wf',
+        '@n8n.process.start.on': 'CREATE',
+        '@n8n.process.start.inputs': [
           { '=': '$self.ID' },
           { '=': '$self.total' },
         ],
@@ -166,9 +166,9 @@ describe('validateTriggerAnnotations — record form', () => {
     validateTriggerAnnotations(
       'Orders',
       ent({
-        '@n8n.trigger.workflow': 'wf',
-        '@n8n.trigger.on': 'CREATE',
-        '@n8n.trigger.inputs': [
+        '@n8n.process.start.path': 'wf',
+        '@n8n.process.start.on': 'CREATE',
+        '@n8n.process.start.inputs': [
           { path: { '=': '$self.total' }, as: 'amount' },
         ],
       }),
@@ -182,9 +182,9 @@ describe('validateTriggerAnnotations — record form', () => {
     validateTriggerAnnotations(
       'Orders',
       ent({
-        '@n8n.trigger.workflow': 'wf',
-        '@n8n.trigger.on': 'CREATE',
-        '@n8n.trigger.bogus': 'value',
+        '@n8n.process.start.path': 'wf',
+        '@n8n.process.start.on': 'CREATE',
+        '@n8n.process.start.bogus': 'value',
       }),
       plugin,
     )
