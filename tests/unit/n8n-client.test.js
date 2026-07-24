@@ -43,7 +43,7 @@ describe('buildWebhookUrl', () => {
       'http://localhost:5678/webhook/book-created',
     )
   })
-  it('rejects absolute workflow values (SSRF)', () => {
+  it('rejects absolute path values (SSRF)', () => {
     expect(() =>
       buildWebhookUrl('http://ignored', 'https://cloud.n8n.io/webhook/x'),
     ).toThrow(/relative path/i)

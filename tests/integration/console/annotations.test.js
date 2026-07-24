@@ -19,7 +19,7 @@ const cds = require('@sap/cds')
 const app = path.join(__dirname, '../../sample/bookshop')
 const { POST, PATCH, DELETE, expect } = cds.test(app)
 
-describe('@n8n.trigger — annotation-driven flow (console kind)', () => {
+describe('@n8n.process.start — annotation-driven flow (console kind)', () => {
   let n8n
 
   beforeAll(async () => {
@@ -44,7 +44,7 @@ describe('@n8n.trigger — annotation-driven flow (console kind)', () => {
     })
     expect(status).to.equal(201)
     // Console service records executions synchronously (outboxed: false).
-    const created = n8n.executions.filter((e) => e.workflow === 'book-created')
+    const created = n8n.executions.filter((e) => e.path === 'book-created')
     expect(created).to.have.length(1)
     expect(created[0].payload).to.include({ title: 'Moby Dick', author: 'Herman Melville' })
   })
@@ -56,10 +56,10 @@ describe('@n8n.trigger — annotation-driven flow (console kind)', () => {
     })
     expect(status).to.equal(201)
     // The Orders trigger is only for UPDATE + status=shipped, so CREATE fires nothing.
-    expect(n8n.executions.filter((e) => e.workflow === 'order-shipped')).to.have.length(0)
+    expect(n8n.executions.filter((e) => e.path === 'order-shipped')).to.have.length(0)
 
     await PATCH(`/odata/v4/admin/Orders(${order.ID})`, { status: 'cancelled' })
-    expect(n8n.executions.filter((e) => e.workflow === 'order-shipped')).to.have.length(0)
+    expect(n8n.executions.filter((e) => e.path === 'order-shipped')).to.have.length(0)
   })
 
   it('fires "order-shipped" only when status transitions to "shipped"', async () => {
@@ -71,7 +71,7 @@ describe('@n8n.trigger — annotation-driven flow (console kind)', () => {
 
     await PATCH(`/odata/v4/admin/Orders(${order.ID})`, { status: 'shipped' })
 
-    const shipped = n8n.executions.filter((e) => e.workflow === 'order-shipped')
+    const shipped = n8n.executions.filter((e) => e.path === 'order-shipped')
     expect(shipped).to.have.length(1)
     // Payload carries only the mapped columns (ID + quantity + book_ID).
     expect(shipped[0].payload).to.have.property('ID', order.ID)
@@ -88,7 +88,7 @@ describe('@n8n.trigger — annotation-driven flow (console kind)', () => {
 
     await DELETE(`/odata/v4/admin/Orders(${order.ID})`)
 
-    const deleted = n8n.executions.filter((e) => e.workflow === 'order-deleted')
+    const deleted = n8n.executions.filter((e) => e.path === 'order-deleted')
     expect(deleted, 'DELETE trigger should fire exactly once').to.have.length(1)
     // Without the before-DELETE prefetch, `quantity` and `status` would be
     // missing here because the after-handler runs against a row that's gone.

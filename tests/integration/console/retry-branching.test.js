@@ -50,7 +50,7 @@ describe('restN8nService — retry branching', () => {
 
     let caught
     try {
-      await n8n.send('trigger', { workflow: 'wf', payload: {} })
+      await n8n.send('trigger', { path: 'wf', payload: {} })
     } catch (err) {
       caught = err
     }
@@ -67,7 +67,7 @@ describe('restN8nService — retry branching', () => {
       },
     }
 
-    const result = await n8n.send('trigger', { workflow: 'missing', payload: {} })
+    const result = await n8n.send('trigger', { path: 'missing', payload: {} })
     // The outbox would treat a resolved promise as "message done" — no retry.
     expect(result).to.deep.include({ ok: false, status: 404 })
   })
@@ -79,7 +79,7 @@ describe('restN8nService — retry branching', () => {
       },
     }
 
-    const result = await n8n.send('trigger', { workflow: 'wf', payload: {} })
+    const result = await n8n.send('trigger', { path: 'wf', payload: {} })
     expect(result).to.deep.include({ ok: true, status: 200, executionId: 'exec-42' })
   })
 })
