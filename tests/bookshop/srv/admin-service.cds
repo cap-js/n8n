@@ -1,6 +1,6 @@
 using {sap.capire.bookshop as my} from '../db/schema';
 
-service AdminService @(requires: 'admin') {
+service AdminService {
 
   // String shorthand — fires the `book-created` webhook on CREATE + UPDATE.
   @n8n.process.start: 'book-created'

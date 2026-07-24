@@ -36,14 +36,24 @@ describe('@n8n.process.start — annotation-driven flow (console kind)', () => {
   })
 
   it('fires the "book-created" webhook on CREATE (string shorthand)', async () => {
-    const { status } = await POST('/odata/v4/admin/Books', {
+    // AdminService.Books is @odata.draft.enabled via the Fiori app, so
+    // creation is a two-step flow: POST creates a draft, then draftActivate
+    // creates the active row (which is what triggers the CREATE handler).
+    const { status: draftStatus, data: draft } = await POST('/odata/v4/admin/Books', {
       ID: 9001,
       title: 'Moby Dick',
       author_ID: 101,
       stock: 5,
       price: 10.5,
     })
-    expect(status).to.equal(201)
+    expect(draftStatus).to.equal(201)
+    // No trigger yet — the row is still a draft.
+    expect(n8n.executions.filter((e) => e.path === 'book-created')).to.have.length(0)
+
+    const activateUrl = `/odata/v4/admin/Books(ID=${draft.ID},IsActiveEntity=false)/AdminService.draftActivate`
+    const { status: actStatus } = await POST(activateUrl)
+    expect(actStatus).to.equal(201)
+
     // Console service records executions synchronously (outboxed: false).
     const created = n8n.executions.filter((e) => e.path === 'book-created')
     expect(created).to.have.length(1)
