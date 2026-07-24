@@ -35,3 +35,11 @@ entity Genres : sap.common.CodeList {
       children : Composition of many Genres
                    on children.parent = $self;
 }
+
+/** Sample entity used by the @cap-js/n8n integration tests. */
+entity Orders : managed {
+  key ID       : UUID;
+      book     : Association to Books;
+      quantity : Integer;
+      status   : String(20) default 'new'; // new | shipped | cancelled
+}

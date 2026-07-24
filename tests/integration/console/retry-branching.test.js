@@ -20,7 +20,7 @@ process.env.CDS_CONFIG = JSON.stringify({
 const cds = require('@sap/cds')
 const { markUnrecoverable } = require('../../../lib/api/n8n-client')
 
-const app = path.join(__dirname, '../../sample/bookshop')
+const app = path.join(__dirname, '../../bookshop')
 const { expect } = cds.test(app)
 
 describe('restN8nService — retry branching', () => {
