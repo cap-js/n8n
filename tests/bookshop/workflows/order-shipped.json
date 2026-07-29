@@ -1,0 +1,45 @@
+{
+  "name": "Order Shipped",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "order-shipped",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "order-shipped"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            { "name": "orderId", "value": "={{ $json.body.ID }}" },
+            { "name": "bookId", "value": "={{ $json.body.book_ID }}" },
+            { "name": "shippedAt", "value": "={{ $now }}" }
+          ],
+          "number": [{ "name": "quantity", "value": "={{ $json.body.quantity }}" }]
+        },
+        "options": {}
+      },
+      "id": "2",
+      "name": "Set",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [440, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Set", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "versionId": "1"
+}

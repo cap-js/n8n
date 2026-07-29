@@ -1,0 +1,45 @@
+{
+  "name": "Order Deleted",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "order-deleted",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "order-deleted"
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            { "name": "orderId", "value": "={{ $json.body.ID }}" },
+            { "name": "previousStatus", "value": "={{ $json.body.status }}" },
+            { "name": "deletedAt", "value": "={{ $now }}" }
+          ],
+          "number": [{ "name": "quantity", "value": "={{ $json.body.quantity }}" }]
+        },
+        "options": {}
+      },
+      "id": "2",
+      "name": "Set",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [440, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Set", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "versionId": "1"
+}
