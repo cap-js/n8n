@@ -6,6 +6,7 @@ CAP plugin to trigger [n8n](https://n8n.io/) workflows from CAP applications -
 declaratively via `@n8n.process.start` annotations and programmatically via a
 `N8nService` you can `cds.connect.to`.
 
+- [Requirements](#requirements)
 - [Setup](#setup)
   - [Local development with docker](#local-development-with-docker)
   - [Profiles & credentials](#profiles--credentials)
@@ -25,6 +26,14 @@ declaratively via `@n8n.process.start` annotations and programmatically via a
 
 ---
 
+## Requirements
+
+- Node.js 20 or newer
+- `@sap/cds` 9 or newer
+- An n8n instance — either local (e.g. via Docker) or remote
+
+---
+
 ## Setup
 
 ```bash
@@ -36,11 +45,11 @@ common cases.
 
 ### Local development with docker
 
-n8n runs as a first-class docker container. The [sample bookshop](tests/sample/bookshop)
+n8n runs as a first-class docker container. The [sample bookshop](tests/bookshop)
 ships a `docker-compose.yml` that starts n8n on `http://localhost:5678`:
 
 ```bash
-cd tests/sample/bookshop
+cd tests/bookshop
 docker compose up -d
 ```
 
