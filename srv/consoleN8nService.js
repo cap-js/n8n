@@ -40,7 +40,7 @@ class ConsoleN8nService extends cds.Service {
       }
       this.executions.push(record)
 
-      LOG.info(`[console] would POST /webhook/${path} — payload: ${safeJson(payload)}`)
+      LOG.info(`[console] would POST /webhook/${path} - payload: ${safeJson(payload)}`)
 
       return { ok: true, status: 200, executionId: id, body: { executionId: id } }
     })

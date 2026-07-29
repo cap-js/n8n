@@ -63,7 +63,7 @@ describe("buildWebhookUrl", () => {
   })
 })
 
-describe("createN8nClient — timeouts", () => {
+describe("createN8nClient - timeouts", () => {
   let originalFetch
   beforeEach(() => {
     originalFetch = globalThis.fetch
@@ -111,7 +111,7 @@ describe("createN8nClient — timeouts", () => {
   })
 })
 
-describe("createN8nClient — unrecoverable error marking", () => {
+describe("createN8nClient - unrecoverable error marking", () => {
   let originalFetch
   beforeEach(() => {
     originalFetch = globalThis.fetch
@@ -212,7 +212,7 @@ describe("createN8nClient — unrecoverable error marking", () => {
   })
 })
 
-describe("createN8nClient — auth headers", () => {
+describe("createN8nClient - auth headers", () => {
   let captured
   let originalFetch
   beforeEach(() => {
@@ -306,7 +306,7 @@ describe("createN8nClient — auth headers", () => {
   })
 })
 
-describe("createN8nClient — test webhook flag", () => {
+describe("createN8nClient - test webhook flag", () => {
   let captured
   let originalFetch
   beforeEach(() => {
@@ -364,7 +364,7 @@ describe("redactSecrets", () => {
   })
 })
 
-describe("createN8nClient — error body sanitisation", () => {
+describe("createN8nClient - error body sanitisation", () => {
   let originalFetch
   beforeEach(() => {
     originalFetch = globalThis.fetch

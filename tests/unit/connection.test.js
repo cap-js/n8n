@@ -10,7 +10,7 @@ const { DEFAULT_CONNECT_TIMEOUT_MS, DEFAULT_READ_TIMEOUT_MS } = require("../../l
 
 const SVC = "N8nService"
 
-// cds.env.profiles is a getter — override via defineProperty so we can control
+// cds.env.profiles is a getter - override via defineProperty so we can control
 // which profile is active during a test.
 function setProfiles(profiles) {
   Object.defineProperty(cds.env, "profiles", {
@@ -136,7 +136,7 @@ describe("resolveN8nConnection", () => {
   describe("destination-based resolution", () => {
     it("uses the destination even when a leftover baseUrl is present in credentials", async () => {
       // Simulate the plugin's own [development] default polluting credentials
-      // alongside a user-configured destination — destination must win.
+      // alongside a user-configured destination - destination must win.
       cds.env.requires[SVC] = {
         credentials: {
           baseUrl: "http://localhost:5678",

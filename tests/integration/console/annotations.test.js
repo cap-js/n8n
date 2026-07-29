@@ -19,7 +19,7 @@ const cds = require("@sap/cds")
 const app = path.join(__dirname, "../../bookshop")
 const { POST, PATCH, DELETE, expect } = cds.test(app)
 
-describe("@n8n.process.start — annotation-driven flow (console kind)", () => {
+describe("@n8n.process.start - annotation-driven flow (console kind)", () => {
   let n8n
 
   beforeAll(async () => {
@@ -47,7 +47,7 @@ describe("@n8n.process.start — annotation-driven flow (console kind)", () => {
       price: 10.5,
     })
     expect(draftStatus).to.equal(201)
-    // No trigger yet — the row is still a draft.
+    // No trigger yet - the row is still a draft.
     expect(n8n.executions.filter((e) => e.path === "book-created")).to.have.length(0)
 
     const activateUrl = `/odata/v4/admin/Books(ID=${draft.ID},IsActiveEntity=false)/AdminService.draftActivate`

@@ -16,7 +16,7 @@ const cds = require("@sap/cds")
 const app = path.join(__dirname, "../../bookshop")
 const { expect } = cds.test(app)
 
-describe("N8nService — programmatic API (console kind)", () => {
+describe("N8nService - programmatic API (console kind)", () => {
   let n8n
   let impl
 

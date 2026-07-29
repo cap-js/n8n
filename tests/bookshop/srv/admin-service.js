@@ -18,7 +18,7 @@ module.exports = class AdminService extends cds.ApplicationService {
 
     // Warm the outbox-backed N8nService connection so the plugin can register
     // its handlers. Also serves as an example integration point for programmatic
-    // triggering — see README.md for details.
+    // triggering - see README.md for details.
     const n8n = await cds.connect.to("N8nService")
     void n8n
 
