@@ -2,7 +2,7 @@
 
 const { validateTriggerAnnotations } = require("../../lib/build/validations")
 
-// Minimal plugin double: implements the canonical cds.build.Plugin surface —
+// Minimal plugin double: implements the canonical cds.build.Plugin surface -
 // static severity constants + a `pushMessage(msg, severity)` sink.
 class PluginStub {
   static ERROR = "Error"
@@ -25,7 +25,7 @@ function ent(annotations, actions) {
   return { actions, ...annotations }
 }
 
-describe("validateTriggerAnnotations — string shorthand", () => {
+describe("validateTriggerAnnotations - string shorthand", () => {
   it("accepts a non-empty string", () => {
     const plugin = makePlugin()
     validateTriggerAnnotations("Foo", ent({ "@n8n.process.start": "my-hook" }), plugin)
@@ -39,7 +39,7 @@ describe("validateTriggerAnnotations — string shorthand", () => {
   })
 })
 
-describe("validateTriggerAnnotations — record form", () => {
+describe("validateTriggerAnnotations - record form", () => {
   it("accepts a complete record", () => {
     const plugin = makePlugin()
     validateTriggerAnnotations(
@@ -181,7 +181,7 @@ describe("validateTriggerAnnotations — record form", () => {
       }),
       plugin,
     )
-    // Every recorded severity must be one of the two constants — never lower-case.
+    // Every recorded severity must be one of the two constants - never lower-case.
     for (const m of plugin.messages) {
       expect(["Error", "Warning"]).toContain(m.severity)
     }

@@ -35,7 +35,7 @@ describe("n8n REST integration (skips when localhost:5678 is unreachable)", () =
     if (!live) {
       // eslint-disable-next-line no-console
       console.warn(
-        `[live-trigger] Skipping — no n8n instance reachable at ${N8N_URL}. ` +
+        `[live-trigger] Skipping - no n8n instance reachable at ${N8N_URL}. ` +
           `Start docker (see tests/bookshop/README.md) to enable this suite.`,
       )
     }

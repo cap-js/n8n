@@ -80,12 +80,12 @@ class N8nService extends cds.Service {
  * Decides whether an error from the n8n client should propagate (so the CAP
  * outbox schedules a retry) or be swallowed (so the message is marked done).
  *
- * The CAP outbox uses `err.unrecoverable === true` as its terminal signal —
+ * The CAP outbox uses `err.unrecoverable === true` as its terminal signal -
  * see `@sap/cds/libx/queue/processing.js`. HTTP 4xx/5xx failures mean n8n
  * received the call on its own terms; another attempt would produce the
  * same rejection and only waste the queue, so they are surfaced as a
  * resolved `{ ok:false }` result. Network errors, timeouts, and anything
- * else transport-layer is left to propagate — the outbox retries them with
+ * else transport-layer is left to propagate - the outbox retries them with
  * backoff.
  */
 function handleTriggerError(path, err) {

@@ -30,7 +30,7 @@ declaratively via `@n8n.process.start` annotations and programmatically via a
 
 - Node.js 20 or newer
 - `@sap/cds` 9 or newer
-- An n8n instance — either local (e.g. via Docker) or remote
+- An n8n instance - either local (e.g. via Docker) or remote
 
 ---
 

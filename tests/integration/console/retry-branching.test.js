@@ -10,7 +10,7 @@ process.env.CDS_CONFIG = JSON.stringify({
     N8nService: {
       kind: "rest-n8n-service",
       // Disable the outbox so `emit('trigger')` runs synchronously against
-      // the REST service's on-handler — that's where the branching lives.
+      // the REST service's on-handler - that's where the branching lives.
       outboxed: false,
       credentials: { baseUrl: "http://unused.invalid" },
     },
@@ -23,7 +23,7 @@ const { markUnrecoverable } = require("../../../lib/api/n8n-client")
 const app = path.join(__dirname, "../../bookshop")
 const { expect } = cds.test(app)
 
-describe("restN8nService — retry branching", () => {
+describe("restN8nService - retry branching", () => {
   let n8n
   let impl
   let originalClient
@@ -43,7 +43,7 @@ describe("restN8nService — retry branching", () => {
   it("surfaces retryable (transport) errors from the client back to the caller", async () => {
     impl.client = {
       async trigger() {
-        // Unmarked error — outbox treats as retryable.
+        // Unmarked error - outbox treats as retryable.
         throw new Error("ECONNREFUSED")
       },
     }
@@ -68,7 +68,7 @@ describe("restN8nService — retry branching", () => {
     }
 
     const result = await n8n.send("trigger", { path: "missing", payload: {} })
-    // The outbox would treat a resolved promise as "message done" — no retry.
+    // The outbox would treat a resolved promise as "message done" - no retry.
     expect(result).to.deep.include({ ok: false, status: 404 })
   })
 

@@ -25,7 +25,7 @@ describe("extractQualifier", () => {
   })
 })
 
-describe("findTriggerAnnotations — string shorthand", () => {
+describe("findTriggerAnnotations - string shorthand", () => {
   it("picks up plain string form and defaults to CREATE + UPDATE", () => {
     const e = ent("Foo", { "@n8n.process.start": "my-hook" })
     expect(findTriggerAnnotations(e)).toEqual([
@@ -48,7 +48,7 @@ describe("findTriggerAnnotations — string shorthand", () => {
   })
 })
 
-describe("findTriggerAnnotations — record form", () => {
+describe("findTriggerAnnotations - record form", () => {
   it("reads path / on / if / inputs", () => {
     const e = ent("Foo", {
       "@n8n.process.start.path": "wf-a",
