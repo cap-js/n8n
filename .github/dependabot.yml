@@ -1,0 +1,36 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      dev-dependencies:
+        dependency-type: development
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: "@sap/cds"
+        update-types: [version-update:semver-major]
+      - dependency-name: "@sap/cds-dk"
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: npm
+    directory: /tests/bookshop
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3
+    groups:
+      dev-dependencies:
+        dependency-type: development
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns: ["*"]
+        update-types: [minor, patch]
