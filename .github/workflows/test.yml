@@ -41,6 +41,17 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
+      - name: Set CDS version-specific dependencies
+        if: matrix.cds-version == 9
+        run: |
+          echo "Installing CDS 9 compatible packages..."
+          npm pkg set "devDependencies.@cap-js/sqlite=^2.0.0"
+          npm pkg set "overrides.@cap-js/sqlite=^2.0.0"
+          npm pkg set "overrides.@cap-js/hana=^2.0.0"
+          npm pkg set "overrides.@cap-js/db-service=^2.0.0"
+          cd tests/bookshop
+          npm pkg set "dependencies.@cap-js/hana=^2.0.0"
+          npm pkg set "dependencies.@cap-js/db-service=^2.0.0"
       - run: npm i -g @sap/cds-dk@${{ matrix.cds-version }}
       - run: npm install @sap/cds@${{ matrix.cds-version }}
       - run: npm i
