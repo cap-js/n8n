@@ -42,6 +42,7 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
       - run: npm i -g @sap/cds-dk@${{ matrix.cds-version }}
+      - run: npm install @sap/cds@${{ matrix.cds-version }}
       - run: npm i
       - run: cd tests/bookshop && npm i
       - run: npm run test
