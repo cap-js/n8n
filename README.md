@@ -67,10 +67,10 @@ cds watch --profile hybrid
 
 The plugin ships two service kinds:
 
-| Kind                  | Used when                                          | Behavior                                                                    |
-| --------------------- | -------------------------------------------------- | --------------------------------------------------------------------------- |
-| `console-n8n-service` | default in `[development]`                         | Log-only impl with an in-memory execution store. No n8n instance required.  |
-| `rest-n8n-service`    | default in any non-development profile             | Real HTTP calls against an n8n instance.                                    |
+| Kind                  | Used when                              | Behavior                                                                   |
+| --------------------- | -------------------------------------- | -------------------------------------------------------------------------- |
+| `console-n8n-service` | default in `[development]`             | Log-only impl with an in-memory execution store. No n8n instance required. |
+| `rest-n8n-service`    | default in any non-development profile | Real HTTP calls against an n8n instance.                                   |
 
 The default profile matrix is:
 
