@@ -20,15 +20,8 @@
   ],
   "cds": {
     "requires": {
-      "db": {
-        "kind": "sqlite",
-        "impl": "@cap-js/sqlite",
-        "credentials": {
-          "url": ":memory:"
-        }
-      },
       "N8nService": {
-        "[development]": {
+        "[hybrid]": {
           "kind": "rest-n8n-service",
           "credentials": {
             "baseUrl": "http://localhost:5678"
