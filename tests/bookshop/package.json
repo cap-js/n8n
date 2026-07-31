@@ -28,6 +28,12 @@
         }
       },
       "N8nService": {
+        "[development]": {
+          "kind": "rest-n8n-service",
+          "credentials": {
+            "baseUrl": "http://localhost:5678"
+          }
+        },
         "[test]": {
           "kind": "console-n8n-service",
           "outboxed": false

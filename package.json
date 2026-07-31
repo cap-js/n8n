@@ -46,7 +46,7 @@
     }
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.0.0"
   },
   "workspaces": [
     "tests/bookshop/"
@@ -63,14 +63,8 @@
     "requires": {
       "N8nService": {
         "kind": "rest-n8n-service",
-        "credentials": {
-          "baseUrl": "env:N8N_BASE_URL",
-          "apiKey": "env:N8N_API_KEY"
-        },
         "[development]": {
-          "credentials": {
-            "baseUrl": "http://localhost:5678"
-          }
+          "kind": "console-n8n-service"
         }
       },
       "kinds": {

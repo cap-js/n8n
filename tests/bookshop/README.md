@@ -15,9 +15,12 @@ Three annotation flavors, one workflow per flavor under `workflows/`:
 | `order-shipped` | Record form with `if` + `inputs` on `Orders`                                            | Orders UPDATE where `status = 'shipped'` | `{ ID, quantity, book_ID }`           |
 | `order-deleted` | Qualified record form (`#deleted`) on `Orders` - relies on the plugin's DELETE prefetch | Orders DELETE                            | Pre-delete `{ ID, quantity, status }` |
 
-Also demonstrates **profile-driven config**: `[development]` targets a local
-n8n docker container at `http://localhost:5678` with no auth. Hybrid/production
-profiles resolve credentials from `cds bind`, BTP destinations, or env vars.
+Also demonstrates **profile-driven config**: this sample opts into
+`rest-n8n-service` in `[development]` (targeting a local n8n docker container
+at `http://localhost:5678`) so `cds watch` fires real webhooks. The plugin's
+default `[development]` behavior is the log-only `console-n8n-service` kind.
+Hybrid/production profiles resolve credentials from `cds bind`, BTP
+destinations, or env vars.
 
 ## Run
 

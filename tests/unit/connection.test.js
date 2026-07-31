@@ -1,5 +1,3 @@
-"use strict"
-
 const cds = require("@sap/cds")
 const {
   resolveN8nConnection,
@@ -56,17 +54,6 @@ describe("resolveN8nConnection", () => {
     expect(c.apiKey).toBe("top-secret")
     // Legacy `headers` field is preserved for backward compatibility.
     expect(c.headers).toEqual({ "X-N8N-API-KEY": "top-secret" })
-  })
-
-  it("resolves env:VAR indirection in credentials", async () => {
-    process.env.MY_N8N_URL = "https://from-env.example.com"
-    process.env.MY_N8N_KEY = "env-key"
-    cds.env.requires[SVC] = {
-      credentials: { baseUrl: "env:MY_N8N_URL", apiKey: "env:MY_N8N_KEY" },
-    }
-    const c = await resolveN8nConnection(SVC)
-    expect(c.baseUrl).toBe("https://from-env.example.com")
-    expect(c.apiKey).toBe("env-key")
   })
 
   it("resolves env vars when no credentials configured", async () => {
@@ -211,15 +198,6 @@ describe("resolveTimeouts", () => {
       credentials: { timeout: { connect: 100, read: 200 } },
     })
     expect(r).toEqual({ connect: 100, read: 200 })
-  })
-
-  it("resolves env:VAR indirection inside credentials.timeout", () => {
-    process.env.MY_CONNECT = "250"
-    process.env.MY_READ = "750"
-    const r = resolveTimeouts({
-      credentials: { timeout: { connect: "env:MY_CONNECT", read: "env:MY_READ" } },
-    })
-    expect(r).toEqual({ connect: 250, read: 750 })
   })
 
   it("ignores negative or non-numeric values and falls through to defaults", () => {
