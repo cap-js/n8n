@@ -4,18 +4,15 @@
   "description": "CAP Plugin to trigger n8n workflows from CAP applications via annotations and a programmatic service.",
   "main": "cds-plugin.js",
   "homepage": "https://cap.cloud.sap/",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/cap-js/n8n.git"
-  },
+  "repository": "cap-js/n8n",
   "bugs": {
     "url": "https://github.com/cap-js/n8n/issues"
   },
   "files": [
     "cds-plugin.js",
     "lib/",
-    "srv/*.cds",
-    "srv/*.js"
+    "srv/",
+    "LICENSES"
   ],
   "scripts": {
     "test": "vitest run",
@@ -80,9 +77,7 @@
         "rest-n8n-service": {
           "model": "@cap-js/n8n/srv/N8nService",
           "impl": "@cap-js/n8n/srv/restN8nService",
-          "outboxed": {
-            "kind": "persistent-queue"
-          },
+          "outboxed": true,
           "vcap": {
             "tag": "n8n"
           }
@@ -90,9 +85,7 @@
         "console-n8n-service": {
           "model": "@cap-js/n8n/srv/consoleN8nService",
           "impl": "@cap-js/n8n/srv/consoleN8nService",
-          "outboxed": {
-            "kind": "in-memory-queue"
-          }
+          "outboxed": true
         }
       }
     }

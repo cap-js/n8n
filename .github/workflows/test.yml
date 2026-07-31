@@ -28,11 +28,7 @@ jobs:
       fail-fast: false
       matrix:
         cds-version: [9, 10]
-        node-version: [20.x, 22.x]
-        exclude:
-          # @sap/cds v10 requires Node >= 22, so skip the Node 20 x CDS 10 combo.
-          - cds-version: 10
-            node-version: 20.x
+        node-version: [22.x, 24.x]
     steps:
       - uses: actions/checkout@v5
         with:
@@ -65,11 +61,7 @@ jobs:
       fail-fast: false
       matrix:
         cds-version: [9, 10]
-        node-version: [20.x, 22.x]
-        exclude:
-          # @sap/cds v10 requires Node >= 22, so skip the Node 20 x CDS 10 combo.
-          - cds-version: 10
-            node-version: 20.x
+        node-version: [22.x, 24.x]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5

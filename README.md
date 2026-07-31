@@ -159,9 +159,9 @@ The flag only affects webhook POSTs. Calls to n8n's public REST API
 
 ### HTTP timeouts
 
-The plugin applies a request-scoped timeout on all calls to n8n. Defaults
-match the sister Java plugin: **3 s connect + 5 s read** (8 s aggregate).
-Override via credentials or env vars:
+The plugin applies a request-scoped timeout on all calls to n8n. Defaults:
+**3 s connect + 5 s read** (8 s aggregate). Override via credentials or env
+vars:
 
 ```jsonc
 {
@@ -174,8 +174,7 @@ Override via credentials or env vars:
 Env-var equivalents: `N8N_CONNECT_TIMEOUT_MS`, `N8N_READ_TIMEOUT_MS`.
 
 Because Node's `fetch` doesn't distinguish the phases at the API level, the
-two values are summed and applied as a single abort deadline. The pair is
-surfaced for symmetry with the Java plugin and for future flexibility.
+two values are summed and applied as a single abort deadline.
 
 ### Retry semantics
 
@@ -194,13 +193,17 @@ done, keeping the queue clean.
 
 ### Authentication
 
-The `apiKey` credential is sent as HTTP headers, with different semantics per
-endpoint:
+The plugin sends the configured `apiKey` as HTTP header **`X-N8N-API-KEY`** on
+every request - both webhook POSTs (`/webhook/…`) and public-API GETs
+(`/api/v1/…`). This is the same header n8n itself uses for its
+[public REST API](https://docs.n8n.io/api/authentication/), so a single API
+key works across the whole plugin surface.
 
-| Endpoint           | Header(s) sent                             | Why                                                                                                                                                                  |
-| ------------------ | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/webhook/…` POSTs | `X-N8N-API-KEY` **and** `X-Webhook-Secret` | n8n workflows can validate whichever header they choose; sending both interoperates with workflows written for either the Node plugin's or Java plugin's convention. |
-| `/api/v1/…` GETs   | `X-N8N-API-KEY` only                       | n8n's public REST API validates the canonical header specifically.                                                                                                   |
+To validate incoming webhook calls inside n8n, add a **Header auth**
+credential to the Webhook node with:
+
+- **Name**: `X-N8N-API-KEY`
+- **Value**: the same API key configured on the CAP side
 
 ---
 
@@ -225,14 +228,10 @@ entity Books as projection on my.Books;
 entity Orders as projection on my.Orders;
 ```
 
-The plugin's `after` handler runs post-commit; the outboxed `N8nService`
-persists the emit in the same transaction and dispatches it after commit,
-so a failing n8n call never rolls back your business transaction.
-
-For `DELETE` triggers the plugin registers a before-handler that SELECTs the
-row prior to deletion and stashes it on the request context, so the webhook
-payload carries the pre-delete state (title, status, associations, …) rather
-than just the keys.
+The plugin's `after` handler emits to the outboxed `N8nService`, which
+persists the emit in the same transaction. The actual HTTP call to n8n is
+dispatched after the transaction commits, so a failing n8n call never rolls
+back your business transaction.
 
 ### Conditional triggers
 
@@ -269,12 +268,8 @@ entity Shipments as projection on my.Shipments;
 
 Special values:
 
-- `$self` alone means "all scalar fields of the current entity".
+- `$self` alone means "all scalar fields of the current entity" (=> which is the default).
 - `$self.assoc` alone expands all direct attributes of the associated entity.
-
-n8n webhooks receive free-form JSON and do not enforce any schema, so field
-aliases are not supported. If you need to rename a field for downstream nodes,
-use the Edit Fields node inside the n8n workflow.
 
 ### Multiple triggers per entity
 
@@ -324,8 +319,7 @@ a `n8n-validation` task via `cds.build.register`.
 - `path` and `on` must be present together in the record form.
 - `on` must be `CREATE | UPDATE | DELETE`, a declared bound action of the
   entity, or `*`.
-- `inputs` must be an array of `{ '=': '$self.…' }` entries. Aliasing is not
-  supported; use the Edit Fields node in n8n to rename downstream.
+- `inputs` must be an array of `{ '=': '$self.…' }` entries.
 - `if` must be a CDS expression.
 - The string-shorthand form must be a non-empty string.
 
@@ -358,17 +352,6 @@ npm install
 npm test           # unit + console-integration tests (no docker required)
 npm run test:live  # add: real REST calls against localhost:5678 (docker up first)
 ```
-
-Test layout:
-
-- `tests/unit/**` - pure JS tests: input parser, annotation scanner,
-  build validations, connection resolver, n8n client URL builder.
-- `tests/integration/console/**` - runs the sample bookshop with the
-  `console-n8n-service` kind. Verifies annotation-driven dispatch,
-  `.if` gating, `.inputs` mapping, and the programmatic API.
-- `tests/integration/rest/**` - skips gracefully when
-  `http://localhost:5678/healthz` is unreachable. Enable it by starting the
-  docker container in `tests/bookshop`.
 
 ---
 
