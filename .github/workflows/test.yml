@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-  pull_request_target:
+  pull_request:
     branches: [main]
     types: [reopened, synchronize, opened]
 
@@ -27,7 +27,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        cds-version: [9, 10]
+        cds-version: [9, latest]
         node-version: [22.x, 24.x]
     steps:
       - uses: actions/checkout@v5
@@ -38,20 +38,15 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
       - name: Set CDS version-specific dependencies
-        if: matrix.cds-version == 9
+        if: matrix.cds-version == '9'
         run: |
-          echo "Installing CDS 9 compatible packages..."
-          npm pkg set "devDependencies.@cap-js/sqlite=^2.0.0"
-          npm pkg set "overrides.@cap-js/sqlite=^2.0.0"
-          npm pkg set "overrides.@cap-js/hana=^2.0.0"
-          npm pkg set "overrides.@cap-js/db-service=^2.0.0"
-          cd tests/bookshop
-          npm pkg set "dependencies.@cap-js/hana=^2.0.0"
-          npm pkg set "dependencies.@cap-js/db-service=^2.0.0"
+          npm pkg set "overrides.@cap-js/sqlite=^2"
+          npm pkg set "overrides.@cap-js/hana=^2"
+          npm pkg set "devDependencies.@sap/cds=^9"
+          npm pkg set --workspace=tests/bookshop "dependencies.@sap/cds=^9"
       - run: npm i -g @sap/cds-dk@${{ matrix.cds-version }}
-      - run: npm install @sap/cds@${{ matrix.cds-version }}
       - run: npm i
-      - run: cd tests/bookshop && npm i
+      - run: cds v -i
       - run: npm run test
   integration-tests:
     needs: requires-approval
@@ -60,7 +55,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        cds-version: [9, 10]
+        cds-version: [9, latest]
         node-version: [22.x, 24.x]
     steps:
       - name: Checkout repository
