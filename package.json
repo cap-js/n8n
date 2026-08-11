@@ -65,17 +65,14 @@
   "cds": {
     "requires": {
       "N8nService": {
-        "model": "@cap-js/n8n/srv/N8nService",
-        "outboxed": true,
-        "credentials": {
-          "baseUrl": "env:N8N_BASE_URL",
-          "apiKey": "env:N8N_API_KEY"
-        },
         "[development]": {
           "kind": "n8n-to-console"
         },
         "[hybrid]": {
-          "kind": "n8n-to-rest"
+          "kind": "n8n-to-rest",
+          "credentials": {
+            "baseUrl": "http://localhost:5678"
+          }
         },
         "[production]": {
           "kind": "n8n-to-rest"
@@ -83,10 +80,14 @@
       },
       "kinds": {
         "n8n-to-console": {
-          "impl": "@cap-js/n8n/srv/n8n-to-console"
+          "model": "@cap-js/n8n/srv/n8n-to-console",
+          "impl": "@cap-js/n8n/srv/n8n-to-console",
+          "outboxed": true
         },
         "n8n-to-rest": {
+          "model": "@cap-js/n8n/srv/N8nService",
           "impl": "@cap-js/n8n/srv/n8n-to-rest",
+          "outboxed": true,
           "vcap": {
             "tag": "n8n"
           }

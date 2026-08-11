@@ -1,5 +1,3 @@
-"use strict"
-
 const cds = require("@sap/cds")
 const {
   resolveN8nConnection,

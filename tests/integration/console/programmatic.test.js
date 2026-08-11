@@ -1,32 +1,19 @@
-"use strict"
-
-const path = require("path")
-
-process.env.CDS_CONFIG = JSON.stringify({
-  requires: {
-    N8nService: {
-      kind: "console-n8n-service",
-      outboxed: false,
-    },
-  },
-})
-
 const cds = require("@sap/cds")
+const path = require("path")
 
 const app = path.join(__dirname, "../../bookshop")
 const { expect } = cds.test(app)
 
 describe("N8nService - programmatic API (console kind)", () => {
   let n8n
-  let impl
 
   beforeAll(async () => {
     n8n = await cds.connect.to("N8nService")
-    impl = cds.services.N8nService
+    // impl = cds.services.N8nService
   })
 
   beforeEach(() => {
-    if (impl?.executions) impl.executions.length = 0
+    if (n8n?.executions) n8n.executions.length = 0
   })
 
   it('emit("trigger") records a synthetic execution', async () => {
@@ -34,14 +21,14 @@ describe("N8nService - programmatic API (console kind)", () => {
       path: "manual-hook",
       payload: { greeting: "hi" },
     })
-    expect(impl.executions).to.have.length(1)
-    expect(impl.executions[0]).to.include({ path: "manual-hook" })
-    expect(impl.executions[0].payload).to.deep.equal({ greeting: "hi" })
+    expect(n8n.executions).to.have.length(1)
+    expect(n8n.executions[0]).to.include({ path: "manual-hook" })
+    expect(n8n.executions[0].payload).to.deep.equal({ greeting: "hi" })
   })
 
   it('send("getExecution") returns a stored execution', async () => {
     await n8n.emit("trigger", { path: "wf-a", payload: { x: 1 } })
-    const id = impl.executions[0].id
+    const id = n8n.executions[0].id
     const exec = await n8n.send("getExecution", { executionId: id })
     expect(exec.id).to.equal(id)
     expect(exec.path).to.equal("wf-a")
