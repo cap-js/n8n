@@ -23,7 +23,7 @@ Initial release of the `@cap-js/n8n` plugin.
   and `listExecutions` (synchronous functions).
 - Two service kinds:
   - `n8n-to-rest` - real HTTP client with configurable timeouts,
-    retry classification, `X-N8N-API-KEY` + `X-Webhook-Secret` headers,
+    retry classification, `X-N8N-API-KEY` header,
     SSRF-hardened webhook paths, BTP destination support, and an
     optional `useTestWebhook` flag targeting the n8n test-webhook prefix.
   - `n8n-to-console` - log-only impl with an in-memory execution

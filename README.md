@@ -8,10 +8,9 @@ declaratively via `@n8n.process.start` annotations and programmatically via a
 
 - [Requirements](#requirements)
 - [Setup](#setup)
-  - [Local development with docker](#local-development-with-docker)
+  - [Local development](#local-development)
   - [Profiles & credentials](#profiles--credentials)
   - [Test vs. production webhooks](#test-vs-production-webhooks)
-  - [HTTP timeouts](#http-timeouts)
   - [Retry semantics](#retry-semantics)
   - [Authentication](#authentication)
 - [Annotations](#annotations)
@@ -32,9 +31,13 @@ declaratively via `@n8n.process.start` annotations and programmatically via a
 npm add @cap-js/n8n
 ```
 
-### Local development with docker
+### Local development
 
-n8n runs as a first-class docker container. The [sample bookshop](tests/bookshop)
+By default in the `[development]` profile, the plugin uses the
+`n8n-to-console` kind: workflow triggers are logged to stdout and stored
+in an in-memory execution store. No n8n instance is required.
+
+To develop against a real n8n instance, the [sample bookshop](tests/bookshop)
 ships a `docker-compose.yml` that starts n8n on `http://localhost:5678`:
 
 ```bash
@@ -42,23 +45,20 @@ cd tests/bookshop
 docker compose up -d
 ```
 
-Then start CAP:
+Then start CAP with the profile that uses the REST kind (e.g. `[hybrid]`):
 
 ```bash
-cds watch
+cds watch --profile hybrid
 ```
-
-The `[development]` profile defaults the plugin's `baseUrl` to
-`http://localhost:5678` - no configuration required.
 
 ### Profiles & credentials
 
 The plugin ships two service kinds:
 
-| Kind             | Used when                           | Behavior                                                                  |
-| ---------------- | ----------------------------------- | ------------------------------------------------------------------------- |
-| `n8n-to-rest`    | default (dev / hybrid / production) | Real HTTP calls against an n8n instance.                                  |
-| `n8n-to-console` | opt-in - set `kind` explicitly      | Log-only impl. In-memory execution store for tests / offline development. |
+| Kind                  | Used when                              | Behavior                                                                   |
+| --------------------- | -------------------------------------- | -------------------------------------------------------------------------- |
+| `n8n-to-console` | default in `[development]`             | Log-only impl with an in-memory execution store. No n8n instance required. |
+| `n8n-to-rest`    | default in any non-development profile | Real HTTP calls against an n8n instance.                                   |
 
 The default profile matrix is:
 
@@ -73,7 +73,7 @@ The default profile matrix is:
           "apiKey": "env:N8N_API_KEY",
         },
         "[development]": {
-          "credentials": { "baseUrl": "http://localhost:5678" },
+          "kind": "console-n8n-service",
         },
       },
     },
@@ -83,7 +83,7 @@ The default profile matrix is:
 
 **Resolution order** for the REST kind:
 
-1. Bound / inline `credentials.{baseUrl, apiKey}` (accepts `env:VAR` refs)
+1. Bound / inline `credentials.{baseUrl, apiKey}`
 2. BTP destination via `credentials.destination` or top-level `destination`
 3. Environment variables `N8N_BASE_URL` + `N8N_API_KEY`
 4. Dev-only fallback `http://localhost:5678` (development profile only -
@@ -99,14 +99,18 @@ cds bind N8nService -2 n8n
 **Production** - the same user-provided service (tagged `n8n`) is picked up
 via VCAP, or use a BTP destination named `n8n`.
 
-**Opt into console kind** (e.g. for a `[test]` profile):
+**Opt into the REST kind in `[development]`** (e.g. when developing against a
+local n8n instance):
 
 ```jsonc
 {
   "cds": {
     "requires": {
       "N8nService": {
-        "[test]": { "kind": "n8n-to-console" },
+        "[development]": {
+          "kind": "n8n-to-rest",
+          "credentials": { "baseUrl": "http://localhost:5678" },
+        },
       },
     },
   },
@@ -140,31 +144,11 @@ Toggle via the `useTestWebhook` flag on the service credentials:
 ```
 
 Resolution order for the flag mirrors the base URL: bound / inline credentials
-first (accepts `env:VAR` refs), then `N8N_USE_TEST_WEBHOOK`, then a BTP
-destination property `URL.useTestWebhook`, then `false`.
+first, then `N8N_USE_TEST_WEBHOOK`, then a BTP destination property
+`URL.useTestWebhook`, then `false`.
 
 The flag only affects webhook POSTs. Calls to n8n's public REST API
 (`/api/v1/executions/…`) always use the canonical `/api/v1` prefix.
-
-### HTTP timeouts
-
-The plugin applies a request-scoped timeout on all calls to n8n. Defaults
-match the sister Java plugin: **3 s connect + 5 s read** (8 s aggregate).
-Override via credentials or env vars:
-
-```jsonc
-{
-  "credentials": {
-    "timeout": { "connect": 2000, "read": 8000 },
-  },
-}
-```
-
-Env-var equivalents: `N8N_CONNECT_TIMEOUT_MS`, `N8N_READ_TIMEOUT_MS`.
-
-Because Node's `fetch` doesn't distinguish the phases at the API level, the
-two values are summed and applied as a single abort deadline. The pair is
-surfaced for symmetry with the Java plugin and for future flexibility.
 
 ### Retry semantics
 
@@ -183,13 +167,17 @@ done, keeping the queue clean.
 
 ### Authentication
 
-The `apiKey` credential is sent as HTTP headers, with different semantics per
-endpoint:
+The plugin sends the configured `apiKey` as HTTP header **`X-N8N-API-KEY`** on
+every request - both webhook POSTs (`/webhook/…`) and public-API GETs
+(`/api/v1/…`). This is the same header n8n itself uses for its
+[public REST API](https://docs.n8n.io/api/authentication/), so a single API
+key works across the whole plugin surface.
 
-| Endpoint           | Header(s) sent                             | Why                                                                                                                                                                  |
-| ------------------ | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/webhook/…` POSTs | `X-N8N-API-KEY` **and** `X-Webhook-Secret` | n8n workflows can validate whichever header they choose; sending both interoperates with workflows written for either the Node plugin's or Java plugin's convention. |
-| `/api/v1/…` GETs   | `X-N8N-API-KEY` only                       | n8n's public REST API validates the canonical header specifically.                                                                                                   |
+To validate incoming webhook calls inside n8n, add a **Header auth**
+credential to the Webhook node with:
+
+- **Name**: `X-N8N-API-KEY`
+- **Value**: the same API key configured on the CAP side
 
 ---
 
@@ -214,14 +202,10 @@ entity Books as projection on my.Books;
 entity Orders as projection on my.Orders;
 ```
 
-The plugin's `after` handler runs post-commit; the outboxed `N8nService`
-persists the emit in the same transaction and dispatches it after commit,
-so a failing n8n call never rolls back your business transaction.
-
-For `DELETE` triggers the plugin registers a before-handler that SELECTs the
-row prior to deletion and stashes it on the request context, so the webhook
-payload carries the pre-delete state (title, status, associations, …) rather
-than just the keys.
+The plugin's `after` handler emits to the outboxed `N8nService`, which
+persists the emit in the same transaction. The actual HTTP call to n8n is
+dispatched after the transaction commits, so a failing n8n call never rolls
+back your business transaction.
 
 ### Conditional triggers
 
@@ -234,8 +218,9 @@ than just the keys.
 entity Orders as projection on my.Orders;
 ```
 
-The `.if` clause is ANDed onto the SELECT used to fetch the payload. If the
-condition evaluates false, no trigger is fired.
+The `.if` predicate is evaluated against the entity's current state
+(post-update for `UPDATE`, the pre-delete row for `DELETE`). If it evaluates
+to `false`, no trigger is fired.
 
 ### Input mapping
 
@@ -258,12 +243,8 @@ entity Shipments as projection on my.Shipments;
 
 Special values:
 
-- `$self` alone means "all scalar fields of the current entity".
+- `$self` alone means "all scalar fields of the current entity" (=> which is the default).
 - `$self.assoc` alone expands all direct attributes of the associated entity.
-
-n8n webhooks receive free-form JSON and do not enforce any schema, so field
-aliases are not supported. If you need to rename a field for downstream nodes,
-use the Edit Fields node inside the n8n workflow.
 
 ### Multiple triggers per entity
 
@@ -313,8 +294,7 @@ a `n8n-validation` task via `cds.build.register`.
 - `path` and `on` must be present together in the record form.
 - `on` must be `CREATE | UPDATE | DELETE`, a declared bound action of the
   entity, or `*`.
-- `inputs` must be an array of `{ '=': '$self.…' }` entries. Aliasing is not
-  supported; use the Edit Fields node in n8n to rename downstream.
+- `inputs` must be an array of `{ '=': '$self.…' }` entries.
 - `if` must be a CDS expression.
 - The string-shorthand form must be a non-empty string.
 
@@ -326,17 +306,14 @@ a `n8n-validation` task via `cds.build.register`.
 
 ## MVP scope & limitations
 
-Deliberately excluded to keep the first release small and to avoid pretending
-n8n supports semantics it doesn't:
+Deliberately excluded from this initial release:
 
-- **No `cancel` / `suspend` / `resume`** - n8n has no first-class equivalents.
-- **No `businessKey` correlation** - could later be simulated via execution tags.
-- **No `cds import --from n8n`** - string webhook paths cover the MVP; typed
-  imports are on the roadmap.
 - **No Fiori draft events** (`SAVE`, `EDIT`, `NEW`, `PATCH`, `DISCARD`) -
   only CRUD + bound actions for now.
 - **No `READ` event triggers** - high volume, easy to create feedback loops.
   Use bound actions or CDS events instead.
+- **No typed workflow import** - string webhook paths cover the MVP;
+  typed imports are on the roadmap.
 
 ---
 

@@ -4,18 +4,15 @@
   "description": "CAP Plugin to trigger n8n workflows from CAP applications via annotations and a programmatic service.",
   "main": "cds-plugin.js",
   "homepage": "https://cap.cloud.sap/",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/cap-js/n8n.git"
-  },
+  "repository": "cap-js/n8n",
   "bugs": {
     "url": "https://github.com/cap-js/n8n/issues"
   },
   "files": [
     "cds-plugin.js",
     "lib/",
-    "srv/*.cds",
-    "srv/*.js"
+    "srv/",
+    "LICENSES"
   ],
   "scripts": {
     "test": "vitest run",
@@ -49,14 +46,13 @@
     }
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.0.0"
   },
   "workspaces": [
     "tests/bookshop/"
   ],
   "devDependencies": {
     "@cap-js/cds-test": "^1",
-    "@cap-js/sqlite": "^3",
     "@sap-cloud-sdk/connectivity": "^4.5.1",
     "@sap/cds": "^10",
     "@sap/cds-dk": "^10",
@@ -94,10 +90,5 @@
         }
       }
     }
-  },
-  "allowScripts": {
-    "better-sqlite3@12.11.1": true,
-    "fsevents@2.3.3": true,
-    "esbuild@0.21.5": true
   }
 }

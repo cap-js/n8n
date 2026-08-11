@@ -62,14 +62,12 @@ runs:
       run: |
         if [ "${{ matrix.cds-version }}" == "9" ]; then
           echo "Installing CDS 9 compatible packages..."
-          npm pkg set "devDependencies.@cap-js/sqlite=^2.0.0"
-          npm pkg set "overrides.@cap-js/sqlite=^2.0.0"
-          npm pkg set "overrides.@cap-js/hana=^2.0.0"
-          npm pkg set "overrides.@cap-js/db-service=^2.0.0"
-          cd tests/bookshop
-          npm pkg set "dependencies.@cap-js/hana=^2.0.0"
-          npm pkg set "dependencies.@cap-js/db-service=^2.0.0"
-          cd ../..
+          npm pkg set "overrides.@cap-js/hana=^2"
+          npm pkg set "overrides.@cap-js/sqlite=^2"
+          npm pkg set "overrides.@cap-js/postgres=^2"
+          npm pkg set "overrides.@sap/cds-mtxs=^3"
+          npm pkg set "devDependencies.@sap/cds=^9"
+          npm pkg set --workspace=tests/bookshop "dependencies.@sap/cds=^9"
         fi
 
     - name: Install global CDS
