@@ -9,7 +9,6 @@ describe("N8nService - programmatic API (console kind)", () => {
 
   beforeAll(async () => {
     n8n = await cds.connect.to("N8nService")
-    // impl = cds.services.N8nService
   })
 
   beforeEach(() => {
