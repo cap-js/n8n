@@ -46,7 +46,9 @@ class N8nService extends cds.Service {
     this.on("trigger", async (req) => {
       const { path, payload } = req.data ?? {}
       assertRelativePath(path)
-      LOG.info(`Triggering n8n webhook path: ${safeForLog(path)}`)
+      LOG.info("Triggering n8n webhook", {
+        path: safeForLog(path),
+      })
       try {
         return await this.client.trigger(path, payload)
       } catch (err) {

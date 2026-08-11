@@ -3,12 +3,12 @@
 const path = require("path")
 
 // Force the REST kind (not console) so we exercise the branching logic in
-// `srv/restN8nService.js`. The stub client injected below spares us any real
+// `srv/n8n-to-rest.js`. The stub client injected below spares us any real
 // network traffic.
 process.env.CDS_CONFIG = JSON.stringify({
   requires: {
     N8nService: {
-      kind: "rest-n8n-service",
+      kind: "n8n-to-rest",
       // Disable the outbox so `emit('trigger')` runs synchronously against
       // the REST service's on-handler - that's where the branching lives.
       outboxed: false,
@@ -23,7 +23,7 @@ const { markUnrecoverable } = require("../../../lib/api/n8n-client")
 const app = path.join(__dirname, "../../bookshop")
 const { expect } = cds.test(app)
 
-describe("restN8nService - retry branching", () => {
+describe("n8n-to-rest - retry branching", () => {
   let n8n
   let impl
   let originalClient

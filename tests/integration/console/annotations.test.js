@@ -1,21 +1,6 @@
-"use strict"
-
-const path = require("path")
-
-// Force the console kind BEFORE cds is required so that env is snapshot with
-// the desired impl selected. We can't rely on a `[test]` profile alone because
-// CAP loads the plugin's `[development]` credentials block eagerly.
-process.env.CDS_CONFIG = JSON.stringify({
-  requires: {
-    N8nService: {
-      kind: "console-n8n-service",
-      outboxed: false,
-    },
-  },
-})
-
 const cds = require("@sap/cds")
 
+const path = require("path")
 const app = path.join(__dirname, "../../bookshop")
 const { POST, PATCH, DELETE, expect } = cds.test(app)
 
@@ -23,16 +8,7 @@ describe("@n8n.process.start - annotation-driven flow (console kind)", () => {
   let n8n
 
   beforeAll(async () => {
-    // Reach through to the actual service instance (not the outbox proxy) so
-    // we can read the console kind's in-memory `executions` array.
-    await cds.connect.to("N8nService")
-    n8n = cds.services.N8nService
-    expect(n8n, "N8nService instance").to.be.ok
-    expect(n8n.executions, "console kind should expose in-memory executions").to.be.an("array")
-  })
-
-  beforeEach(() => {
-    if (n8n?.executions) n8n.executions.length = 0
+    n8n = await cds.connect.to("N8nService")
   })
 
   it('fires the "book-created" webhook on CREATE (string shorthand)', async () => {

@@ -61,24 +61,32 @@
   "cds": {
     "requires": {
       "N8nService": {
-        "kind": "rest-n8n-service",
         "[development]": {
-          "kind": "console-n8n-service"
+          "kind": "n8n-to-console"
+        },
+        "[hybrid]": {
+          "kind": "n8n-to-rest",
+          "credentials": {
+            "baseUrl": "http://localhost:5678"
+          }
+        },
+        "[production]": {
+          "kind": "n8n-to-rest"
         }
       },
       "kinds": {
-        "rest-n8n-service": {
+        "n8n-to-console": {
+          "model": "@cap-js/n8n/srv/n8n-to-console",
+          "impl": "@cap-js/n8n/srv/n8n-to-console",
+          "outboxed": true
+        },
+        "n8n-to-rest": {
           "model": "@cap-js/n8n/srv/N8nService",
-          "impl": "@cap-js/n8n/srv/restN8nService",
+          "impl": "@cap-js/n8n/srv/n8n-to-rest",
           "outboxed": true,
           "vcap": {
             "tag": "n8n"
           }
-        },
-        "console-n8n-service": {
-          "model": "@cap-js/n8n/srv/consoleN8nService",
-          "impl": "@cap-js/n8n/srv/consoleN8nService",
-          "outboxed": true
         }
       }
     }

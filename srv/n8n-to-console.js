@@ -6,7 +6,7 @@ const LOG = cds.log(N8N_LOGGER_PREFIX)
 /**
  * Opt-in log-only implementation of `N8nService`. Selected by:
  *
- *     "cds": { "requires": { "N8nService": { "kind": "console-n8n-service" } } }
+ *     "cds": { "requires": { "N8nService": { "kind": "n8n-to-console" } } }
  *
  * Useful for CI / offline development. Every `trigger` call logs the intended
  * webhook path and payload, then records an in-memory synthetic execution so
@@ -38,7 +38,11 @@ class ConsoleN8nService extends cds.Service {
       }
       this.executions.push(record)
 
-      LOG.info(`[console] would POST /webhook/${path} - payload: ${safeJson(payload)}`)
+      LOG.info("Trigger n8n workflow", {
+        webhookUrl: `/webhook/${path}`,
+        executionId: id,
+        payload,
+      })
 
       return { ok: true, status: 200, executionId: id, body: { executionId: id } }
     })
@@ -66,14 +70,6 @@ class ConsoleN8nService extends cds.Service {
     })
 
     return super.init()
-  }
-}
-
-function safeJson(value) {
-  try {
-    return JSON.stringify(value)
-  } catch {
-    return "[unserialisable payload]"
   }
 }
 

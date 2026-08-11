@@ -3,7 +3,7 @@ type AnyType {}
 type ExecutionsReturn : many AnyType;
 
 @protocol: 'none'
-@impl    : './restN8nService'
+@impl    : './n8n-to-rest'
 service N8nService {
 
   /**

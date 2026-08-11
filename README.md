@@ -25,28 +25,16 @@ declaratively via `@n8n.process.start` annotations and programmatically via a
 
 ---
 
-## Requirements
-
-- Node.js 22 or newer
-- `@sap/cds` 9 or newer
-- An n8n instance for anything beyond local development (either local via
-  Docker or remote)
-
----
-
 ## Setup
 
 ```bash
 npm add @cap-js/n8n
 ```
 
-The plugin auto-registers on CAP boot. No further wiring is needed for the
-common cases.
-
 ### Local development
 
 By default in the `[development]` profile, the plugin uses the
-`console-n8n-service` kind: workflow triggers are logged to stdout and stored
+`n8n-to-console` kind: workflow triggers are logged to stdout and stored
 in an in-memory execution store. No n8n instance is required.
 
 To develop against a real n8n instance, the [sample bookshop](tests/bookshop)
@@ -67,10 +55,10 @@ cds watch --profile hybrid
 
 The plugin ships two service kinds:
 
-| Kind                  | Used when                              | Behavior                                                                   |
-| --------------------- | -------------------------------------- | -------------------------------------------------------------------------- |
-| `console-n8n-service` | default in `[development]`             | Log-only impl with an in-memory execution store. No n8n instance required. |
-| `rest-n8n-service`    | default in any non-development profile | Real HTTP calls against an n8n instance.                                   |
+| Kind             | Used when                              | Behavior                                                                   |
+| ---------------- | -------------------------------------- | -------------------------------------------------------------------------- |
+| `n8n-to-console` | default in `[development]`             | Log-only impl with an in-memory execution store. No n8n instance required. |
+| `n8n-to-rest`    | default in any non-development profile | Real HTTP calls against an n8n instance.                                   |
 
 The default profile matrix is:
 
@@ -79,7 +67,11 @@ The default profile matrix is:
   "cds": {
     "requires": {
       "N8nService": {
-        "kind": "rest-n8n-service",
+        "kind": "n8n-to-rest",
+        "credentials": {
+          "baseUrl": "env:N8N_BASE_URL",
+          "apiKey": "env:N8N_API_KEY",
+        },
         "[development]": {
           "kind": "console-n8n-service",
         },
@@ -116,7 +108,7 @@ local n8n instance):
     "requires": {
       "N8nService": {
         "[development]": {
-          "kind": "rest-n8n-service",
+          "kind": "n8n-to-rest",
           "credentials": { "baseUrl": "http://localhost:5678" },
         },
       },
@@ -332,6 +324,17 @@ npm install
 npm test           # unit + console-integration tests (no docker required)
 npm run test:live  # add: real REST calls against localhost:5678 (docker up first)
 ```
+
+Test layout:
+
+- `tests/unit/**` - pure JS tests: input parser, annotation scanner,
+  build validations, connection resolver, n8n client URL builder.
+- `tests/integration/console/**` - runs the sample bookshop with the
+  `n8n-to-console` kind. Verifies annotation-driven dispatch,
+  `.if` gating, `.inputs` mapping, and the programmatic API.
+- `tests/integration/rest/**` - skips gracefully when
+  `http://localhost:5678/healthz` is unreachable. Enable it by starting the
+  docker container in `tests/bookshop`.
 
 ---
 
