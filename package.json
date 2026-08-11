@@ -65,33 +65,30 @@
   "cds": {
     "requires": {
       "N8nService": {
-        "kind": "rest-n8n-service",
+        "model": "@cap-js/n8n/srv/N8nService",
+        "outboxed": true,
         "credentials": {
           "baseUrl": "env:N8N_BASE_URL",
           "apiKey": "env:N8N_API_KEY"
         },
         "[development]": {
-          "credentials": {
-            "baseUrl": "http://localhost:5678"
-          }
+          "kind": "console-n8n-service"
+        },
+        "[hybrid]": {
+          "kind": "rest-n8n-service"
+        },
+        "[production]": {
+          "kind": "rest-n8n-service"
         }
       },
       "kinds": {
+        "console-n8n-service": {
+          "impl": "@cap-js/n8n/srv/consoleN8nService"
+        },
         "rest-n8n-service": {
-          "model": "@cap-js/n8n/srv/N8nService",
           "impl": "@cap-js/n8n/srv/restN8nService",
-          "outboxed": {
-            "kind": "persistent-queue"
-          },
           "vcap": {
             "tag": "n8n"
-          }
-        },
-        "console-n8n-service": {
-          "model": "@cap-js/n8n/srv/consoleN8nService",
-          "impl": "@cap-js/n8n/srv/consoleN8nService",
-          "outboxed": {
-            "kind": "in-memory-queue"
           }
         }
       }

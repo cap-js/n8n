@@ -2,8 +2,7 @@
 type AnyType {}
 type ExecutionsReturn : many AnyType;
 
-@protocol: 'none'
-@impl    : './restN8nService'
+@cds.serve.ignore
 service N8nService {
 
   /**

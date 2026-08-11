@@ -40,7 +40,11 @@ class ConsoleN8nService extends cds.Service {
       }
       this.executions.push(record)
 
-      LOG.info(`[console] would POST /webhook/${path} - payload: ${safeJson(payload)}`)
+      LOG.info("Trigger n8n workflow", {
+        webhookUrl: `/webhook/${path}`,
+        executionId: id,
+        payload,
+      })
 
       return { ok: true, status: 200, executionId: id, body: { executionId: id } }
     })
@@ -68,14 +72,6 @@ class ConsoleN8nService extends cds.Service {
     })
 
     return super.init()
-  }
-}
-
-function safeJson(value) {
-  try {
-    return JSON.stringify(value)
-  } catch {
-    return "[unserialisable payload]"
   }
 }
 
