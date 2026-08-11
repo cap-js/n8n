@@ -4,10 +4,11 @@
   "description": "Bookshop sample demonstrating @cap-js/n8n annotation-driven and programmatic workflow triggering.",
   "private": true,
   "dependencies": {
-    "@cap-js/n8n": "file:../../."
+    "@cap-js/n8n": "file:../../.",
+    "@cap-js/hana": ">=2"
   },
   "devDependencies": {
-    "@sap/cds-dk": "^10"
+    "@cap-js/sqlite": ">=2"
   },
   "scripts": {
     "start": "cds-serve",
@@ -20,14 +21,13 @@
   ],
   "cds": {
     "requires": {
-      "db": {
-        "kind": "sqlite",
-        "impl": "@cap-js/sqlite",
-        "credentials": {
-          "url": ":memory:"
-        }
-      },
       "N8nService": {
+        "[hybrid]": {
+          "kind": "rest-n8n-service",
+          "credentials": {
+            "baseUrl": "http://localhost:5678"
+          }
+        },
         "[test]": {
           "kind": "console-n8n-service",
           "outboxed": false

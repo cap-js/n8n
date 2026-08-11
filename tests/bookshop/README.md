@@ -15,30 +15,26 @@ Three annotation flavors, one workflow per flavor under `workflows/`:
 | `order-shipped` | Record form with `if` + `inputs` on `Orders`                                            | Orders UPDATE where `status = 'shipped'` | `{ ID, quantity, book_ID }`           |
 | `order-deleted` | Qualified record form (`#deleted`) on `Orders` - relies on the plugin's DELETE prefetch | Orders DELETE                            | Pre-delete `{ ID, quantity, status }` |
 
-Also demonstrates **profile-driven config**: `[development]` targets a local
-n8n docker container at `http://localhost:5678` with no auth. Hybrid/production
-profiles resolve credentials from `cds bind`, BTP destinations, or env vars.
+Also demonstrates **profile-driven config**:
+
+- **Default (no profile / `[development]`)** - inherits the plugin's built-in
+  `console-n8n-service` kind. Payloads are logged to the CDS log; no network
+  calls, no docker, no auth. This is the default `cds watch` experience.
+- **`[hybrid]`** - opts into `rest-n8n-service` pointing at a local n8n docker
+  container on `http://localhost:5678`. Fires real webhooks. See
+  [_Run against a real n8n_](#run-against-a-real-n8n-hybrid-profile) below.
 
 ## Run
 
 ```bash
-# 1) Start local n8n on :5678 (workflows/ is mounted read-only).
-docker compose up -d
-
-# 2) Open http://localhost:5678, create an owner account, then import
-#    each file under workflows/ manually (or via the n8n API) and
-#    activate the workflows:
-#      - workflows/book-created.json
-#      - workflows/order-shipped.json
-#      - workflows/order-deleted.json
-
-# 3) Start CAP (from the repo root)
 npm install
 cds watch tests/bookshop
 ```
 
-The CAP transaction commits, the CAP outbox then dispatches a POST to
-`http://localhost:5678/webhook/<path>` with the shaped payload.
+CAP starts on `http://localhost:4004` with the console kind active. Triggering
+any of the flows below prints the outbound payload to the CDS log instead of
+POSTing to n8n - handy for iterating on annotations without a running n8n
+instance.
 
 ## Trigger the flows via curl
 
@@ -102,7 +98,39 @@ curl 'http://localhost:4004/odata/v4/admin/Books?$select=ID,title,stock'
 curl 'http://localhost:4004/odata/v4/admin/Orders?$select=ID,status,quantity,book_ID'
 ```
 
-## Environment
+## Run against a real n8n (`hybrid` profile)
 
-Copy `.env.example` to `.env` and adjust as needed. Only `N8N_BASE_URL` and
-`N8N_API_KEY` are read by the plugin.
+The sample ships a `[hybrid]` profile that swaps the console kind for
+`rest-n8n-service` and points at `http://localhost:5678`.
+
+```bash
+# 1) Start local n8n on :5678 (workflows/ is mounted read-only).
+docker compose up -d
+
+# 2) Open http://localhost:5678, create an owner account, then import
+#    and activate each file under workflows/:
+#      - workflows/book-created.json
+#      - workflows/order-shipped.json
+#      - workflows/order-deleted.json
+
+# 3) Run CAP with the hybrid profile.
+cds watch tests/bookshop --profile hybrid
+```
+
+Trigger any of the curl commands above and the CAP outbox will dispatch a POST
+to `http://localhost:5678/webhook/<path>` with the shaped payload.
+
+If your n8n instance enforces auth, add an `apiKey` next to `baseUrl` under the
+`[hybrid]` block in `package.json`:
+
+```jsonc
+"N8nService": {
+  "[hybrid]": {
+    "kind": "rest-n8n-service",
+    "credentials": {
+      "baseUrl": "http://localhost:5678",
+      "apiKey": "eyJ..."
+    }
+  }
+}
+```

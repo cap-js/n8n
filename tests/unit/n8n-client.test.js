@@ -227,7 +227,7 @@ describe("createN8nClient - auth headers", () => {
     globalThis.fetch = originalFetch
   })
 
-  it("sends both X-N8N-API-KEY and X-Webhook-Secret on webhook POSTs", async () => {
+  it("sends X-N8N-API-KEY on webhook POSTs", async () => {
     const client = createN8nClient(async () => ({
       baseUrl: "http://localhost:5678",
       apiKey: "top-secret",
@@ -237,8 +237,8 @@ describe("createN8nClient - auth headers", () => {
     expect(captured).toHaveLength(1)
     expect(captured[0].options.headers).toMatchObject({
       "X-N8N-API-KEY": "top-secret",
-      "X-Webhook-Secret": "top-secret",
     })
+    expect(captured[0].options.headers).not.toHaveProperty("X-Webhook-Secret")
   })
 
   it("omits auth headers on webhook POSTs when no api key is configured", async () => {
@@ -274,8 +274,8 @@ describe("createN8nClient - auth headers", () => {
     expect(captured[0].options.headers).toMatchObject({
       Authorization: "Bearer outer-token",
       "X-N8N-API-KEY": "top-secret",
-      "X-Webhook-Secret": "top-secret",
     })
+    expect(captured[0].options.headers).not.toHaveProperty("X-Webhook-Secret")
   })
 
   it("merges destination authHeaders on executions API calls", async () => {
