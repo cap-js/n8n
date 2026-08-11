@@ -72,21 +72,21 @@
           "apiKey": "env:N8N_API_KEY"
         },
         "[development]": {
-          "kind": "console-n8n-service"
+          "kind": "n8n-to-console"
         },
         "[hybrid]": {
-          "kind": "rest-n8n-service"
+          "kind": "n8n-to-rest"
         },
         "[production]": {
-          "kind": "rest-n8n-service"
+          "kind": "n8n-to-rest"
         }
       },
       "kinds": {
-        "console-n8n-service": {
-          "impl": "@cap-js/n8n/srv/consoleN8nService"
+        "n8n-to-console": {
+          "impl": "@cap-js/n8n/srv/n8n-to-console"
         },
-        "rest-n8n-service": {
-          "impl": "@cap-js/n8n/srv/restN8nService",
+        "n8n-to-rest": {
+          "impl": "@cap-js/n8n/srv/n8n-to-rest",
           "vcap": {
             "tag": "n8n"
           }

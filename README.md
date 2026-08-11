@@ -26,22 +26,11 @@ declaratively via `@n8n.process.start` annotations and programmatically via a
 
 ---
 
-## Requirements
-
-- Node.js 20 or newer
-- `@sap/cds` 9 or newer
-- An n8n instance - either local (e.g. via Docker) or remote
-
----
-
 ## Setup
 
 ```bash
 npm add @cap-js/n8n
 ```
-
-The plugin auto-registers on CAP boot. No further wiring is needed for the
-common cases.
 
 ### Local development with docker
 
@@ -66,10 +55,10 @@ The `[development]` profile defaults the plugin's `baseUrl` to
 
 The plugin ships two service kinds:
 
-| Kind                  | Used when                           | Behavior                                                                  |
-| --------------------- | ----------------------------------- | ------------------------------------------------------------------------- |
-| `rest-n8n-service`    | default (dev / hybrid / production) | Real HTTP calls against an n8n instance.                                  |
-| `console-n8n-service` | opt-in - set `kind` explicitly      | Log-only impl. In-memory execution store for tests / offline development. |
+| Kind             | Used when                           | Behavior                                                                  |
+| ---------------- | ----------------------------------- | ------------------------------------------------------------------------- |
+| `n8n-to-rest`    | default (dev / hybrid / production) | Real HTTP calls against an n8n instance.                                  |
+| `n8n-to-console` | opt-in - set `kind` explicitly      | Log-only impl. In-memory execution store for tests / offline development. |
 
 The default profile matrix is:
 
@@ -78,7 +67,7 @@ The default profile matrix is:
   "cds": {
     "requires": {
       "N8nService": {
-        "kind": "rest-n8n-service",
+        "kind": "n8n-to-rest",
         "credentials": {
           "baseUrl": "env:N8N_BASE_URL",
           "apiKey": "env:N8N_API_KEY",
@@ -117,7 +106,7 @@ via VCAP, or use a BTP destination named `n8n`.
   "cds": {
     "requires": {
       "N8nService": {
-        "[test]": { "kind": "console-n8n-service" },
+        "[test]": { "kind": "n8n-to-console" },
       },
     },
   },
@@ -364,7 +353,7 @@ Test layout:
 - `tests/unit/**` - pure JS tests: input parser, annotation scanner,
   build validations, connection resolver, n8n client URL builder.
 - `tests/integration/console/**` - runs the sample bookshop with the
-  `console-n8n-service` kind. Verifies annotation-driven dispatch,
+  `n8n-to-console` kind. Verifies annotation-driven dispatch,
   `.if` gating, `.inputs` mapping, and the programmatic API.
 - `tests/integration/rest/**` - skips gracefully when
   `http://localhost:5678/healthz` is unreachable. Enable it by starting the

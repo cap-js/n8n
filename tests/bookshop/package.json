@@ -29,7 +29,7 @@
       },
       "N8nService": {
         "[test]": {
-          "kind": "console-n8n-service",
+          "kind": "n8n-to-console",
           "outboxed": false
         }
       }

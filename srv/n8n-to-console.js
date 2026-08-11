@@ -8,7 +8,7 @@ const LOG = cds.log(N8N_LOGGER_PREFIX)
 /**
  * Opt-in log-only implementation of `N8nService`. Selected by:
  *
- *     "cds": { "requires": { "N8nService": { "kind": "console-n8n-service" } } }
+ *     "cds": { "requires": { "N8nService": { "kind": "n8n-to-console" } } }
  *
  * Useful for CI / offline development. Every `trigger` call logs the intended
  * webhook path and payload, then records an in-memory synthetic execution so

@@ -22,11 +22,11 @@ Initial release of the `@cap-js/n8n` plugin.
 - Programmatic `N8nService` with `trigger` (outboxed event), `getExecution`
   and `listExecutions` (synchronous functions).
 - Two service kinds:
-  - `rest-n8n-service` - real HTTP client with configurable timeouts,
+  - `n8n-to-rest` - real HTTP client with configurable timeouts,
     retry classification, `X-N8N-API-KEY` + `X-Webhook-Secret` headers,
     SSRF-hardened webhook paths, BTP destination support, and an
     optional `useTestWebhook` flag targeting the n8n test-webhook prefix.
-  - `console-n8n-service` - log-only impl with an in-memory execution
+  - `n8n-to-console` - log-only impl with an in-memory execution
     store for tests and offline development.
 - `cds build` plugin task (`n8n-validation`) that surfaces errors /
   warnings for malformed annotations via the `cds.build` Plugin API.
