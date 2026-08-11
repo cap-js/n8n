@@ -55,8 +55,8 @@ cds watch --profile hybrid
 
 The plugin ships two service kinds:
 
-| Kind                  | Used when                              | Behavior                                                                   |
-| --------------------- | -------------------------------------- | -------------------------------------------------------------------------- |
+| Kind             | Used when                              | Behavior                                                                   |
+| ---------------- | -------------------------------------- | -------------------------------------------------------------------------- |
 | `n8n-to-console` | default in `[development]`             | Log-only impl with an in-memory execution store. No n8n instance required. |
 | `n8n-to-rest`    | default in any non-development profile | Real HTTP calls against an n8n instance.                                   |
 
