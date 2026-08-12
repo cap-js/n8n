@@ -268,19 +268,46 @@ await n8n.emit("trigger", {
   path: "book-created",
   payload: { title: "Moby Dick", quantity: 3 },
 })
+```
 
-// Query executions (synchronous)
-const list = await n8n.send("listExecutions", { workflowId: "abcd" })
-const one = await n8n.send("getExecution", { executionId: "exec-42" })
+### Querying executions and workflows
+
+`N8nService` exposes read-only entities `WorkflowExecutions` and `WorkflowDefinitions` projected from n8n's public REST API. Reads are delegated live to n8n through the same connection the plugin uses for webhook triggers.
+
+```js
+const n8n = await cds.connect.to("N8nService")
+const { WorkflowExecutions, WorkflowDefinitions } = n8n.entities
+
+// List executions for a specific workflow
+const list = await SELECT.from(WorkflowExecutions).where({ workflowId: "abcd" })
+
+// Fetch a single execution (includes the heavy `data` payload)
+const one = await SELECT.one.from(WorkflowExecutions).where({ id: "exec-42" })
+
+// Only active workflows, top 20
+const active = await SELECT.from(WorkflowDefinitions).where({ active: true }).limit(20)
+
+// Selecting `data` explicitly opts into the heavier `?includeData=true`
+// query on the list endpoint (single-by-id always includes it):
+const withData = await SELECT.from(WorkflowExecutions)
+  .columns("id", "status", "data")
+  .where({ workflowId: "abcd" })
 ```
 
 The `N8nService` model (`srv/N8nService.cds`):
 
-| Operation        | Type     | Purpose                                                   |
-| ---------------- | -------- | --------------------------------------------------------- |
-| `trigger`        | event    | POST `{baseUrl}/webhook/<path>` with `payload`            |
-| `getExecution`   | function | GET `/api/v1/executions/{id}?includeData=true`            |
-| `listExecutions` | function | GET `/api/v1/executions?workflowId={id}&includeData=true` |
+| Entity                | Access    | Backed by                                           |
+| --------------------- | --------- | --------------------------------------------------- |
+| `trigger` (event)     | emit      | POST `{baseUrl}/webhook/<path>` with `payload`      |
+| `WorkflowExecutions`  | READ-only | `GET /api/v1/executions[/{id}]` (CQN → querystring) |
+| `WorkflowDefinitions` | READ-only | `GET /api/v1/workflows[/{id}]` (CQN → querystring)  |
+
+**WHERE-clause mapping** (equality only — anything more complex is applied client-side over the returned rows):
+
+- `WorkflowExecutions`: `id`, `workflowId`, `status`, `projectId`
+- `WorkflowDefinitions`: `id`, `active`, `name`, `projectId`
+
+**Pagination**: n8n uses cursor-based pagination (`nextCursor`). The READ handler transparently follows cursors up to a soft cap (5 pages) to satisfy `SELECT.limit(N)`. `SELECT.limit(N, OFFSET)` is emulated client-side.
 
 ---
 

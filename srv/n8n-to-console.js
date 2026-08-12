@@ -3,9 +3,8 @@ const LOG = cds.log("n8n")
 
 class ConsoleN8nService extends cds.ApplicationService {
   async init() {
-    
     this.before("trigger", (req) => {
-      if (!req.data?.path) {
+      if (!req.data?.path || req.data.path.trim() === "") {
         throw cds.error(400, "Missing required parameter path!")
       }
     })

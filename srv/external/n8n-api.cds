@@ -1,10 +1,9 @@
 /**
- * n8n Public REST API — hand-written CDS shapes for the `N8nApi` remote
- * service.
+ * n8n Public REST API — hand-written CDS shapes.
  *
  * Origin: https://github.com/n8n-io/n8n/blob/master/packages/cli/src/public-api/v1/openapi.yml
  */
-service N8nApi @(path: '/api/v1') {
+context N8nApi {
 
   /**
    * Mirrors GET /api/v1/executions and GET /api/v1/executions/{id}.

@@ -23,7 +23,7 @@
     "requires": {
       "N8nService": {
         "[hybrid]": {
-          "kind": "rest-n8n-service",
+          "kind": "n8n-to-rest",
           "credentials": {
             "baseUrl": "http://localhost:5678"
           }
