@@ -53,19 +53,21 @@ describe("validateTriggerAnnotations - record form", () => {
     expect(plugin.messages).toEqual([])
   })
 
-  it("reports error when only path is set", () => {
+  it("accepts path-only record (on defaults to all CRUD)", () => {
     const plugin = makePlugin()
     validateTriggerAnnotations("Orders", ent({ "@n8n.process.start.path": "wf" }), plugin)
-    expect(plugin.messages.some((m) => /must be present together/i.test(m.message))).toBe(true)
+    expect(plugin.messages).toEqual([])
   })
 
-  it("reports error when only on is set", () => {
+  it("reports error when only on is set (path is required)", () => {
     const plugin = makePlugin()
     validateTriggerAnnotations("Orders", ent({ "@n8n.process.start.on": "CREATE" }), plugin)
-    expect(plugin.messages.some((m) => /must be present together/i.test(m.message))).toBe(true)
+    expect(plugin.messages.some((m) => /is required/i.test(m.message))).toBe(true)
   })
 
-  it("reports error for invalid on value", () => {
+  it("passes arbitrary on values through without error (no allowlist)", () => {
+    // The plugin no longer validates `on:` content — values are forwarded
+    // verbatim to `service.after`, which is CAP's job to accept or reject.
     const plugin = makePlugin()
     validateTriggerAnnotations(
       "Orders",
@@ -75,23 +77,50 @@ describe("validateTriggerAnnotations - record form", () => {
       }),
       plugin,
     )
-    expect(plugin.messages.some((m) => /not a CRUD event/i.test(m.message))).toBe(true)
+    expect(plugin.messages.filter((m) => m.severity === "Error")).toEqual([])
   })
 
-  it("accepts bound action name in on", () => {
+  it("accepts arbitrary strings in on (including bound-action-looking names)", () => {
     const plugin = makePlugin()
     validateTriggerAnnotations(
       "Orders",
-      ent(
-        {
-          "@n8n.process.start.path": "wf",
-          "@n8n.process.start.on": "archive",
-        },
-        { archive: {} },
-      ),
+      ent({
+        "@n8n.process.start.path": "wf",
+        "@n8n.process.start.on": "archive",
+      }),
       plugin,
     )
     expect(plugin.messages.filter((m) => m.severity === "Error")).toEqual([])
+  })
+
+  it("rejects on with non-string / non-array shape", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "Orders",
+      ent({
+        "@n8n.process.start.path": "wf",
+        "@n8n.process.start.on": 42,
+      }),
+      plugin,
+    )
+    expect(
+      plugin.messages.some((m) => /must be a string or an array of strings/i.test(m.message)),
+    ).toBe(true)
+  })
+
+  it("rejects on with empty-string entries", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "Orders",
+      ent({
+        "@n8n.process.start.path": "wf",
+        "@n8n.process.start.on": ["CREATE", ""],
+      }),
+      plugin,
+    )
+    expect(plugin.messages.some((m) => /values must be non-empty strings/i.test(m.message))).toBe(
+      true,
+    )
   })
 
   it("warns on unknown sub-key", () => {

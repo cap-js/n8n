@@ -11,7 +11,7 @@ Three annotation flavors, one workflow per flavor under `workflows/`:
 
 | Flow            | CDS pattern                                                                             | Fires on                                 | Payload                               |
 | --------------- | --------------------------------------------------------------------------------------- | ---------------------------------------- | ------------------------------------- |
-| `book-created`  | String shorthand - `@n8n.process.start: 'book-created'` on `Books`                      | Books CREATE + UPDATE                    | Full row                              |
+| `book-created`  | String shorthand - `@n8n.process.start: 'book-created'` on `Books`                      | Books CRUD (all events)                  | Full row                              |
 | `order-shipped` | Record form with `if` + `inputs` on `Orders`                                            | Orders UPDATE where `status = 'shipped'` | `{ ID, quantity, book_ID }`           |
 | `order-deleted` | Qualified record form (`#deleted`) on `Orders` - relies on the plugin's DELETE prefetch | Orders DELETE                            | Pre-delete `{ ID, quantity, status }` |
 
@@ -51,7 +51,7 @@ curl -X POST http://localhost:4004/odata/v4/admin/Books \
   -H 'Content-Type: application/json' \
   -d '{ "ID": 999, "title": "Moby Dick", "author_ID": 101, "stock": 5, "price": 12.50 }'
 
-# UPDATE - also fires book-created (string shorthand → CREATE + UPDATE)
+# UPDATE - also fires book-created (string shorthand → all CRUD events)
 curl -X PATCH "http://localhost:4004/odata/v4/admin/Books(999)" \
   -H 'Content-Type: application/json' \
   -d '{ "stock": 4 }'

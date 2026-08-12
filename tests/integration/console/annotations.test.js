@@ -18,8 +18,6 @@ describe("@n8n.process.start - annotation-driven flow (console kind)", () => {
 
   beforeEach(async () => {
     await cds.run(cql_DELETE.from(WorkflowExecutions))
-    const t = await SELECT.from(WorkflowExecutions);
-    debugger
   })
 
   it('fires the "book-created" webhook on CREATE (string shorthand)', async () => {

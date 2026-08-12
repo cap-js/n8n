@@ -185,22 +185,27 @@ credential to the Webhook node with:
 
 ### Triggering a workflow
 
-**String shorthand** - fires on CREATE + UPDATE:
+**String shorthand** - fires on all CRUD events (CREATE + UPSERT + UPDATE + DELETE):
 
 ```cds
 @n8n.process.start: 'book-created'
 entity Books as projection on my.Books;
 ```
 
-**Record form** - pick events explicitly:
+**Record form** - `on` is optional and defaults to all CRUD events; specify it to
+narrow the event set (any CAP event: CRUD, bound-action names, `SAVE` / `WRITE`, or `*`):
 
 ```cds
 @n8n.process.start: {
   path: 'order-shipped',
-  on:   'UPDATE'                         // CREATE | UPDATE | DELETE | <boundAction> | '*'
+  on:   'UPDATE'                         // any CAP event name, or '*'
 }
 entity Orders as projection on my.Orders;
 ```
+
+Setting `on: []` (empty array) is a deliberate no-op — the annotation is kept
+but registers no handlers. Useful for temporarily disabling a trigger without
+deleting the annotation.
 
 The plugin's `after` handler emits to the outboxed `N8nService`, which
 persists the emit in the same transaction. The actual HTTP call to n8n is
@@ -318,9 +323,11 @@ a `n8n-validation` task via `cds.build.register`.
 
 **Errors** (stop the build):
 
-- `path` and `on` must be present together in the record form.
-- `on` must be `CREATE | UPDATE | DELETE`, a declared bound action of the
-  entity, or `*`.
+- Record form requires `path`. `on` is optional (defaults to all CRUD events).
+- `on` must be a string or an array of strings; values are forwarded verbatim
+  to `service.after` (any CAP event name — CRUD, bound-action names, CAP
+  aliases like `SAVE` / `WRITE`, or `*`). CAP validates the actual event names
+  at handler-registration time.
 - `inputs` must be an array of `{ '=': '$self.…' }` entries.
 - `if` must be a CDS expression.
 - The string-shorthand form must be a non-empty string.

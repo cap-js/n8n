@@ -10,14 +10,8 @@ cds.build?.register?.("n8n-validation", N8nValidationPlugin)
 // Register event handlers for @n8n.process.start annotation
 cds.on("served", (services) => {
   for (const srv of services) {
-    try {
-      registerAnnotationHandlers(srv)
-    } catch (err) {
-      LOG.error(
-        `Failed to register @n8n.process.start handlers for ${srv?.name}:`,
-        err.message ?? err,
-      )
-    }
+    if (!(srv instanceof cds.ApplicationService) || srv.name === "N8nService") continue
+    registerAnnotationHandlers(srv)
   }
 })
 
