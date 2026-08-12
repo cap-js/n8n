@@ -1,6 +1,4 @@
-@open
-type AnyType {}
-type ExecutionsReturn : many AnyType;
+using { N8nApi } from './external/n8n-api';
 
 @protocol: 'none'
 @impl    : './n8n-to-rest'
@@ -13,22 +11,9 @@ service N8nService {
    */
   event trigger {
     @mandatory path : String(256);
-    payload         : AnyType;
+    payload         : Map;
   }
 
-  /**
-   * Retrieves a single execution by ID from the n8n public API.
-   * Calls GET /api/v1/executions/{id}?includeData=true.
-   */
-  function getExecution(
-    @mandatory executionId : String(256)
-  ) returns AnyType;
-
-  /**
-   * Lists executions for a given workflow ID.
-   * Calls GET /api/v1/executions?workflowId={id}&includeData=true.
-   */
-  function listExecutions(
-    @mandatory workflowId : String(256)
-  ) returns ExecutionsReturn;
+  @readonly entity WorkflowExecutions  as projection on N8nApi.Executions;
+  @readonly entity WorkflowDefinitions as projection on N8nApi.Workflows;
 }

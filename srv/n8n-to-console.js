@@ -1,72 +1,39 @@
 const cds = require("@sap/cds")
-const { N8N_LOGGER_PREFIX } = require("../lib/constants")
+const LOG = cds.log("n8n")
 
-const LOG = cds.log(N8N_LOGGER_PREFIX)
-
-/**
- * Opt-in log-only implementation of `N8nService`. Selected by:
- *
- *     "cds": { "requires": { "N8nService": { "kind": "n8n-to-console" } } }
- *
- * Useful for CI / offline development. Every `trigger` call logs the intended
- * webhook path and payload, then records an in-memory synthetic execution so
- * `getExecution` / `listExecutions` still return meaningful data during tests.
- */
-class ConsoleN8nService extends cds.Service {
+class ConsoleN8nService extends cds.ApplicationService {
   async init() {
-    /** @type {Array<{id:string,path:string,payload:unknown,startedAt:string,finishedAt:string,status:string}>} */
-    this.executions = []
-    this._counter = 0
+    
+    this.before("trigger", (req) => {
+      if (!req.data?.path) {
+        throw cds.error(400, "Missing required parameter path!")
+      }
+    })
 
     this.on("trigger", async (req) => {
       const { path, payload } = req.data ?? {}
-      if (!path) {
-        throw cds.error(400, "Missing required parameter: path")
-      }
 
-      this._counter += 1
-      const id = `console-exec-${this._counter}`
-      const now = new Date().toISOString()
-      const record = {
-        id,
-        executionId: id,
-        path,
-        payload,
-        startedAt: now,
-        finishedAt: now,
+      const ID = cds.utils.uuid()
+      const { WorkflowExecutions } = this.entities
+
+      await INSERT.into(WorkflowExecutions).entries({
+        id: ID,
+        workflowId: path,
+        finished: true,
+        mode: "webhook",
         status: "success",
-      }
-      this.executions.push(record)
+        startedAt: new Date().toISOString(),
+        stoppedAt: new Date().toISOString(),
+        data: { payload },
+      })
 
       LOG.info("Trigger n8n workflow", {
         webhookUrl: `/webhook/${path}`,
-        executionId: id,
+        executionId: ID,
         payload,
       })
 
-      return { ok: true, status: 200, executionId: id, body: { executionId: id } }
-    })
-
-    this.on("getExecution", async (req) => {
-      const { executionId } = req.data ?? {}
-      if (!executionId) {
-        throw cds.error(400, "Missing required parameter: executionId")
-      }
-      const exec = this.executions.find((e) => e.id === executionId)
-      if (!exec) {
-        throw cds.error(404, `Execution not found: ${executionId}`)
-      }
-      return exec
-    })
-
-    this.on("listExecutions", async (req) => {
-      const { workflowId } = req.data ?? {}
-      if (!workflowId) {
-        throw cds.error(400, "Missing required parameter: workflowId")
-      }
-      // Console implementation stores no separate n8n workflow ID; treat the
-      // webhook path as the identifier for filtering purposes.
-      return this.executions.filter((e) => e.path === workflowId)
+      return { ok: true, status: 200, executionId: ID, body: { executionId: ID } }
     })
 
     return super.init()

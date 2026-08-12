@@ -1,0 +1,179 @@
+@server=http://localhost:4004
+@username=alice
+@password=
+
+
+### Books
+# @name Books_GET
+GET {{server}}/odata/v4/admin/Books
+Authorization: Basic {{username}}:{{password}}
+
+
+### Books Drafts GET
+# @name Books_Drafts_GET
+GET {{server}}/odata/v4/admin/Books?$filter=(IsActiveEntity eq false)
+Authorization: Basic {{username}}:{{password}}
+
+
+### Books Draft POST
+# @name Books_Draft_POST
+POST {{server}}/odata/v4/admin/Books
+Content-Type: application/json
+Authorization: Basic {{username}}:{{password}}
+
+{
+  "title": "title-7595536",
+  "descr": "descr-7595536",
+  "author": {
+    "ID": 23706047
+  },
+  "genre": {
+    "ID": 29247393
+  },
+  "stock": 68,
+  "price": 69,
+  "currency": {
+    "code": "102"
+  },
+  "createdAt": "2011-03-14T23:00:00.000Z",
+  "createdBy": "createdBy.4isr4@example.org",
+  "modifiedAt": "2005-10-13T23:00:00.000Z",
+  "modifiedBy": "modifiedBy.4isr4@example.com"
+}
+
+
+### Result from POST request above
+@draftID={{Books_Draft_POST.response.body.$.ID}}
+
+
+### Books Draft Activate
+# @name Books_Draft_Activate
+POST {{server}}/odata/v4/admin/Books(ID={{draftID}},IsActiveEntity=false)/AdminService.draftActivate
+Content-Type: application/json
+Authorization: Basic {{username}}:{{password}}
+
+{}
+
+
+### Authors
+# @name Authors_GET
+GET {{server}}/odata/v4/admin/Authors
+Authorization: Basic {{username}}:{{password}}
+
+
+### Authors
+# @name Authors_POST
+POST {{server}}/odata/v4/admin/Authors
+Content-Type: application/json
+Authorization: Basic {{username}}:{{password}}
+
+{
+  "ID": 23706047,
+  "name": "name-23706047",
+  "dateOfBirth": "2000-04-27",
+  "dateOfDeath": "2023-02-16",
+  "placeOfBirth": "placeOfBirth-23706047",
+  "placeOfDeath": "placeOfDeath-23706047",
+  "createdAt": "2023-01-13T23:00:00.000Z",
+  "createdBy": "createdBy.e43pb@example.net",
+  "modifiedAt": "2019-07-11T23:00:00.000Z",
+  "modifiedBy": "modifiedBy.e43pb@example.org"
+}
+
+
+### Authors
+# @name Authors_PATCH
+PATCH {{server}}/odata/v4/admin/Authors/23706047
+Content-Type: application/json
+Authorization: Basic {{username}}:{{password}}
+
+{
+  "ID": 23706047,
+  "name": "name-23706047",
+  "dateOfBirth": "2000-04-27",
+  "dateOfDeath": "2023-02-16",
+  "placeOfBirth": "placeOfBirth-23706047",
+  "placeOfDeath": "placeOfDeath-23706047",
+  "createdAt": "2023-01-13T23:00:00.000Z",
+  "createdBy": "createdBy.e43pb@example.net",
+  "modifiedAt": "2019-07-11T23:00:00.000Z",
+  "modifiedBy": "modifiedBy.e43pb@example.org"
+}
+
+
+### Authors
+# @name Authors_DELETE
+DELETE {{server}}/odata/v4/admin/Authors/23706047
+Content-Type: application/json
+Authorization: Basic {{username}}:{{password}}
+
+
+### Genres
+# @name Genres_GET
+GET {{server}}/odata/v4/admin/Genres
+Authorization: Basic {{username}}:{{password}}
+
+
+### Currencies
+# @name Currencies_GET
+GET {{server}}/odata/v4/admin/Currencies
+Authorization: Basic {{username}}:{{password}}
+
+
+### Orders
+# @name Orders_GET
+GET {{server}}/odata/v4/admin/Orders
+Authorization: Basic {{username}}:{{password}}
+
+
+### Orders
+# @name Orders_POST
+POST {{server}}/odata/v4/admin/Orders
+Content-Type: application/json
+Authorization: Basic {{username}}:{{password}}
+
+{
+  "ID": "9900033f-1bd5-4842-9e3a-af6e3321bf76",
+  "book": {
+    "ID": 7595536
+  },
+  "quantity": 33,
+  "status": "status-9900033",
+  "createdAt": "2000-10-17T23:00:00.000Z",
+  "createdBy": "createdBy.5w6wx@example.net",
+  "modifiedAt": "2003-09-13T23:00:00.000Z",
+  "modifiedBy": "modifiedBy.5w6wx@example.org"
+}
+
+
+### Orders
+# @name Orders_PATCH
+PATCH {{server}}/odata/v4/admin/Orders/9900033f-1bd5-4842-9e3a-af6e3321bf76
+Content-Type: application/json
+Authorization: Basic {{username}}:{{password}}
+
+{
+  "ID": "9900033f-1bd5-4842-9e3a-af6e3321bf76",
+  "book": {
+    "ID": 7595536
+  },
+  "quantity": 33,
+  "status": "status-9900033",
+  "createdAt": "2000-10-17T23:00:00.000Z",
+  "createdBy": "createdBy.5w6wx@example.net",
+  "modifiedAt": "2003-09-13T23:00:00.000Z",
+  "modifiedBy": "modifiedBy.5w6wx@example.org"
+}
+
+
+### Orders
+# @name Orders_DELETE
+DELETE {{server}}/odata/v4/admin/Orders/9900033f-1bd5-4842-9e3a-af6e3321bf76
+Content-Type: application/json
+Authorization: Basic {{username}}:{{password}}
+
+
+### Languages
+# @name Languages_GET
+GET {{server}}/odata/v4/admin/Languages
+Authorization: Basic {{username}}:{{password}}
