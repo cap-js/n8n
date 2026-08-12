@@ -49,7 +49,7 @@ describe("resolveN8nConnection", () => {
     cds.env.requires[SVC] = {
       credentials: { baseUrl: "https://n8n.example.com", apiKey: "top-secret" },
     }
-    const c = await resolveN8nConnection(SVC)
+    const c = await resolveN8nConnection()
     expect(c.baseUrl).toBe("https://n8n.example.com")
     expect(c.apiKey).toBe("top-secret")
     // Legacy `headers` field is preserved for backward compatibility.
@@ -60,7 +60,7 @@ describe("resolveN8nConnection", () => {
     cds.env.requires[SVC] = {}
     process.env.N8N_BASE_URL = "https://from-plain-env.example.com"
     process.env.N8N_API_KEY = "plain-env-key"
-    const c = await resolveN8nConnection(SVC)
+    const c = await resolveN8nConnection()
     expect(c.baseUrl).toBe("https://from-plain-env.example.com")
     expect(c.apiKey).toBe("plain-env-key")
   })
@@ -69,7 +69,7 @@ describe("resolveN8nConnection", () => {
     cds.env.requires[SVC] = {}
     setProfiles(["development"])
     process.env.NODE_ENV = "development"
-    const c = await resolveN8nConnection(SVC)
+    const c = await resolveN8nConnection()
     expect(c.baseUrl).toBe("http://localhost:5678")
     expect(c.apiKey).toBeUndefined()
   })
@@ -78,14 +78,14 @@ describe("resolveN8nConnection", () => {
     cds.env.requires[SVC] = {}
     setProfiles(["production"])
     process.env.NODE_ENV = "production"
-    await expect(resolveN8nConnection(SVC)).rejects.toThrow(/no credentials/i)
+    await expect(resolveN8nConnection()).rejects.toThrow(/no credentials/i)
   })
 
   it("includes default timeouts in the resolved connection", async () => {
     cds.env.requires[SVC] = {
       credentials: { baseUrl: "https://n8n.example.com" },
     }
-    const c = await resolveN8nConnection(SVC)
+    const c = await resolveN8nConnection()
     expect(c.timeout).toEqual({
       connect: DEFAULT_CONNECT_TIMEOUT_MS,
       read: DEFAULT_READ_TIMEOUT_MS,
@@ -96,7 +96,7 @@ describe("resolveN8nConnection", () => {
     cds.env.requires[SVC] = {
       credentials: { baseUrl: "https://n8n.example.com" },
     }
-    const c = await resolveN8nConnection(SVC)
+    const c = await resolveN8nConnection()
     expect(c.useTestWebhook).toBe(false)
   })
 
@@ -107,7 +107,7 @@ describe("resolveN8nConnection", () => {
         useTestWebhook: true,
       },
     }
-    const c = await resolveN8nConnection(SVC)
+    const c = await resolveN8nConnection()
     expect(c.useTestWebhook).toBe(true)
   })
 
@@ -116,7 +116,7 @@ describe("resolveN8nConnection", () => {
       credentials: { baseUrl: "https://n8n.example.com" },
     }
     process.env.N8N_USE_TEST_WEBHOOK = "true"
-    const c = await resolveN8nConnection(SVC)
+    const c = await resolveN8nConnection()
     expect(c.useTestWebhook).toBe(true)
   })
 
@@ -148,7 +148,7 @@ describe("resolveN8nConnection", () => {
         // Re-require the connection module so it picks up the patched destination.
         delete require.cache[require.resolve("../../lib/api/connection")]
         const { resolveN8nConnection: fresh } = require("../../lib/api/connection")
-        const c = await fresh(SVC)
+        const c = await fresh()
         expect(c.baseUrl).toBe("https://managed.example.com/api/managed-n8n")
         expect(c.apiKey).toBe("key-from-destination")
         expect(c.authHeaders).toEqual({ Authorization: "Bearer outer-token" })

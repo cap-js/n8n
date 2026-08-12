@@ -26,7 +26,7 @@ class ConsoleN8nService extends cds.ApplicationService {
         data: { payload },
       })
 
-      LOG.info("Trigger n8n workflow", {
+      LOG.info("Triggering n8n workflow", {
         webhookUrl: `/webhook/${path}`,
         executionId: ID,
         payload,

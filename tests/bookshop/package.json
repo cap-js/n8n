@@ -25,7 +25,8 @@
         "[hybrid]": {
           "kind": "n8n-to-rest",
           "credentials": {
-            "baseUrl": "http://localhost:5678"
+            "url": "http://localhost:5678",
+            "useTestWebhook": true
           }
         },
         "[test]": {
