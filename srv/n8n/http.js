@@ -1,6 +1,6 @@
 const cds = require("@sap/cds")
 
-const LOG = cds.log("n8n")
+const LOG = cds.log("@cap-js/n8n")
 
 // Config source for the REST handlers. Reads from `cds.env.requires.N8nService.credentials`
 // with a fallback to `N8N_BASE_URL` / `N8N_API_KEY` env vars for local dev.

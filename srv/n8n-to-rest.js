@@ -20,7 +20,7 @@ const {
   stopExecution,
 } = require("./n8n/executions")
 
-const LOG = cds.log("n8n")
+const LOG = cds.log("@cap-js/n8n")
 
 // SSRF + log-injection defence on webhook path segments. Absolute URLs,
 // protocol-relative paths, CR/LF, and `..` segments are refused.
