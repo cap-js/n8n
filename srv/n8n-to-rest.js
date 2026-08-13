@@ -1,6 +1,6 @@
 const cds = require("@sap/cds")
 const { resolveN8nConnection } = require("../lib/api/connection")
-const { parseResponse, getProperty } = require("../lib/handlers/utils")
+const { parseResponse, getProperty, hasPayload } = require("../lib/handlers/utils")
 
 const LOG = cds.log("n8n")
 
@@ -51,15 +51,21 @@ class N8nService extends cds.Service {
     const prefix = useTestWebhook ? "/webhook-test" : "/webhook"
     const url = `${baseUrl}${prefix}/${String(path).replace(/^\/+/, "")}`
 
-    LOG.info("Triggering n8n webhook", { url })
-    const response = await fetch(url, {
-      method: "POST",
+    // No input data → GET (empty ping). Any payload → POST with JSON body.
+    const method = hasPayload(payload) ? "POST" : "GET"
+    const init = {
+      method,
       headers: {
-        "Content-Type": "application/json",
         "X-N8N-API-KEY": apiKey,
       },
-      body: JSON.stringify(payload ?? {}),
-    })
+    }
+    if (method === "POST") {
+      init.headers["Content-Type"] = "application/json"
+      init.body = JSON.stringify(payload)
+    }
+
+    LOG.info("Triggering n8n webhook", { method, url })
+    const response = await fetch(url, init)
     return parseResponse(req, response)
   }
 
@@ -124,4 +130,4 @@ class N8nService extends cds.Service {
 
 module.exports = N8nService
 // Exported for unit tests only.
-module.exports._internals = { assertPathSafe, n8nConfig }
+module.exports._internals = { assertPathSafe, n8nConfig, hasPayload }

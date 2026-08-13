@@ -5,6 +5,30 @@
  */
 context N8nApi {
 
+    /**
+   * Mirrors GET /api/v1/workflows and GET /api/v1/workflows/{id}.
+   */
+  @cds.persistence.skip
+  entity Workflows {
+    key id          : String;
+        name        : String @mandatory;
+        description : String;
+        active      : Boolean default false;
+
+        // could be maybe LargeString
+        nodes       : many Map @mandatory;
+        connections : Map @mandatory;
+        settings    : Map @mandatory;
+        staticData  : Map;
+
+        triggerCount : Integer;
+        versionId    : UUID;
+        /** Array of tag objects `{id, name, createdAt, updatedAt}`. */
+        tags        : many Map;
+        createdAt   : Timestamp @cds.on.insert: $now;
+        updatedAt   : Timestamp @cds.on.update: $now;
+  }
+
   /**
    * Mirrors GET /api/v1/executions and GET /api/v1/executions/{id}.
    */
@@ -13,41 +37,18 @@ context N8nApi {
     key id             : String;
         workflowId     : String;
         finished       : Boolean;
-        /** 'manual' | 'trigger' | 'webhook' | 'retry' | 'internal' | 'evaluation' */
+        /** 'cli' | 'error' | 'integrated' | 'internal' | 'manual' | 'retry' | 'trigger' | 'webhook' | 'evaluation' | 'chat' */
         mode           : String;
-        retryOf        : String;
-        retrySuccessId : String;
-        /** 'new' | 'running' | 'success' | 'error' | 'waiting' | 'canceled' | 'crashed' */
+        retryOf        : Integer;
+        retrySuccessId : Integer;
+        /** 'new' | 'running' | 'success' | 'error' | 'waiting' | 'canceled' | 'crashed' | 'unknow' */
         status         : String;
-        startedAt      : Timestamp;
+        startedAt      : Timestamp @cds.on.insert: $now;
         stoppedAt      : Timestamp;
         waitTill       : Timestamp;
         /**
-         * Full node run data as returned by `?includeData=true`. Opaque map —
-         * see n8n docs for shape. Absent when `includeData=false`.
+         * Full node run data as returned by `?includeData=true`.
          */
         data           : Map;
-  }
-
-  /**
-   * Mirrors GET /api/v1/workflows and GET /api/v1/workflows/{id}.
-   */
-  @cds.persistence.skip
-  entity Workflows {
-    key id          : String;
-        name        : String;
-        active      : Boolean;
-        createdAt   : Timestamp;
-        updatedAt   : Timestamp;
-        /** Array of n8n node definitions. Opaque map, one per node. */
-        nodes       : many Map;
-        /** Directed graph of connections keyed by node name. Opaque. */
-        connections : Map;
-        /** Workflow-level settings (execution order, timezone, etc.). Opaque. */
-        settings    : Map;
-        /** Persisted static data available inside workflow expressions. Opaque. */
-        staticData  : Map;
-        /** Array of tag objects `{id, name, createdAt, updatedAt}`. */
-        tags        : many Map;
   }
 }

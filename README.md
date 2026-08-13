@@ -150,6 +150,24 @@ first, then `N8N_USE_TEST_WEBHOOK`, then a BTP destination property
 The flag only affects webhook POSTs. Calls to n8n's public REST API
 (`/api/v1/executions/…`) always use the canonical `/api/v1` prefix.
 
+### HTTP method: GET vs POST
+
+The plugin picks the HTTP method based on whether the emitted `payload` is
+non-empty:
+
+| Emitted `payload`                    | HTTP method                                          |
+| ------------------------------------ | ---------------------------------------------------- |
+| `undefined`, `null`, `{}`, or `[]`   | `GET {baseUrl}/webhook/<path>` — no body, no query.  |
+| Any primitive, non-empty object/array | `POST {baseUrl}/webhook/<path>` with JSON body.     |
+
+This lets n8n Webhook nodes configured for `GET` (e.g. simple "ping"
+workflows that don't need input) work out of the box: emit `trigger` without
+a `payload` and the plugin issues a `GET`. As soon as a payload is present,
+the call switches back to `POST` with `Content-Type: application/json`.
+
+The switch is inferred purely from the emitted `payload` — there is no way
+to force a method explicitly today.
+
 ### Retry semantics
 
 Failed webhook calls are retried by the CAP outbox (persistent queue backed
