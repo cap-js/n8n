@@ -1,6 +1,23 @@
 const cds = require("@sap/cds")
 const { resolveN8nConnection } = require("../lib/api/connection")
-const { parseResponse, getProperty, hasPayload } = require("../lib/handlers/utils")
+const { parseResponse, hasPayload } = require("../lib/handlers/utils")
+
+const {
+  readWorkflows,
+  createWorkflow,
+  updateWorkflow,
+  deleteWorkflow,
+  publishWorkflow,
+  unpublishWorkflow,
+  archiveWorkflow,
+} = require("./n8n/workflows")
+
+const {
+  readExecutions,
+  deleteExecution,
+  retryExecution,
+  stopExecution,
+} = require("./n8n/executions")
 
 const LOG = cds.log("n8n")
 
@@ -33,14 +50,40 @@ function n8nConfig() {
   }
 }
 
+async function n8nRequest({ method, path, body }) {
+  const { baseUrl, apiKey } = n8nConfig()
+  const init = {
+    method,
+    headers: { "X-N8N-API-KEY": apiKey },
+  }
+  if (body !== undefined) {
+    init.headers["Content-Type"] = "application/json"
+    init.body = JSON.stringify(body)
+  }
+  const url = `${baseUrl}${path}`
+  LOG.info("n8n API request", { method, url })
+  return fetch(url, init)
+}
+
 class N8nService extends cds.Service {
   async init() {
     const { WorkflowExecutions, WorkflowDefinitions } = this.entities
 
     this.before("trigger", (req) => assertPathSafe(req.data?.path))
     this.on("trigger", this._trigger)
-    this.on("READ", WorkflowExecutions, this._readExecutions)
-    this.on("READ", WorkflowDefinitions, this._readWorkflows)
+
+    this.on("READ", WorkflowExecutions, readExecutions)
+    this.on("DELETE", WorkflowExecutions, deleteExecution)
+    this.on("retryExecution", retryExecution)
+    this.on("stopExecution", stopExecution)
+
+    this.on("READ", WorkflowDefinitions, readWorkflows)
+    this.on("CREATE", WorkflowDefinitions, createWorkflow)
+    this.on("UPDATE", WorkflowDefinitions, updateWorkflow)
+    this.on("DELETE", WorkflowDefinitions, deleteWorkflow)
+    this.on("publishWorkflow", publishWorkflow)
+    this.on("unpublishWorkflow", unpublishWorkflow)
+    this.on("archiveWorkflow", archiveWorkflow)
 
     return super.init()
   }
@@ -68,66 +111,10 @@ class N8nService extends cds.Service {
     const response = await fetch(url, init)
     return parseResponse(req, response)
   }
-
-  async _readExecutions(req) {
-    const { baseUrl, apiKey } = n8nConfig()
-    const where = req.query.SELECT.from.ref.at(-1)?.where || req.query.SELECT.where
-    const id = getProperty(where, "id")
-
-    let url = `${baseUrl}/api/v1/executions`
-    if (id) {
-      url += `/${encodeURIComponent(id)}?includeData=true`
-    } else {
-      const params = new URLSearchParams()
-      const workflowId = getProperty(where, "workflowId")
-      const status = getProperty(where, "status")
-      if (workflowId) params.set("workflowId", workflowId)
-      if (status) params.set("status", status)
-      if (req.query.SELECT.limit?.rows?.val) params.set("limit", req.query.SELECT.limit.rows.val)
-      const qs = params.toString()
-      if (qs) url += `?${qs}`
-    }
-
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "X-N8N-API-KEY": apiKey,
-      },
-    })
-    return parseResponse(req, response)
-  }
-
-  async _readWorkflows(req) {
-    const { baseUrl, apiKey } = n8nConfig()
-    const where = req.query.SELECT.from.ref.at(-1)?.where || req.query.SELECT.where
-    const id = getProperty(where, "id")
-
-    let url = `${baseUrl}/api/v1/workflows`
-    if (id) {
-      url += `/${encodeURIComponent(id)}`
-    } else {
-      const params = new URLSearchParams()
-      const active = getProperty(where, "active")
-      const name = getProperty(where, "name")
-      if (active != null) params.set("active", String(active))
-      if (name) params.set("name", name)
-      if (req.query.SELECT.limit?.rows?.val) params.set("limit", req.query.SELECT.limit.rows.val)
-      const qs = params.toString()
-      if (qs) url += `?${qs}`
-    }
-
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        "X-N8N-API-KEY": apiKey,
-      },
-    })
-    return parseResponse(req, response)
-  }
 }
 
 module.exports = N8nService
+module.exports.n8nRequest = n8nRequest
+module.exports.n8nConfig = n8nConfig
 // Exported for unit tests only.
-module.exports._internals = { assertPathSafe, n8nConfig, hasPayload }
+module.exports._internals = { assertPathSafe, n8nConfig, hasPayload, n8nRequest }

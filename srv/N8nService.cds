@@ -14,9 +14,25 @@ service N8nService {
     payload : Map;
   }
 
-  @readonly
+  @Capabilities: {
+    InsertRestrictions.Insertable: false,
+    UpdateRestrictions.Updatable : false,
+    DeleteRestrictions.Deletable : true
+  }
   entity WorkflowExecutions  as projection on N8nApi.Executions;
 
-  @readonly
+  action retryExecution(id : String, loadWorkflow : Boolean) returns WorkflowExecutions;
+  action stopExecution(id : String) returns WorkflowExecutions;
+
   entity WorkflowDefinitions as projection on N8nApi.Workflows;
+
+  action publishWorkflow(
+    id : String,
+    versionId : String,
+    name : String,
+    description : String
+  ) returns WorkflowDefinitions;
+
+  action unpublishWorkflow(id : String) returns WorkflowDefinitions;
+  action archiveWorkflow(id : String) returns WorkflowDefinitions;
 }
