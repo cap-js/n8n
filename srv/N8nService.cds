@@ -10,7 +10,7 @@ service N8nService {
    * - payload : arbitrary JSON body sent to the webhook
    */
   event trigger {
-    path    : String(256) @mandatory;
+    path    : String(256);
     payload : Map;
   }
 
@@ -21,18 +21,18 @@ service N8nService {
   }
   entity WorkflowExecutions  as projection on N8nApi.Executions;
 
-  action retryExecution(id : String, loadWorkflow : Boolean) returns WorkflowExecutions;
-  action stopExecution(id : String) returns WorkflowExecutions;
+  action retryExecution(id : String @mandatory, loadWorkflow : Boolean) returns WorkflowExecutions;
+  action stopExecution(id : String @mandatory) returns WorkflowExecutions;
 
   entity WorkflowDefinitions as projection on N8nApi.Workflows;
 
   action publishWorkflow(
-    id : String,
-    versionId : String,
+    id : String @mandatory,
+    versionId: UUID,
     name : String,
     description : String
   ) returns WorkflowDefinitions;
 
-  action unpublishWorkflow(id : String) returns WorkflowDefinitions;
-  action archiveWorkflow(id : String) returns WorkflowDefinitions;
+  action unpublishWorkflow(id : String @mandatory) returns WorkflowDefinitions;
+  action archiveWorkflow(id : String @mandatory) returns WorkflowDefinitions;
 }

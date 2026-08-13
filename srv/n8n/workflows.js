@@ -1,8 +1,5 @@
-const { parseResponse, getProperty } = require("../../lib/handlers/utils")
-
-function n8nRequest(opts) {
-  return require("../n8n-to-rest").n8nRequest(opts)
-}
+const { parseResponse, getProperty, extractIds } = require("../../lib/handlers/utils")
+const { n8nRequest } = require("./http")
 
 const WORKFLOW_READ_ONLY_FIELDS = [
   "id",
@@ -27,42 +24,34 @@ function stripReadOnly(payload) {
   return out
 }
 
-// Extracts the workflow id from an UPDATE / DELETE / bound-action request.
-function extractWorkflowId(req) {
-  const last = req.params?.at?.(-1)
-  if (last != null) {
-    if (typeof last === "object" && last.id != null) return last.id
-    if (typeof last !== "object") return last
-  }
-  if (req.data?.id) return req.data.id
-  
-  const cqn = req.query?.UPDATE ?? req.query?.DELETE
-  const ref = cqn?.entity?.ref ?? cqn?.from?.ref
-  const where = ref?.at?.(-1)?.where ?? cqn?.where
-  if (where) {
-    const id = getProperty(where, "id")
-    if (id) return id
-  }
-  return null
-}
-
 async function readWorkflows(req) {
-  const where = req.query.SELECT.from.ref.at(-1)?.where || req.query.SELECT.where
-  const id = getProperty(where, "id")
-
-  let path = "/api/v1/workflows"
-  if (id) {
-    path += `/${encodeURIComponent(id)}`
-  } else {
-    const params = new URLSearchParams()
-    const active = getProperty(where, "active")
-    const name = getProperty(where, "name")
-    if (active != null) params.set("active", String(active))
-    if (name) params.set("name", name)
-    if (req.query.SELECT.limit?.rows?.val) params.set("limit", req.query.SELECT.limit.rows.val)
-    const qs = params.toString()
-    if (qs) path += `?${qs}`
+  const ids = extractIds(req)
+  if (ids) {
+    const rows = []
+    for (const id of ids) {
+      const response = await n8nRequest({
+        method: "GET",
+        path: `/api/v1/workflows/${encodeURIComponent(id)}`,
+      })
+      const row = await parseResponse(req, response)
+      if (row && (typeof row !== "object" || Object.keys(row).length > 0)) {
+        rows.push(row)
+      }
+    }
+    if (req.query.SELECT?.one) return rows[0]
+    return rows
   }
+
+  // No id in the where-clause — list all with optional filters.
+  const where = req.query.SELECT.from.ref.at(-1)?.where || req.query.SELECT.where
+  const params = new URLSearchParams()
+  const active = getProperty(where, "active")
+  const name = getProperty(where, "name")
+  if (active != null) params.set("active", String(active))
+  if (name) params.set("name", name)
+  if (req.query.SELECT.limit?.rows?.val) params.set("limit", req.query.SELECT.limit.rows.val)
+  const qs = params.toString()
+  const path = qs ? `/api/v1/workflows?${qs}` : "/api/v1/workflows"
 
   const response = await n8nRequest({ method: "GET", path })
   return parseResponse(req, response)
@@ -83,10 +72,29 @@ async function createWorkflow(req) {
   return parseResponse(req, response)
 }
 
+const WORKFLOW_PUT_REQUIRED_FIELDS = ["name", "nodes", "connections", "settings"]
+
 async function updateWorkflow(req) {
-  const id = extractWorkflowId(req)
+  const [id] = extractIds(req) ?? []
   if (!id) return req.reject(400, "Missing workflow id for UPDATE")
   const body = stripReadOnly(req.data ?? {})
+
+  // Back-fill any PUT-mandatory field the caller left out from the currently stored workflow
+  const missing = WORKFLOW_PUT_REQUIRED_FIELDS.filter((f) => body[f] == null)
+  if (missing.length > 0) {
+    const currentResponse = await n8nRequest({
+      method: "GET",
+      path: `/api/v1/workflows/${encodeURIComponent(id)}`,
+    })
+    const current = await parseResponse(req, currentResponse)
+    if (!current || (typeof current === "object" && Object.keys(current).length === 0)) {
+      return req.reject(404, `Workflow ${id} not found`)
+    }
+    for (const f of missing) {
+      if (current[f] != null) body[f] = current[f]
+    }
+  }
+
   const response = await n8nRequest({
     method: "PUT",
     path: `/api/v1/workflows/${encodeURIComponent(id)}`,
@@ -96,13 +104,18 @@ async function updateWorkflow(req) {
 }
 
 async function deleteWorkflow(req) {
-  const id = extractWorkflowId(req)
-  if (!id) return req.reject(400, "Missing workflow id for DELETE")
-  const response = await n8nRequest({
-    method: "DELETE",
-    path: `/api/v1/workflows/${encodeURIComponent(id)}`,
-  })
-  return parseResponse(req, response)
+  const ids = extractIds(req)
+  if (!ids || ids.length === 0) return req.reject(400, "Missing workflow id for DELETE")
+
+  const results = []
+  for (const id of ids) {
+    const response = await n8nRequest({
+      method: "DELETE",
+      path: `/api/v1/workflows/${encodeURIComponent(id)}`,
+    })
+    results.push(await parseResponse(req, response))
+  }
+  return ids.length === 1 ? results[0] : results
 }
 
 async function publishWorkflow(req) {
@@ -150,6 +163,6 @@ module.exports = {
   archiveWorkflow,
   // Exposed for reuse and unit tests.
   stripReadOnly,
-  extractWorkflowId,
   WORKFLOW_READ_ONLY_FIELDS,
+  WORKFLOW_PUT_REQUIRED_FIELDS,
 }

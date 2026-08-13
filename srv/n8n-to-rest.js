@@ -1,6 +1,7 @@
 const cds = require("@sap/cds")
 const { resolveN8nConnection } = require("../lib/api/connection")
 const { parseResponse, hasPayload } = require("../lib/handlers/utils")
+const { n8nConfig, n8nRequest } = require("./n8n/http")
 
 const {
   readWorkflows,
@@ -37,32 +38,6 @@ function assertPathSafe(path) {
   if (t.split("/").some((s) => s === "..")) {
     throw cds.error(400, `path must not contain ".." segments`)
   }
-}
-
-// Config source for the READ handlers. Trigger uses resolveN8nConnection so
-// BTP destinations + useTestWebhook flag propagate; the reads stay on this
-// lighter helper because they only need baseUrl + apiKey.
-function n8nConfig() {
-  const creds = cds.env.requires?.N8nService?.credentials ?? {}
-  return {
-    baseUrl: creds.url ?? process.env.N8N_BASE_URL,
-    apiKey: creds.apiKey ?? process.env.N8N_API_KEY,
-  }
-}
-
-async function n8nRequest({ method, path, body }) {
-  const { baseUrl, apiKey } = n8nConfig()
-  const init = {
-    method,
-    headers: { "X-N8N-API-KEY": apiKey },
-  }
-  if (body !== undefined) {
-    init.headers["Content-Type"] = "application/json"
-    init.body = JSON.stringify(body)
-  }
-  const url = `${baseUrl}${path}`
-  LOG.info("n8n API request", { method, url })
-  return fetch(url, init)
 }
 
 class N8nService extends cds.Service {
@@ -114,7 +89,5 @@ class N8nService extends cds.Service {
 }
 
 module.exports = N8nService
-module.exports.n8nRequest = n8nRequest
-module.exports.n8nConfig = n8nConfig
 // Exported for unit tests only.
-module.exports._internals = { assertPathSafe, n8nConfig, hasPayload, n8nRequest }
+module.exports._internals = { assertPathSafe }

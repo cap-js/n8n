@@ -14,6 +14,7 @@ context N8nApi {
         name        : String @mandatory;
         description : String;
         active      : Boolean default false;
+        isArchived  : Boolean default false;
 
         // could be maybe LargeString
         nodes       : many Map @mandatory;

@@ -1,58 +1,53 @@
-const { parseResponse, getProperty } = require("../../lib/handlers/utils")
-function n8nRequest(opts) {
-  return require("../n8n-to-rest").n8nRequest(opts)
-}
-
-// Extracts the execution id from a READ / DELETE / bound-action request
-function extractExecutionId(req) {
-  const last = req.params?.at?.(-1)
-  if (last != null) {
-    if (typeof last === "object" && last.id != null) return last.id
-    if (typeof last !== "object") return last
-  }
-  
-  if (req.data?.id) return req.data.id
-  
-  const cqn = req.query?.DELETE ?? req.query?.UPDATE
-  const ref = cqn?.from?.ref ?? cqn?.entity?.ref
-  const where = ref?.at?.(-1)?.where ?? cqn?.where
-  if (where) {
-    const id = getProperty(where, "id")
-    if (id) return id
-  }
-  return null
-}
+const { parseResponse, getProperty, extractIds } = require("../../lib/handlers/utils")
+const { n8nRequest } = require("./http")
 
 async function readExecutions(req) {
-  const where = req.query.SELECT.from.ref.at(-1)?.where || req.query.SELECT.where
-  const id = getProperty(where, "id")
-
-  let path = "/api/v1/executions"
-  if (id) {
-    path += `/${encodeURIComponent(id)}?includeData=true`
-  } else {
-    const params = new URLSearchParams()
-    const workflowId = getProperty(where, "workflowId")
-    const status = getProperty(where, "status")
-    if (workflowId) params.set("workflowId", workflowId)
-    if (status) params.set("status", status)
-    if (req.query.SELECT.limit?.rows?.val) params.set("limit", req.query.SELECT.limit.rows.val)
-    const qs = params.toString()
-    if (qs) path += `?${qs}`
+  const ids = extractIds(req)
+  if (ids) {
+    const rows = []
+    for (const id of ids) {
+      const response = await n8nRequest({
+        method: "GET",
+        path: `/api/v1/executions/${encodeURIComponent(id)}?includeData=true`,
+      })
+      const row = await parseResponse(req, response)
+      if (row && (typeof row !== "object" || Object.keys(row).length > 0)) {
+        rows.push(row)
+      }
+    }
+    if (req.query.SELECT?.one) return rows[0]
+    return rows
   }
+
+  // No id in the where-clause — list with optional filters.
+  const where = req.query.SELECT.from.ref.at(-1)?.where || req.query.SELECT.where
+  const params = new URLSearchParams()
+  const workflowId = getProperty(where, "workflowId")
+  const status = getProperty(where, "status")
+  if (workflowId) params.set("workflowId", workflowId)
+  if (status) params.set("status", status)
+  if (req.query.SELECT.limit?.rows?.val) params.set("limit", req.query.SELECT.limit.rows.val)
+  const qs = params.toString()
+  const path = qs ? `/api/v1/executions?${qs}` : "/api/v1/executions"
 
   const response = await n8nRequest({ method: "GET", path })
   return parseResponse(req, response)
 }
 
 async function deleteExecution(req) {
-  const id = extractExecutionId(req)
-  if (!id) return req.reject(400, "Missing execution id for DELETE")
-  const response = await n8nRequest({
-    method: "DELETE",
-    path: `/api/v1/executions/${encodeURIComponent(id)}`,
-  })
-  return parseResponse(req, response)
+  const ids = extractIds(req)
+  if (!ids || ids.length === 0) return req.reject(400, "Missing execution id for DELETE")
+
+  // n8n has no bulk-delete endpoint
+  const results = []
+  for (const id of ids) {
+    const response = await n8nRequest({
+      method: "DELETE",
+      path: `/api/v1/executions/${encodeURIComponent(id)}`,
+    })
+    results.push(await parseResponse(req, response))
+  }
+  return ids.length === 1 ? results[0] : results
 }
 
 async function retryExecution(req) {
@@ -82,6 +77,4 @@ module.exports = {
   deleteExecution,
   retryExecution,
   stopExecution,
-  // Exposed for reuse and unit tests.
-  extractExecutionId,
 }

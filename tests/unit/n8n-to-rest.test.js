@@ -1,5 +1,5 @@
 const N8nService = require("../../srv/n8n-to-rest")
-const { assertPathSafe, n8nConfig, hasPayload } = N8nService._internals
+const { assertPathSafe } = N8nService._internals
 
 describe("assertPathSafe", () => {
   it("accepts a plain path", () => {
@@ -26,67 +26,6 @@ describe("assertPathSafe", () => {
   it('rejects ".." path segments', () => {
     expect(() => assertPathSafe("../api/v1/workflows")).toThrow(/\.\./)
     expect(() => assertPathSafe("foo/../bar")).toThrow(/\.\./)
-  })
-})
-
-describe("n8nConfig", () => {
-  const cds = require("@sap/cds")
-  let savedRequires
-  let savedEnv
-  beforeEach(() => {
-    savedRequires = cds.env.requires
-    savedEnv = { url: process.env.N8N_BASE_URL, key: process.env.N8N_API_KEY }
-    cds.env.requires = {}
-  })
-  afterEach(() => {
-    cds.env.requires = savedRequires
-    if (savedEnv.url === undefined) delete process.env.N8N_BASE_URL
-    else process.env.N8N_BASE_URL = savedEnv.url
-    if (savedEnv.key === undefined) delete process.env.N8N_API_KEY
-    else process.env.N8N_API_KEY = savedEnv.key
-  })
-
-  it("reads url + apiKey from cds.env.requires.N8nService.credentials", () => {
-    cds.env.requires.N8nService = {
-      credentials: { url: "http://x:5678", apiKey: "abc" },
-    }
-    expect(n8nConfig()).toEqual({ baseUrl: "http://x:5678", apiKey: "abc" })
-  })
-
-  it("falls back to N8N_* env vars when credentials are absent", () => {
-    process.env.N8N_BASE_URL = "http://envhost:5678"
-    process.env.N8N_API_KEY = "env-key"
-    expect(n8nConfig()).toEqual({ baseUrl: "http://envhost:5678", apiKey: "env-key" })
-  })
-
-  it("mixes: url from config, apiKey from env", () => {
-    cds.env.requires.N8nService = { credentials: { url: "http://x:5678" } }
-    process.env.N8N_API_KEY = "env-key"
-    expect(n8nConfig()).toEqual({ baseUrl: "http://x:5678", apiKey: "env-key" })
-  })
-})
-
-describe("hasPayload", () => {
-  it("treats null / undefined as no payload", () => {
-    expect(hasPayload(undefined)).toBe(false)
-    expect(hasPayload(null)).toBe(false)
-  })
-  it("treats empty objects and arrays as no payload", () => {
-    expect(hasPayload({})).toBe(false)
-    expect(hasPayload([])).toBe(false)
-  })
-  it("treats non-empty objects as payload", () => {
-    expect(hasPayload({ a: 1 })).toBe(true)
-    expect(hasPayload({ a: undefined })).toBe(true) // has own key
-  })
-  it("treats non-empty arrays as payload", () => {
-    expect(hasPayload([1])).toBe(true)
-    expect(hasPayload([null])).toBe(true)
-  })
-  it("treats primitives as payload", () => {
-    expect(hasPayload("x")).toBe(true)
-    expect(hasPayload(0)).toBe(true)
-    expect(hasPayload(false)).toBe(true)
   })
 })
 

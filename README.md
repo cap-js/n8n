@@ -247,17 +247,17 @@ to `false`, no trigger is fired.
 
 ### Input mapping
 
-Without `inputs`, all direct scalar attributes are sent.
+The `@n8n.process.start.inputs` annotation allows you to specify which elements are part of the request sent to n8n to trigger the workflow. All direct entity attributes are sent by default when no inputs are specified.
 
 ```cds
 @n8n.process.start: {
   path: 'shipment-ready',
   on:   'UPDATE',
   inputs: [
-    $self.ID,                                       // scalar
-    $self.total,                                    // scalar
-    $self.items,                                    // expand all child fields
-    $self.items.ID,                                 // combined: wildcard + specific
+    $self.ID,
+    $self.total,
+    $self.items,                          // expand all child fields
+    $self.items.ID,                       // combined: wildcard + specific
     $self.items.title
   ]
 }
@@ -265,9 +265,8 @@ entity Shipments as projection on my.Shipments;
 ```
 
 Special values:
-
-- `$self` alone means "all scalar fields of the current entity" (=> which is the default).
-- `$self.assoc` alone expands all direct attributes of the associated entity.
+- `$self` alone means that all fields of the current entity are sent (default)
+- `$self.<assoc>` expands all direct attributes of the associated entity
 
 ### Multiple triggers per entity
 
@@ -295,7 +294,7 @@ await n8n.emit("trigger", {
 
 ### Querying executions and workflows
 
-`N8nService` exposes read-only entities `WorkflowExecutions` and `WorkflowDefinitions` projected from n8n's public REST API. Reads are delegated live to n8n through the same connection the plugin uses for webhook triggers.
+`N8nService` exposes two entities projected from n8n's public REST API: `WorkflowDefinitions` and `WorkflowExecutions`. In addition, five unbound actions are specified: `publishWorkflow`, `unpublishWorkflow`, `archiveWorkflow`, `retryExecution`, `stopExecution`. 
 
 ```js
 const n8n = await cds.connect.to("N8nService")
@@ -310,27 +309,46 @@ const one = await SELECT.one.from(WorkflowExecutions).where({ id: "exec-42" })
 // Only active workflows, top 20
 const active = await SELECT.from(WorkflowDefinitions).where({ active: true }).limit(20)
 
-// Selecting `data` explicitly opts into the heavier `?includeData=true`
-// query on the list endpoint (single-by-id always includes it):
-const withData = await SELECT.from(WorkflowExecutions)
-  .columns("id", "status", "data")
-  .where({ workflowId: "abcd" })
+// Batch read
+const some = await SELECT.from(WorkflowDefinitions).where({ id: ["a", "b", "c"] })
+
+await UPDATE(WorkflowDefinitions, "abc").with({ name: "Renamed" })
+
+// Actions
+await n8n.send("publishWorkflow", { id: "abc" })
+await n8n.send("archiveWorkflow", { id: "abc" })
+await n8n.send("stopExecution", { id: "exec-42" })
+await n8n.send("retryExecution", { id: "exec-42", loadWorkflow: true })
 ```
 
-The `N8nService` model (`srv/N8nService.cds`):
+#### Supported `cds.ql` operations
 
-| Entity                | Access    | Backed by                                           |
-| --------------------- | --------- | --------------------------------------------------- |
-| `trigger` (event)     | emit      | POST `{baseUrl}/webhook/<path>` with `payload`      |
-| `WorkflowExecutions`  | READ-only | `GET /api/v1/executions[/{id}]` (CQN → querystring) |
-| `WorkflowDefinitions` | READ-only | `GET /api/v1/workflows[/{id}]` (CQN → querystring)  |
+| Operation                     | `WorkflowDefinitions`                         | `WorkflowExecutions`                          |
+| ----------------------------- | --------------------------------------------- | --------------------------------------------- |
+| **READ (list)**               | ✓                                             | ✓                                             |
+|  – limit                      | ✓                                             | ✓                                             |
+|  – where\*                    | `id`, `id in […]`, `active`, `name`           | `id`, `id in […]`, `workflowId`, `status`     |
+|  – columns projection         | –                                             | –                                             |
+| **READ (single)**             | ✓                                             | ✓                                             |
+| **CREATE**                    | ✓                                             | –                                             |
+|  – required fields            | `name`, `nodes`, `connections`, `settings`    | –                                             |
+| **UPDATE**                    | ✓ (partial — missing fields back-filled)      | –                                             |
+|  – where\*                    | `id`, `id in […]`                             | –                                             |
+| **UPSERT**                    | –                                             | –                                             |
+| **DELETE**                    | ✓                                             | ✓                                             |
+|  – where\*                    | `id`, `id in […]`                             | `id`, `id in […]`                             |
+| **Unbound actions**           | `publishWorkflow`, `unpublishWorkflow`, `archiveWorkflow` | `retryExecution`, `stopExecution` |
 
-**WHERE-clause mapping** (equality only — anything more complex is applied client-side over the returned rows):
+\* WHERE-clause fields listed are those the handler maps to n8n query params or path segments. Any additional predicates in the CQN clause are ignored by the REST call — apply them client-side over the returned rows if you need them.
 
-- `WorkflowExecutions`: `id`, `workflowId`, `status`, `projectId`
-- `WorkflowDefinitions`: `id`, `active`, `name`, `projectId`
+Notes:
 
-**Pagination**: n8n uses cursor-based pagination (`nextCursor`). The READ handler transparently follows cursors up to a soft cap (5 pages) to satisfy `SELECT.limit(N)`. `SELECT.limit(N, OFFSET)` is emulated client-side.
+- `id in […]` batch operations fan out to per-id HTTP calls (n8n has no bulk endpoints). Missing rows drop out of READ results; failures on individual DELETE calls are logged but don't short-circuit the batch.
+- On non-2xx responses the parser logs and returns `{}` instead of throwing — same contract as `cap-js/ai`. Callers that need strict error propagation should inspect the returned shape.
+- Column projection (`.columns([...])`) is accepted by the CQL layer but the REST handlers currently return the full row shape returned by n8n. The console mock (SQLite-backed) does honor projection.
+- **Pagination**: n8n uses cursor-based pagination (`nextCursor`). Only `SELECT.limit(N)` is forwarded — offsets and cursor chaining are not currently exposed via CQL.
+- **`retryExecution`** accepts an optional `loadWorkflow: Boolean` in the action payload; omitted → no request body, `true`/`false` → forwarded verbatim.
+- **`archiveWorkflow`** flips `isArchived: true` (and deactivates the workflow); **`publishWorkflow`** / **`unpublishWorkflow`** flip `active` only.
 
 ---
 
