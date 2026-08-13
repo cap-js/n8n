@@ -387,24 +387,6 @@ Deliberately excluded from this initial release:
 
 ---
 
-## Development
-
-```bash
-npm install
-npm test           # unit + console-integration tests (no docker required)
-npm run test:live  # add: real REST calls against localhost:5678 (docker up first)
-```
-
-Test layout:
-
-- `tests/unit/**` - pure JS tests: input parser, annotation scanner,
-  build validations, connection resolver, n8n client URL builder.
-- `tests/integration/console/**` - runs the sample bookshop with the
-  `n8n-to-console` kind. Verifies annotation-driven dispatch,
-  `.if` gating, `.inputs` mapping, and the programmatic API.
-- `tests/integration/rest/**` - skips gracefully when
-  `http://localhost:5678/healthz` is unreachable. Enable it by starting the
-  docker container in `tests/bookshop`.
 
 ---
 

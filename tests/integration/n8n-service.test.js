@@ -1,7 +1,7 @@
 const cds = require("@sap/cds")
 const path = require("path")
 
-const app = path.join(__dirname, "../../bookshop")
+const app = path.join(__dirname, "../bookshop")
 const { expect } = cds.test(app)
 
 // Minimal n8n-valid workflow body — a single manual-trigger node

@@ -1,13 +1,13 @@
 const cds = require("@sap/cds")
 
 const path = require("path")
-const app = path.join(__dirname, "../../bookshop")
+const app = path.join(__dirname, "../bookshop")
 const { POST, PATCH, DELETE, expect } = cds.test(app)
 // `DELETE` above is the HTTP helper from cds.test. For CQL wipes we reach
 // through cds.ql to avoid the name clash.
 const { DELETE: cql_DELETE } = cds.ql
 
-describe("@n8n.process.start - annotation-driven flow (console kind)", () => {
+describe("@n8n.process.start - annotation-driven flow", () => {
   let n8n
   let WorkflowExecutions
 
