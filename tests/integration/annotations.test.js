@@ -110,3 +110,36 @@ describe("@n8n.process.start - annotation-driven flow", () => {
     expect(deleted).to.have.length(0)
   })
 })
+
+describe("@n8n.process.start - array form", () => {
+  let n8n
+  let WorkflowExecutions
+
+  beforeAll(async () => {
+    n8n = await cds.connect.to("n8n")
+    ;({ WorkflowExecutions } = n8n.entities)
+  })
+
+  beforeEach(async () => {
+    await cds.run(cql_DELETE.from(WorkflowExecutions))
+  })
+
+  it('fires "shelf-created" on CREATE via array annotation', async () => {
+    const { status, data: shelf } = await POST("/odata/v4/admin/Shelves", { label: "Fiction" })
+    expect(status).to.equal(201)
+    expect(shelf).to.have.property("ID")
+
+    const created = await SELECT.from(WorkflowExecutions).where({ workflowId: "shelf-created" })
+    expect(created).to.have.length(1)
+  })
+
+  it('fires "shelf-deleted" on DELETE via array annotation', async () => {
+    const { data: shelf } = await POST("/odata/v4/admin/Shelves", { label: "Science" })
+    await cds.run(cql_DELETE.from(WorkflowExecutions))
+
+    await DELETE(`/odata/v4/admin/Shelves(${shelf.ID})`)
+
+    const deleted = await SELECT.from(WorkflowExecutions).where({ workflowId: "shelf-deleted" })
+    expect(deleted).to.have.length(1)
+  })
+})

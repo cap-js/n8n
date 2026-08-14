@@ -28,4 +28,11 @@ service AdminService {
     inputs: [ $self.ID, $self.quantity, $self.status ]
   }
   entity Orders  as projection on my.Orders;
+
+  // Array form — two triggers registered via a single annotation.
+  @n8n.process.start: [
+    { path: 'shelf-created', on: 'CREATE' },
+    { path: 'shelf-deleted', on: 'DELETE' }
+  ]
+  entity Shelves as projection on my.Shelves;
 }
