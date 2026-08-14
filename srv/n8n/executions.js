@@ -4,17 +4,17 @@ const { parseResponse, getProperty, extractIds } = require("../../lib/handlers/u
 async function readExecutions(req) {
   const ids = extractIds(req)
   if (ids) {
-    const rows = []
-    for (const id of ids) {
-      const response = await n8nRequest({
-        method: "GET",
-        path: `/api/v1/executions/${encodeURIComponent(id)}?includeData=true`,
-      })
-      const row = await parseResponse(req, response)
-      if (row && (typeof row !== "object" || Object.keys(row).length > 0)) {
-        rows.push(row)
-      }
-    }
+    const responses = await Promise.all(
+      ids.map((id) =>
+        n8nRequest({
+          method: "GET",
+          path: `/api/v1/executions/${encodeURIComponent(id)}?includeData=true`,
+        }),
+      ),
+    )
+    const rows = (await Promise.all(responses.map((r) => parseResponse(req, r)))).filter(
+      (row) => row && (typeof row !== "object" || Object.keys(row).length > 0),
+    )
     if (req.query.SELECT?.one) return rows[0]
     return rows
   }
@@ -38,15 +38,12 @@ async function deleteExecution(req) {
   const ids = extractIds(req)
   if (!ids || ids.length === 0) return req.reject(400, "Missing execution id for DELETE")
 
-  // n8n has no bulk-delete endpoint
-  const results = []
-  for (const id of ids) {
-    const response = await n8nRequest({
-      method: "DELETE",
-      path: `/api/v1/executions/${encodeURIComponent(id)}`,
-    })
-    results.push(await parseResponse(req, response))
-  }
+  const responses = await Promise.all(
+    ids.map((id) =>
+      n8nRequest({ method: "DELETE", path: `/api/v1/executions/${encodeURIComponent(id)}` }),
+    ),
+  )
+  const results = await Promise.all(responses.map((r) => parseResponse(req, r)))
   return ids.length === 1 ? results[0] : results
 }
 

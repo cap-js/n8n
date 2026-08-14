@@ -60,13 +60,7 @@ describe("trigger", () => {
     const workflowId = `trigger-record-${Date.now()}`
     await n8n.emit("trigger", { path: workflowId, payload: { greeting: "hi" } })
 
-    // Poll — synchronous on the console mock, async against a real n8n.
-    let rows
-    for (let i = 0; i < 20; i++) {
-      rows = await n8n.run(SELECT.from(WorkflowExecutions).where({ workflowId }))
-      if (Array.isArray(rows) && rows.length > 0) break
-      await new Promise((r) => setTimeout(r, 100))
-    }
+    const rows = await n8n.run(SELECT.from(WorkflowExecutions).where({ workflowId }))
     expect(rows).to.have.length(1)
     expect(rows[0].workflowId).toEqual(workflowId)
   })
@@ -76,12 +70,7 @@ describe("trigger", () => {
     const payload = { title: "Moby Dick", quantity: 3 }
     await n8n.emit("trigger", { path: workflowId, payload })
 
-    let rows
-    for (let i = 0; i < 20; i++) {
-      rows = await n8n.run(SELECT.from(WorkflowExecutions).where({ workflowId }))
-      if (Array.isArray(rows) && rows.length > 0) break
-      await new Promise((r) => setTimeout(r, 100))
-    }
+    const rows = await n8n.run(SELECT.from(WorkflowExecutions).where({ workflowId }))
     expect(rows).to.have.length(1)
     // The console mock wraps the payload under `data.payload`; the REST
     // backend fires the actual webhook and n8n's stored execution data
@@ -95,12 +84,7 @@ describe("trigger", () => {
     const workflowId = `trigger-ping-${Date.now()}`
     await n8n.emit("trigger", { path: workflowId })
 
-    let rows
-    for (let i = 0; i < 20; i++) {
-      rows = await n8n.run(SELECT.from(WorkflowExecutions).where({ workflowId }))
-      if (Array.isArray(rows) && rows.length > 0) break
-      await new Promise((r) => setTimeout(r, 100))
-    }
+    const rows = await n8n.run(SELECT.from(WorkflowExecutions).where({ workflowId }))
     expect(rows).to.have.length(1)
   })
 })
@@ -271,21 +255,11 @@ describe("WorkflowExecutions", () => {
 
   async function seedExecution(webhookPath) {
     await n8n.emit("trigger", { path: webhookPath, payload: { hello: "world" } })
-
-    // The console mock inserts the execution synchronously inside `emit`,
-    // so the first SELECT already returns the row. Against a real n8n,
-    // the webhook fires and the execution is stored asynchronously —
-    // poll for up to ~2s until it appears.
-    for (let i = 0; i < 20; i++) {
-      const rows = await n8n.run(SELECT.from(WorkflowExecutions).where({ workflowId: webhookPath }))
-      if (Array.isArray(rows) && rows.length > 0) {
-        const id = rows[0].id
-        executionIds.add(id)
-        return id
-      }
-      await new Promise((r) => setTimeout(r, 100))
-    }
-    return null
+    const rows = await n8n.run(SELECT.from(WorkflowExecutions).where({ workflowId: webhookPath }))
+    if (!Array.isArray(rows) || rows.length === 0) return null
+    const id = rows[0].id
+    executionIds.add(id)
+    return id
   }
 
   afterAll(async () => {

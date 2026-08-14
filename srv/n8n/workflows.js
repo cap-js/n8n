@@ -27,17 +27,14 @@ function stripReadOnly(payload) {
 async function readWorkflows(req) {
   const ids = extractIds(req)
   if (ids) {
-    const rows = []
-    for (const id of ids) {
-      const response = await n8nRequest({
-        method: "GET",
-        path: `/api/v1/workflows/${encodeURIComponent(id)}`,
-      })
-      const row = await parseResponse(req, response)
-      if (row && (typeof row !== "object" || Object.keys(row).length > 0)) {
-        rows.push(row)
-      }
-    }
+    const responses = await Promise.all(
+      ids.map((id) =>
+        n8nRequest({ method: "GET", path: `/api/v1/workflows/${encodeURIComponent(id)}` }),
+      ),
+    )
+    const rows = (await Promise.all(responses.map((r) => parseResponse(req, r)))).filter(
+      (row) => row && (typeof row !== "object" || Object.keys(row).length > 0),
+    )
     if (req.query.SELECT?.one) return rows[0]
     return rows
   }
@@ -107,14 +104,12 @@ async function deleteWorkflow(req) {
   const ids = extractIds(req)
   if (!ids || ids.length === 0) return req.reject(400, "Missing workflow id for DELETE")
 
-  const results = []
-  for (const id of ids) {
-    const response = await n8nRequest({
-      method: "DELETE",
-      path: `/api/v1/workflows/${encodeURIComponent(id)}`,
-    })
-    results.push(await parseResponse(req, response))
-  }
+  const responses = await Promise.all(
+    ids.map((id) =>
+      n8nRequest({ method: "DELETE", path: `/api/v1/workflows/${encodeURIComponent(id)}` }),
+    ),
+  )
+  const results = await Promise.all(responses.map((r) => parseResponse(req, r)))
   return ids.length === 1 ? results[0] : results
 }
 
