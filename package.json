@@ -1,13 +1,12 @@
 {
   "name": "@cap-js/n8n",
   "version": "0.1.0",
-  "description": "CAP Plugin to trigger n8n workflows from CAP applications via annotations and a programmatic service.",
-  "main": "cds-plugin.js",
+  "description": "CAP Plugin to trigger n8n workflows",
+  "author": "SAP SE (https://www.sap.com)",
+  "license": "Apache-2.0",
   "homepage": "https://cap.cloud.sap/",
   "repository": "cap-js/n8n",
-  "bugs": {
-    "url": "https://github.com/cap-js/n8n/issues"
-  },
+  "main": "cds-plugin.js",
   "files": [
     "cds-plugin.js",
     "lib/",
@@ -30,27 +29,15 @@
     "workflow",
     "automation",
     "sap"
-  ],
-  "author": "SAP SE (https://www.sap.com)",
-  "license": "Apache-2.0",
-  "type": "commonjs",
-  "peerDependencies": {
-    "@sap/cds": ">=9"
-  },
+  ], 
   "dependencies": {
     "@sap-cloud-sdk/connectivity": "^4.5.1"
   },
-  "engines": {
-    "node": ">=22.0.0"
-  },
-  "workspaces": [
-    "tests/bookshop/"
-  ],
   "devDependencies": {
-    "@cap-js/cds-test": "^1",
-    "@sap/cds": "^10",
-    "@sap/cds-dk": "^10",
-    "vitest": "^4"
+    "@cap-js/cds-test": "^1"
+  },
+  "peerDependencies": {
+    "@sap/cds": ">=9"
   },
   "cds": {
     "requires": {
@@ -84,5 +71,8 @@
         }
       }
     }
-  }
+  },
+  "workspaces": [
+    "tests/bookshop/"
+  ]
 }
