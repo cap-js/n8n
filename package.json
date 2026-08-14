@@ -10,8 +10,7 @@
   "files": [
     "cds-plugin.js",
     "lib/",
-    "srv/",
-    "LICENSES"
+    "srv/"
   ],
   "scripts": {
     "test": "npx vitest run",
