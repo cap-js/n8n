@@ -168,6 +168,23 @@ describe("WorkflowDefinitions", () => {
     expect(after.name).toEqual("Renamed Update")
   })
 
+  it("silently ignores @readonly fields on UPDATE (active must stay false)", async () => {
+    // create test workflow — starts inactive
+    const { id } = await createTestWorkflow("update-readonly")
+    const before = await n8n.run(SELECT.one.from(WorkflowDefinitions).where({ id }))
+    expect(before.active).toEqual(false)
+
+    // Try to flip `active` via a plain UPDATE. CAP strips `@readonly`
+    // fields from the payload before the handler runs, so the flag must
+    // still be false afterwards. The only way to activate a workflow is
+    // via the `publishWorkflow` action.
+    await n8n.run(UPDATE(WorkflowDefinitions, id).with({ active: true, name: "renamed" }))
+
+    const after = await n8n.run(SELECT.one.from(WorkflowDefinitions).where({ id }))
+    expect(after.active).toEqual(false)
+    expect(after.name).toEqual("renamed")
+  })
+
   it("should remove a workflow via DELETE", async () => {
     // create test workflow
     const { id } = await createTestWorkflow("delete")

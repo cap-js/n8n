@@ -1,29 +1,6 @@
 const { parseResponse, getProperty, extractIds } = require("../../lib/handlers/utils")
 const { n8nRequest } = require("../../lib/api/connection")
 
-const WORKFLOW_READ_ONLY_FIELDS = [
-  "id",
-  "active",
-  "createdAt",
-  "updatedAt",
-  "isArchived",
-  "versionId",
-  "triggerCount",
-  "tags",
-  "meta",
-  "shared",
-  "activeVersion",
-]
-
-// Removes fields the n8n API considers read-only. Returns a shallow copy so
-// the caller's input is untouched.
-function stripReadOnly(payload) {
-  if (!payload || typeof payload !== "object") return payload
-  const out = { ...payload }
-  for (const f of WORKFLOW_READ_ONLY_FIELDS) delete out[f]
-  return out
-}
-
 async function readWorkflows(req) {
   const ids = extractIds(req)
   if (ids) {
@@ -55,7 +32,7 @@ async function readWorkflows(req) {
 }
 
 async function createWorkflow(req) {
-  const body = stripReadOnly(req.data ?? {})
+  const body = req.data ?? {}
   for (const required of ["name", "nodes", "connections", "settings"]) {
     if (body[required] == null) {
       return req.reject(400, `Missing required workflow field: ${required}`)
@@ -69,14 +46,18 @@ async function createWorkflow(req) {
   return parseResponse(req, response)
 }
 
+// n8n's PUT /workflows/{id} rejects a request missing any of `name`,
+// `nodes`, `connections`, `settings`. CQL semantics are the opposite —
+// a partial UPDATE leaves untouched columns alone. Bridge by fetching
+// the current row when the caller omits any PUT-mandatory field and
+// back-filling from that.
 const WORKFLOW_PUT_REQUIRED_FIELDS = ["name", "nodes", "connections", "settings"]
 
 async function updateWorkflow(req) {
   const [id] = extractIds(req) ?? []
   if (!id) return req.reject(400, "Missing workflow id for UPDATE")
-  const body = stripReadOnly(req.data ?? {})
+  const body = req.data ?? {}
 
-  // Back-fill any PUT-mandatory field the caller left out from the currently stored workflow
   const missing = WORKFLOW_PUT_REQUIRED_FIELDS.filter((f) => body[f] == null)
   if (missing.length > 0) {
     const currentResponse = await n8nRequest({
@@ -157,7 +138,5 @@ module.exports = {
   unpublishWorkflow,
   archiveWorkflow,
   // Exposed for reuse and unit tests.
-  stripReadOnly,
-  WORKFLOW_READ_ONLY_FIELDS,
   WORKFLOW_PUT_REQUIRED_FIELDS,
 }

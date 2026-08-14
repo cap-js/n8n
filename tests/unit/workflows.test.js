@@ -1,7 +1,6 @@
 const cds = require("@sap/cds")
 const workflows = require("../../srv/n8n/workflows")
 const {
-  stripReadOnly,
   readWorkflows,
   createWorkflow,
   updateWorkflow,
@@ -9,51 +8,7 @@ const {
   publishWorkflow,
   unpublishWorkflow,
   archiveWorkflow,
-  WORKFLOW_READ_ONLY_FIELDS,
 } = workflows
-
-describe("stripReadOnly", () => {
-  it("returns primitives / nullish untouched", () => {
-    expect(stripReadOnly(null)).toBeNull()
-    expect(stripReadOnly(undefined)).toBeUndefined()
-    expect(stripReadOnly("x")).toBe("x")
-    expect(stripReadOnly(42)).toBe(42)
-  })
-
-  it("removes every documented read-only workflow field", () => {
-    const input = {
-      name: "wf",
-      nodes: [],
-      connections: {},
-      settings: {},
-      id: "abc",
-      active: true,
-      createdAt: "t",
-      updatedAt: "t",
-      isArchived: false,
-      versionId: "v",
-      triggerCount: 1,
-      tags: [{ id: "t1", name: "one" }],
-      meta: { templateId: "x" },
-      shared: [{ role: "owner" }],
-      activeVersion: { versionId: "v" },
-    }
-    const out = stripReadOnly(input)
-    for (const f of WORKFLOW_READ_ONLY_FIELDS) expect(out).not.toHaveProperty(f)
-    expect(out).toEqual({
-      name: "wf",
-      nodes: [],
-      connections: {},
-      settings: {},
-    })
-  })
-
-  it("does not mutate the input object", () => {
-    const input = { id: "abc", name: "wf" }
-    stripReadOnly(input)
-    expect(input).toEqual({ id: "abc", name: "wf" })
-  })
-})
 
 describe("Workflow handlers", () => {
   let originalFetch
@@ -269,17 +224,13 @@ describe("Workflow handlers", () => {
   })
 
   describe("createWorkflow", () => {
-    it("POSTs to /workflows with a sanitised body", async () => {
+    it("POSTs the request data verbatim to /workflows", async () => {
       const req = makeReq({
         data: {
           name: "wf",
           nodes: [],
           connections: {},
           settings: {},
-          // read-only fields that must be stripped:
-          id: "should-be-stripped",
-          active: true,
-          versionId: "v",
         },
       })
       await createWorkflow(req)
@@ -299,7 +250,7 @@ describe("Workflow handlers", () => {
   })
 
   describe("updateWorkflow", () => {
-    it("PUTs to /workflows/{id} with sanitised body", async () => {
+    it("PUTs to /workflows/{id} with the request data", async () => {
       const req = makeReq({
         params: [{ id: "abc" }],
         data: {
@@ -307,16 +258,12 @@ describe("Workflow handlers", () => {
           nodes: [],
           connections: {},
           settings: {},
-          id: "abc",
-          active: true,
         },
       })
       await updateWorkflow(req)
       expect(capturedInit.url).toBe("http://x:5678/api/v1/workflows/abc")
       expect(capturedInit.init.method).toBe("PUT")
       const body = JSON.parse(capturedInit.init.body)
-      expect(body).not.toHaveProperty("id")
-      expect(body).not.toHaveProperty("active")
       expect(body).toEqual({ name: "wf2", nodes: [], connections: {}, settings: {} })
     })
 
