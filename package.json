@@ -14,10 +14,8 @@
     "LICENSES"
   ],
   "scripts": {
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:cov": "vitest run --coverage",
-    "test:hybrid": "cds bind --exec -- vitest run",
+    "test": "npx vitest run",
+    "test:hybrid": "cds bind --exec -- npx vitest run",
     "lint": "npx eslint .",
     "prettier": "npx -y prettier@3 --write .",
     "prettier:check": "npx -y prettier@3 --check ."
@@ -29,7 +27,7 @@
     "workflow",
     "automation",
     "sap"
-  ], 
+  ],
   "dependencies": {
     "@sap-cloud-sdk/connectivity": "^4.5.1"
   },
