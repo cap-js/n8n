@@ -3,6 +3,6 @@ export default {
     globals: true,
     testTimeout: 60_000,
     include: ["tests/**/*.test.js"],
-    silent: true
+    silent: true,
   },
 }
