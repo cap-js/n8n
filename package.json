@@ -35,13 +35,10 @@
   "license": "Apache-2.0",
   "type": "commonjs",
   "peerDependencies": {
-    "@sap/cds": ">=9",
-    "@sap-cloud-sdk/connectivity": "^4"
+    "@sap/cds": ">=9"
   },
-  "peerDependenciesMeta": {
-    "@sap-cloud-sdk/connectivity": {
-      "optional": true
-    }
+  "dependencies": {
+    "@sap-cloud-sdk/connectivity": "^4.5.1"
   },
   "engines": {
     "node": ">=22.0.0"
@@ -51,7 +48,6 @@
   ],
   "devDependencies": {
     "@cap-js/cds-test": "^1",
-    "@sap-cloud-sdk/connectivity": "^4.5.1",
     "@sap/cds": "^10",
     "@sap/cds-dk": "^10",
     "vitest": "^4"
