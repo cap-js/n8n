@@ -339,7 +339,7 @@ await n8n.send("retryExecution", { id: "exec-42", loadWorkflow: true })
 | – where\*            | `id`, `id in […]`                                         | `id`, `id in […]`                         |
 | **Unbound actions**  | `publishWorkflow`, `unpublishWorkflow`, `archiveWorkflow` | `retryExecution`, `stopExecution`         |
 
->[!NOTE] WHERE-clause fields listed are those the handler maps to n8n query params or path segments. Any additional predicates in the CQN clause are ignored by the REST call - apply them client-side over the returned rows if you need them.
+> [!NOTE] WHERE-clause fields listed are those the handler maps to n8n query params or path segments. Any additional predicates in the CQN clause are ignored by the REST call - apply them client-side over the returned rows if you need them.
 
 ---
 
