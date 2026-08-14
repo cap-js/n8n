@@ -29,7 +29,8 @@ let WorkflowDefinitions
 let WorkflowExecutions
 
 beforeAll(async () => {
-  n8n = await cds.connect.to("N8nService"); ({ WorkflowDefinitions, WorkflowExecutions } = n8n.entities)
+  n8n = await cds.connect.to("N8nService")
+  ;({ WorkflowDefinitions, WorkflowExecutions } = n8n.entities)
 })
 
 describe("trigger", () => {
@@ -117,8 +118,7 @@ describe("WorkflowDefinitions", () => {
     // the console mock (SQLite-backed) returns an affected-rows count.
     // Fall back to the pre-generated id from the request body in the
     // latter case.
-    const id =
-      (Array.isArray(created) ? created[0]?.id : created?.id) ?? body.id
+    const id = (Array.isArray(created) ? created[0]?.id : created?.id) ?? body.id
     if (id) createdIds.add(id)
     return { id, name }
   }
@@ -136,9 +136,9 @@ describe("WorkflowDefinitions", () => {
     const rows = await n8n.run(SELECT.from(WorkflowDefinitions))
     expect(Array.isArray(rows)).to.equal(true)
     expect(rows.length).toBeGreaterThanOrEqual(2)
-    const names = rows.map(w => w.name)
-    expect(names).toContain('select-1')
-    expect(names).toContain('select-2')
+    const names = rows.map((w) => w.name)
+    expect(names).toContain("select-1")
+    expect(names).toContain("select-2")
   })
 
   it("should return a single workflow when using where clause", async () => {
@@ -156,9 +156,7 @@ describe("WorkflowDefinitions", () => {
     const { id: id1 } = await createTestWorkflow("select-in-1")
     const { id: id2 } = await createTestWorkflow("select-in-2")
 
-    const rows = await n8n.run(
-      SELECT.from(WorkflowDefinitions).where({ id: [id1, id2] }),
-    )
+    const rows = await n8n.run(SELECT.from(WorkflowDefinitions).where({ id: [id1, id2] }))
     expect(Array.isArray(rows)).to.equal(true)
     expect(rows).toHaveLength(2)
     const ids = rows.map((r) => r.id)
@@ -171,22 +169,22 @@ describe("WorkflowDefinitions", () => {
     const { id: id1 } = await createTestWorkflow("select-in-1")
 
     const rows = await n8n.run(
-      SELECT.from(WorkflowDefinitions).columns(['name']).where({ id: id1 }),
+      SELECT.from(WorkflowDefinitions).columns(["name"]).where({ id: id1 }),
     )
     expect(Array.isArray(rows)).to.equal(true)
     expect(rows).toHaveLength(1)
-    expect(rows[0]).toHaveProperty('name', 'select-in-1')
+    expect(rows[0]).toHaveProperty("name", "select-in-1")
   })
 
   it("should rename a workflow via UPDATE", async () => {
     // create test workflow
     const { id } = await createTestWorkflow("update")
 
-    await n8n.run(UPDATE(WorkflowDefinitions, id).with({ name: 'Renamed Update' }))
+    await n8n.run(UPDATE(WorkflowDefinitions, id).with({ name: "Renamed Update" }))
 
     const after = await n8n.run(SELECT.one.from(WorkflowDefinitions).where({ id }))
     expect(after.id).toEqual(id)
-    expect(after.name).toEqual('Renamed Update')
+    expect(after.name).toEqual("Renamed Update")
   })
 
   it("should remove a workflow via DELETE", async () => {
@@ -282,9 +280,7 @@ describe("WorkflowExecutions", () => {
     // the webhook fires and the execution is stored asynchronously —
     // poll for up to ~2s until it appears.
     for (let i = 0; i < 20; i++) {
-      const rows = await n8n.run(
-        SELECT.from(WorkflowExecutions).where({ workflowId: webhookPath }),
-      )
+      const rows = await n8n.run(SELECT.from(WorkflowExecutions).where({ workflowId: webhookPath }))
       if (Array.isArray(rows) && rows.length > 0) {
         const id = rows[0].id
         executionIds.add(id)
@@ -297,9 +293,7 @@ describe("WorkflowExecutions", () => {
 
   afterAll(async () => {
     if (executionIds.size === 0) return
-    await n8n.run(
-      DELETE.from(WorkflowExecutions).where({ id: [...executionIds] }),
-    )
+    await n8n.run(DELETE.from(WorkflowExecutions).where({ id: [...executionIds] }))
   })
 
   it("should return a list of executions when running SELECT", async () => {
@@ -327,9 +321,7 @@ describe("WorkflowExecutions", () => {
     const execId2 = await seedExecution("select-in-exec-2")
     if (!execId1 || !execId2) return
 
-    const rows = await n8n.run(
-      SELECT.from(WorkflowExecutions).where({ id: [execId1, execId2] }),
-    )
+    const rows = await n8n.run(SELECT.from(WorkflowExecutions).where({ id: [execId1, execId2] }))
     expect(Array.isArray(rows)).to.equal(true)
     expect(rows).toHaveLength(2)
     const ids = rows.map((r) => String(r.id))
@@ -339,14 +331,14 @@ describe("WorkflowExecutions", () => {
 
   it("should only return selected fields of an execution", async () => {
     // create test execution
-    const execId = await seedExecution("select-columns-exec")    
+    const execId = await seedExecution("select-columns-exec")
 
     const rows = await n8n.run(
-      SELECT.from(WorkflowExecutions).columns(['status']).where({ id: execId }),
+      SELECT.from(WorkflowExecutions).columns(["status"]).where({ id: execId }),
     )
     expect(Array.isArray(rows)).to.equal(true)
     expect(rows).toHaveLength(1)
-    expect(rows[0]).toHaveProperty('status')
+    expect(rows[0]).toHaveProperty("status")
   })
 
   it("should remove an execution via DELETE", async () => {
@@ -363,9 +355,7 @@ describe("WorkflowExecutions", () => {
   it("should return an execution when calling stopExecution action", async () => {
     // create test execution
     const execId = await seedExecution("stop-exec-return")
-    const execution = await n8n.run(
-      SELECT.one.from(WorkflowExecutions).where({ id: execId }),
-    )
+    const execution = await n8n.run(SELECT.one.from(WorkflowExecutions).where({ id: execId }))
     const result = await n8n.send("stopExecution", { id: execId })
 
     const { status, finished, stoppedAt, ...expected } = execution
@@ -375,16 +365,12 @@ describe("WorkflowExecutions", () => {
   it("should cancel the underlying execution when calling stopExecution", async () => {
     // create test execution
     const execId = await seedExecution("stop-exec-behaviour")
-    const before = await n8n.run(
-      SELECT.one.from(WorkflowExecutions).where({ id: execId }),
-    )
+    const before = await n8n.run(SELECT.one.from(WorkflowExecutions).where({ id: execId }))
     expect(before.status).not.toEqual("canceled")
 
     await n8n.send("stopExecution", { id: execId })
 
-    const after = await n8n.run(
-      SELECT.one.from(WorkflowExecutions).where({ id: execId }),
-    )
+    const after = await n8n.run(SELECT.one.from(WorkflowExecutions).where({ id: execId }))
     expect(after.id).toEqual(execId)
     expect(after.status).toEqual("canceled")
     expect(after.finished).toEqual(true)
@@ -394,9 +380,7 @@ describe("WorkflowExecutions", () => {
   it("should return an execution when calling retryExecution action", async () => {
     // create test execution
     const execId = await seedExecution("retry-exec-return")
-    const execution = await n8n.run(
-      SELECT.one.from(WorkflowExecutions).where({ id: execId }),
-    )
+    const execution = await n8n.run(SELECT.one.from(WorkflowExecutions).where({ id: execId }))
     const result = await n8n.send("retryExecution", {
       id: execId,
       loadWorkflow: true,
@@ -413,9 +397,7 @@ describe("WorkflowExecutions", () => {
   it("should insert a linked new execution when calling retryExecution", async () => {
     // create test execution
     const execId = await seedExecution("retry-exec-behaviour")
-    const original = await n8n.run(
-      SELECT.one.from(WorkflowExecutions).where({ id: execId }),
-    )
+    const original = await n8n.run(SELECT.one.from(WorkflowExecutions).where({ id: execId }))
     expect(original).to.exist
 
     const retried = await n8n.send("retryExecution", {
@@ -434,9 +416,7 @@ describe("WorkflowExecutions", () => {
     expect(retriedFromDb.workflowId).toEqual(original.workflowId)
 
     // The original row is still there and untouched.
-    const originalAfter = await n8n.run(
-      SELECT.one.from(WorkflowExecutions).where({ id: execId }),
-    )
+    const originalAfter = await n8n.run(SELECT.one.from(WorkflowExecutions).where({ id: execId }))
     expect(originalAfter.id).toEqual(execId)
     expect(originalAfter.mode).toEqual(original.mode)
     expect(originalAfter.status).toEqual(original.status)

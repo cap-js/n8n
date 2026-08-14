@@ -1,8 +1,5 @@
 const cds = require("@sap/cds")
-const {
-  resolveN8nConnection,
-  resolveUseTestWebhook,
-} = require("../../lib/api/connection")
+const { resolveN8nConnection, resolveUseTestWebhook } = require("../../lib/api/connection")
 
 const SVC = "N8nService"
 
@@ -160,8 +157,6 @@ describe("resolveUseTestWebhook", () => {
   it("destination wins over credentials and env", () => {
     process.env.N8N_USE_TEST_WEBHOOK = "true"
     const dest = { originalProperties: { "URL.useTestWebhook": "" } }
-    expect(
-      resolveUseTestWebhook({ credentials: { useTestWebhook: true } }, dest),
-    ).toBe(false)
+    expect(resolveUseTestWebhook({ credentials: { useTestWebhook: true } }, dest)).toBe(false)
   })
 })

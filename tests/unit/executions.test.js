@@ -1,11 +1,6 @@
 const cds = require("@sap/cds")
 const executions = require("../../srv/n8n/executions")
-const {
-  readExecutions,
-  deleteExecution,
-  retryExecution,
-  stopExecution,
-} = executions
+const { readExecutions, deleteExecution, retryExecution, stopExecution } = executions
 
 describe("Execution handlers", () => {
   let originalFetch
@@ -65,7 +60,14 @@ describe("Execution handlers", () => {
       const req = makeReq({
         query: {
           SELECT: {
-            from: { ref: [{ id: "N8nService.WorkflowExecutions", where: [{ ref: ["id"] }, "=", { val: "42" }] }] },
+            from: {
+              ref: [
+                {
+                  id: "N8nService.WorkflowExecutions",
+                  where: [{ ref: ["id"] }, "=", { val: "42" }],
+                },
+              ],
+            },
           },
         },
       })
@@ -129,11 +131,7 @@ describe("Execution handlers", () => {
               ref: [
                 {
                   id: "N8nService.WorkflowExecutions",
-                  where: [
-                    { ref: ["id"] },
-                    "in",
-                    { list: [{ val: "1" }, { val: "2" }] },
-                  ],
+                  where: [{ ref: ["id"] }, "in", { list: [{ val: "1" }, { val: "2" }] }],
                 },
               ],
             },
@@ -205,11 +203,7 @@ describe("Execution handlers", () => {
               ref: [
                 {
                   id: "N8nService.WorkflowExecutions",
-                  where: [
-                    { ref: ["id"] },
-                    "in",
-                    { list: [{ val: "1" }, { val: "2" }] },
-                  ],
+                  where: [{ ref: ["id"] }, "in", { list: [{ val: "1" }, { val: "2" }] }],
                 },
               ],
             },
