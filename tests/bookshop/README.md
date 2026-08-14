@@ -167,7 +167,7 @@ if you still see a popup:
 - Alternatively add `apiKey` to the `[hybrid]` credentials in `package.json`
   (see below).
 
-If your n8n instance enforces auth, add an `apiKey` next to `baseUrl` under the
+If your n8n instance enforces auth, add an `apiKey` next to `url` under the
 `[hybrid]` block in `package.json`:
 
 ```jsonc
@@ -175,7 +175,7 @@ If your n8n instance enforces auth, add an `apiKey` next to `baseUrl` under the
   "[hybrid]": {
     "kind": "n8n-to-rest",
     "credentials": {
-      "baseUrl": "http://localhost:5678",
+      "url": "http://localhost:5678",
       "apiKey": "eyJ..."
     }
   }

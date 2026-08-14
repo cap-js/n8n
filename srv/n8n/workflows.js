@@ -1,5 +1,5 @@
 const { parseResponse, getProperty, extractIds } = require("../../lib/handlers/utils")
-const { n8nRequest } = require("./http")
+const { n8nRequest } = require("../../lib/api/connection")
 
 const WORKFLOW_READ_ONLY_FIELDS = [
   "id",

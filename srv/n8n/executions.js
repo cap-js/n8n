@@ -1,5 +1,5 @@
+const { n8nRequest } = require("../../lib/api/connection")
 const { parseResponse, getProperty, extractIds } = require("../../lib/handlers/utils")
-const { n8nRequest } = require("./http")
 
 async function readExecutions(req) {
   const ids = extractIds(req)

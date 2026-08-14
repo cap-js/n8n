@@ -6,7 +6,6 @@ CAP plugin to trigger [n8n](https://n8n.io/) workflows from CAP applications -
 declaratively via `@n8n.process.start` annotations and programmatically via a
 `N8nService` you can `cds.connect.to`.
 
-- [Requirements](#requirements)
 - [Setup](#setup)
   - [Local development](#local-development)
   - [Profiles & credentials](#profiles--credentials)

@@ -1,7 +1,5 @@
 const cds = require("@sap/cds")
-const { resolveN8nConnection } = require("../lib/api/connection")
 const { parseResponse, hasPayload } = require("../lib/handlers/utils")
-const { n8nConfig, n8nRequest } = require("./n8n/http")
 
 const {
   readWorkflows,
@@ -19,6 +17,7 @@ const {
   retryExecution,
   stopExecution,
 } = require("./n8n/executions")
+const { resolveN8nConnection } = require("../lib/api/connection")
 
 const LOG = cds.log("@cap-js/n8n")
 
@@ -64,7 +63,7 @@ class N8nService extends cds.Service {
   }
 
   async _trigger(req) {
-    const { baseUrl, apiKey, useTestWebhook } = await resolveN8nConnection()
+    const { baseUrl, apiKey, useTestWebhook, authHeaders } = await resolveN8nConnection()
     const { path, payload } = req.data ?? {}
     const prefix = useTestWebhook ? "/webhook-test" : "/webhook"
     const url = `${baseUrl}${prefix}/${String(path).replace(/^\/+/, "")}`
@@ -74,7 +73,8 @@ class N8nService extends cds.Service {
     const init = {
       method,
       headers: {
-        "X-N8N-API-KEY": apiKey,
+        ...(apiKey ? { "X-N8N-API-KEY": apiKey } : {}),
+        ...(authHeaders ?? {}),
       },
     }
     if (method === "POST") {

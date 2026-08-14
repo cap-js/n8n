@@ -45,6 +45,9 @@ describe("N8nService._trigger HTTP method selection", () => {
       key: process.env.N8N_API_KEY,
       test: process.env.N8N_USE_TEST_WEBHOOK,
     }
+    // Start each test with a clean env — an earlier suite may have left
+    // N8N_USE_TEST_WEBHOOK set and the connection resolver would pick it up.
+    delete process.env.N8N_USE_TEST_WEBHOOK
     savedRequires = cds.env.requires
     cds.env.requires = {
       N8nService: {
