@@ -102,21 +102,21 @@ describe("N8nService._trigger HTTP method selection", () => {
     expect(capturedInit.init.body).toBe(JSON.stringify({ foo: "bar" }))
   })
 
-  it("GETs (no body, no Content-Type) when payload is undefined", async () => {
+  it("POSTs an empty-object body when payload is undefined", async () => {
     const srv = makeService()
     await srv._trigger(makeReq({ path: "my-hook" }))
     expect(capturedInit.url).toBe("http://x:5678/webhook/my-hook")
-    expect(capturedInit.init.method).toBe("GET")
-    expect(capturedInit.init.body).toBeUndefined()
-    expect(capturedInit.init.headers["Content-Type"]).toBeUndefined()
+    expect(capturedInit.init.method).toBe("POST")
+    expect(capturedInit.init.headers["Content-Type"]).toBe("application/json")
     expect(capturedInit.init.headers["X-N8N-API-KEY"]).toBe("key-1")
+    expect(capturedInit.init.body).toBe("{}")
   })
 
-  it("GETs when payload is an empty object", async () => {
+  it("POSTs an empty-object body when payload is an empty object", async () => {
     const srv = makeService()
     await srv._trigger(makeReq({ path: "my-hook", payload: {} }))
-    expect(capturedInit.init.method).toBe("GET")
-    expect(capturedInit.init.body).toBeUndefined()
+    expect(capturedInit.init.method).toBe("POST")
+    expect(capturedInit.init.body).toBe("{}")
   })
 
   it("uses /webhook-test prefix when useTestWebhook is true", async () => {

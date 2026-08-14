@@ -1,5 +1,4 @@
 const cds = require("@sap/cds")
-const { hasPayload } = require("../lib/handlers/utils")
 const LOG = cds.log("@cap-js/n8n")
 
 class ConsoleN8nService extends cds.ApplicationService {
@@ -14,7 +13,6 @@ class ConsoleN8nService extends cds.ApplicationService {
 
     this.on("trigger", async (req) => {
       const { path, payload } = req.data ?? {}
-      const method = hasPayload(payload) ? "POST" : "GET"
 
       await INSERT.into(WorkflowExecutions).entries({
         id: cds.utils.uuid(),
@@ -28,7 +26,7 @@ class ConsoleN8nService extends cds.ApplicationService {
       })
 
       LOG.info("Triggering n8n workflow", {
-        method,
+        method: "POST",
         webhookUrl: `/webhook/${path}`,
         payload,
       })

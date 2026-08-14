@@ -1,5 +1,5 @@
 const cds = require("@sap/cds")
-const { parseResponse, hasPayload } = require("../lib/handlers/utils")
+const { parseResponse } = require("../lib/handlers/utils")
 
 const {
   readWorkflows,
@@ -68,21 +68,18 @@ class N8nService extends cds.Service {
     const prefix = useTestWebhook ? "/webhook-test" : "/webhook"
     const url = `${baseUrl}${prefix}/${String(path).replace(/^\/+/, "")}`
 
-    // No input data → GET (empty ping). Any payload → POST with JSON body.
-    const method = hasPayload(payload) ? "POST" : "GET"
+    // Always POST with a JSON body
     const init = {
-      method,
+      method: "POST",
       headers: {
+        "Content-Type": "application/json",
         ...(apiKey ? { "X-N8N-API-KEY": apiKey } : {}),
         ...(authHeaders ?? {}),
       },
-    }
-    if (method === "POST") {
-      init.headers["Content-Type"] = "application/json"
-      init.body = JSON.stringify(payload)
+      body: JSON.stringify(payload ?? {}),
     }
 
-    LOG.info("Triggering n8n webhook", { method, url })
+    LOG.info("Triggering n8n webhook", { method: "POST", url })
     const response = await fetch(url, init)
     return parseResponse(req, response)
   }

@@ -91,11 +91,8 @@ describe("trigger", () => {
     expect(rows[0].data).to.deep.include({ payload })
   })
 
-  it("accepts trigger without a payload (empty ping)", async () => {
+  it("accepts trigger without a payload", async () => {
     const workflowId = `trigger-ping-${Date.now()}`
-    // No payload at all — the handler should still succeed and record the
-    // execution. `hasPayload(undefined)` returns false, so the underlying
-    // HTTP call becomes a GET on the REST kind.
     await n8n.emit("trigger", { path: workflowId })
 
     let rows

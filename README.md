@@ -6,6 +6,7 @@ CAP plugin to trigger [n8n](https://n8n.io/) workflows from CAP applications -
 declaratively via `@n8n.process.start` annotations and programmatically via a
 `N8nService` you can `cds.connect.to`.
 
+- [Requirements](#requirements)
 - [Setup](#setup)
   - [Local development](#local-development)
   - [Profiles & credentials](#profiles--credentials)
@@ -23,6 +24,12 @@ declaratively via `@n8n.process.start` annotations and programmatically via a
 - [Development](#development)
 
 ---
+
+## Requirements
+
+- Node.js 22 or newer
+- `@sap/cds` 9 or newer
+- An n8n instance for anything beyond local development (either local via
 
 ## Setup
 
@@ -149,23 +156,16 @@ first, then `N8N_USE_TEST_WEBHOOK`, then a BTP destination property
 The flag only affects webhook POSTs. Calls to n8n's public REST API
 (`/api/v1/executions/…`) always use the canonical `/api/v1` prefix.
 
-### HTTP method: GET vs POST
+### HTTP method - PLACEHOLDER
 
-The plugin picks the HTTP method based on whether the emitted `payload` is
-non-empty:
+Every webhook trigger is a `POST {baseUrl}/webhook/<path>` with a JSON
+body — even when the caller emits no payload. In that case the body is
+just `{}`. The plugin doesn't switch between `GET` and `POST` based on
+payload contents: annotation-driven flows without an explicit `.inputs`
+mapping forward the full entity row, so a body is always the natural
+shape to expect on the n8n side.
 
-| Emitted `payload`                    | HTTP method                                          |
-| ------------------------------------ | ---------------------------------------------------- |
-| `undefined`, `null`, `{}`, or `[]`   | `GET {baseUrl}/webhook/<path>` — no body, no query.  |
-| Any primitive, non-empty object/array | `POST {baseUrl}/webhook/<path>` with JSON body.     |
-
-This lets n8n Webhook nodes configured for `GET` (e.g. simple "ping"
-workflows that don't need input) work out of the box: emit `trigger` without
-a `payload` and the plugin issues a `GET`. As soon as a payload is present,
-the call switches back to `POST` with `Content-Type: application/json`.
-
-The switch is inferred purely from the emitted `payload` — there is no way
-to force a method explicitly today.
+Configure your n8n Webhook node for `POST` accordingly.
 
 ### Retry semantics
 
@@ -264,6 +264,7 @@ entity Shipments as projection on my.Shipments;
 ```
 
 Special values:
+
 - `$self` alone means that all fields of the current entity are sent (default)
 - `$self.<assoc>` expands all direct attributes of the associated entity
 
@@ -293,7 +294,7 @@ await n8n.emit("trigger", {
 
 ### Querying executions and workflows
 
-`N8nService` exposes two entities projected from n8n's public REST API: `WorkflowDefinitions` and `WorkflowExecutions`. In addition, five unbound actions are specified: `publishWorkflow`, `unpublishWorkflow`, `archiveWorkflow`, `retryExecution`, `stopExecution`. 
+`N8nService` exposes two entities projected from n8n's public REST API: `WorkflowDefinitions` and `WorkflowExecutions`. In addition, five unbound actions are specified: `publishWorkflow`, `unpublishWorkflow`, `archiveWorkflow`, `retryExecution`, `stopExecution`.
 
 ```js
 const n8n = await cds.connect.to("N8nService")
@@ -322,21 +323,21 @@ await n8n.send("retryExecution", { id: "exec-42", loadWorkflow: true })
 
 #### Supported `cds.ql` operations
 
-| Operation                     | `WorkflowDefinitions`                         | `WorkflowExecutions`                          |
-| ----------------------------- | --------------------------------------------- | --------------------------------------------- |
-| **READ (list)**               | ✓                                             | ✓                                             |
-|  – limit                      | ✓                                             | ✓                                             |
-|  – where\*                    | `id`, `id in […]`, `active`, `name`           | `id`, `id in […]`, `workflowId`, `status`     |
-|  – columns projection         | –                                             | –                                             |
-| **READ (single)**             | ✓                                             | ✓                                             |
-| **CREATE**                    | ✓                                             | –                                             |
-|  – required fields            | `name`, `nodes`, `connections`, `settings`    | –                                             |
-| **UPDATE**                    | ✓ (partial — missing fields back-filled)      | –                                             |
-|  – where\*                    | `id`, `id in […]`                             | –                                             |
-| **UPSERT**                    | –                                             | –                                             |
-| **DELETE**                    | ✓                                             | ✓                                             |
-|  – where\*                    | `id`, `id in […]`                             | `id`, `id in […]`                             |
-| **Unbound actions**           | `publishWorkflow`, `unpublishWorkflow`, `archiveWorkflow` | `retryExecution`, `stopExecution` |
+| Operation            | `WorkflowDefinitions`                                     | `WorkflowExecutions`                      |
+| -------------------- | --------------------------------------------------------- | ----------------------------------------- |
+| **READ (list)**      | ✓                                                         | ✓                                         |
+| – limit              | ✓                                                         | ✓                                         |
+| – where\*            | `id`, `id in […]`, `active`, `name`                       | `id`, `id in […]`, `workflowId`, `status` |
+| – columns projection | –                                                         | –                                         |
+| **READ (single)**    | ✓                                                         | ✓                                         |
+| **CREATE**           | ✓                                                         | –                                         |
+| – required fields    | `name`, `nodes`, `connections`, `settings`                | –                                         |
+| **UPDATE**           | ✓ (partial — missing fields back-filled)                  | –                                         |
+| – where\*            | `id`, `id in […]`                                         | –                                         |
+| **UPSERT**           | –                                                         | –                                         |
+| **DELETE**           | ✓                                                         | ✓                                         |
+| – where\*            | `id`, `id in […]`                                         | `id`, `id in […]`                         |
+| **Unbound actions**  | `publishWorkflow`, `unpublishWorkflow`, `archiveWorkflow` | `retryExecution`, `stopExecution`         |
 
 \* WHERE-clause fields listed are those the handler maps to n8n query params or path segments. Any additional predicates in the CQN clause are ignored by the REST call — apply them client-side over the returned rows if you need them.
 
@@ -385,7 +386,6 @@ Deliberately excluded from this initial release:
   typed imports are on the roadmap.
 
 ---
-
 
 ---
 
