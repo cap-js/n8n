@@ -4,11 +4,26 @@
 - The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - This project adheres to [Semantic Versioning](https://semver.org/).
 
-## Version 0.1.0 - 2026-07-24
+## Version 0.1.0 - 2026-08-17
 
 Initial release of the `@cap-js/n8n` plugin.
 
 ### Added
+
+- Array form for `@n8n.process.start`: multiple triggers can now be declared
+  in a single annotation instead of requiring separate qualified annotations:
+
+  ```cds
+  @n8n.process.start: [
+    { path: 'book-created', on: 'CREATE' },
+    { path: 'book-deleted', on: 'DELETE' }
+  ]
+  entity Books as projection on my.Books;
+  ```
+
+  Each element supports the same fields as the record form (`path`, `on`,
+  `if`, `inputs`). Build-time validation covers all array elements including
+  unknown-key warnings and per-element error references (e.g. `[1]`).
 
 - `@n8n.process.start` annotation to declaratively trigger n8n workflows on
   explicitly selected events and bound actions. The record form requires
