@@ -6,22 +6,26 @@ CAP plugin to trigger [n8n](https://n8n.io/) workflows from CAP applications -
 declaratively via `@n8n.process.start` annotations and programmatically via a
 `N8nService` you can `cds.connect.to`.
 
-- [Requirements](#requirements)
-- [Setup](#setup)
-  - [Local development](#local-development)
-  - [Profiles & credentials](#profiles--credentials)
-  - [Test vs. production webhooks](#test-vs-production-webhooks)
-  - [Retry semantics](#retry-semantics)
-  - [Authentication](#authentication)
-- [Annotations](#annotations)
-  - [Triggering a workflow](#triggering-a-workflow)
-  - [Conditional triggers](#conditional-triggers)
-  - [Input mapping](#input-mapping)
-  - [Multiple triggers per entity](#multiple-triggers-per-entity)
-- [Programmatic API](#programmatic-api)
-- [Build-time validation](#build-time-validation)
-- [MVP scope & limitations](#mvp-scope--limitations)
-- [Development](#development)
+- [CAP - n8n Plugin](#cap---n8n-plugin)
+  - [Requirements](#requirements)
+  - [Setup](#setup)
+    - [Local development](#local-development)
+    - [Bind against a real instance](#bind-against-a-real-instance)
+    - [Profiles \& credentials](#profiles--credentials)
+    - [Test vs. production webhooks](#test-vs-production-webhooks)
+    - [HTTP method - PLACEHOLDER](#http-method---placeholder)
+  - [Annotations](#annotations)
+    - [Triggering a workflow](#triggering-a-workflow)
+    - [Conditional triggers](#conditional-triggers)
+    - [Input mapping](#input-mapping)
+    - [Multiple triggers per entity](#multiple-triggers-per-entity)
+  - [Programmatic API](#programmatic-api)
+    - [Querying executions and workflows](#querying-executions-and-workflows)
+      - [Supported `cds.ql` operations](#supported-cdsql-operations)
+  - [Support, Feedback, Contributing](#support-feedback-contributing)
+  - [Security / Disclosure](#security--disclosure)
+  - [Code of Conduct](#code-of-conduct)
+  - [Licensing](#licensing)
 
 ---
 
@@ -29,7 +33,7 @@ declaratively via `@n8n.process.start` annotations and programmatically via a
 
 - Node.js 22 or newer
 - `@sap/cds` 9 or newer
-- An n8n instance for anything beyond local development (either local via
+- An n8n instance for anything beyond local development (either local via Docker or remote)
 
 ## Setup
 
@@ -39,23 +43,48 @@ npm add @cap-js/n8n
 
 ### Local development
 
-By default in the `[development]` profile, the plugin uses the
-`n8n-to-console` kind: workflow triggers are logged to stdout and stored
-in an in-memory execution store. No n8n instance is required.
+In the default `[development]` profile the plugin uses the `n8n-to-console` kind: workflow triggers are logged to stdout and stored in an in-memory execution store. **No n8n instance is required** - ideal for getting started, writing tests and iterating on your annotations before you have n8n set up.
 
-To develop against a real n8n instance, the [sample bookshop](tests/bookshop)
-ships a `docker-compose.yml` that starts n8n on `http://localhost:5678`:
+Add the `@n8n.process.start` annotation to any entity in your service:
 
-```bash
-cd tests/bookshop
-docker compose up -d
+```cds
+service CatalogService {
+  @n8n.process.start: 'book-created'
+  entity Books as projection on my.Books;
+}
 ```
 
-Then start CAP with the profile that uses the REST kind (e.g. `[hybrid]`):
+Then start your CAP application as usual:
+
+```bash
+cds watch
+```
+
+Every CUD event on `Books` now emits a trigger, and you'll see it logged
+directly in the CLI:
+
+<!-- TODO: screenshot of the CLI output -->
+
+From here you can either point the plugin at a [real n8n instance](#bind-against-a-real-instance) or refine your triggers with [conditions](#conditional-triggers) and [input mapping](#input-mapping).
+
+### Bind against a real instance
+
+To fire actual webhooks you need a running n8n instance. Pick one:
+
+- **Local via `npx`** - `npx n8n` brings it up on `http://localhost:5678`.
+- **Local via Docker** - see the [bookshop sample](tests/bookshop) for a ready-made compose file.
+- **Remote** - n8n Cloud or self-hosted; just note the base URL.
+
+Then generate an API key (Settings → n8n API → Create API Key), bind it
+to the service via `cds bind` (see [Profiles & credentials](#profiles--credentials)),
+and run CAP with a non-development profile:
 
 ```bash
 cds watch --profile hybrid
 ```
+
+Every trigger is now a real `POST {url}/webhook/<path>`, visible in the
+n8n **Executions** view.
 
 ### Profiles & credentials
 
@@ -159,42 +188,13 @@ The flag only affects webhook POSTs. Calls to n8n's public REST API
 ### HTTP method - PLACEHOLDER
 
 Every webhook trigger is a `POST {baseUrl}/webhook/<path>` with a JSON
-body — even when the caller emits no payload. In that case the body is
+body - even when the caller emits no payload. In that case the body is
 just `{}`. The plugin doesn't switch between `GET` and `POST` based on
 payload contents: annotation-driven flows without an explicit `.inputs`
 mapping forward the full entity row, so a body is always the natural
 shape to expect on the n8n side.
 
 Configure your n8n Webhook node for `POST` accordingly.
-
-### Retry semantics
-
-Failed webhook calls are retried by the CAP outbox (persistent queue backed
-by the application database) - but only when the failure is worth retrying:
-
-| Failure                      | Retried by the outbox?                              |
-| ---------------------------- | --------------------------------------------------- |
-| Network error / DNS / socket | **Yes** - n8n was unreachable.                      |
-| Read timeout                 | **Yes** - no response before the deadline.          |
-| HTTP 4xx                     | No - misconfiguration; retrying won't fix it.       |
-| HTTP 5xx                     | No - n8n received the call but the workflow failed. |
-
-Non-retryable failures are logged at `ERROR` and the outbox marks the message
-done, keeping the queue clean.
-
-### Authentication
-
-The plugin sends the configured `apiKey` as HTTP header **`X-N8N-API-KEY`** on
-every request - both webhook POSTs (`/webhook/…`) and public-API GETs
-(`/api/v1/…`). This is the same header n8n itself uses for its
-[public REST API](https://docs.n8n.io/api/authentication/), so a single API
-key works across the whole plugin surface.
-
-To validate incoming webhook calls inside n8n, add a **Header auth**
-credential to the Webhook node with:
-
-- **Name**: `X-N8N-API-KEY`
-- **Value**: the same API key configured on the CAP side
 
 ---
 
@@ -220,7 +220,7 @@ narrow the event set (any CAP event: CRUD, bound-action names, `SAVE` / `WRITE`,
 entity Orders as projection on my.Orders;
 ```
 
-Setting `on: []` (empty array) is a deliberate no-op — the annotation is kept
+Setting `on: []` (empty array) is a deliberate no-op - the annotation is kept
 but registers no handlers. Useful for temporarily disabling a trigger without
 deleting the annotation.
 
@@ -332,60 +332,14 @@ await n8n.send("retryExecution", { id: "exec-42", loadWorkflow: true })
 | **READ (single)**    | ✓                                                         | ✓                                         |
 | **CREATE**           | ✓                                                         | –                                         |
 | – required fields    | `name`, `nodes`, `connections`, `settings`                | –                                         |
-| **UPDATE**           | ✓ (partial — missing fields back-filled)                  | –                                         |
+| **UPDATE**           | ✓ (partial - missing fields back-filled)                  | –                                         |
 | – where\*            | `id`, `id in […]`                                         | –                                         |
 | **UPSERT**           | –                                                         | –                                         |
 | **DELETE**           | ✓                                                         | ✓                                         |
 | – where\*            | `id`, `id in […]`                                         | `id`, `id in […]`                         |
 | **Unbound actions**  | `publishWorkflow`, `unpublishWorkflow`, `archiveWorkflow` | `retryExecution`, `stopExecution`         |
 
-\* WHERE-clause fields listed are those the handler maps to n8n query params or path segments. Any additional predicates in the CQN clause are ignored by the REST call — apply them client-side over the returned rows if you need them.
-
-Notes:
-
-- `id in […]` batch operations fan out to per-id HTTP calls (n8n has no bulk endpoints). Missing rows drop out of READ results; failures on individual DELETE calls are logged but don't short-circuit the batch.
-- On non-2xx responses the parser logs and returns `{}` instead of throwing — same contract as `cap-js/ai`. Callers that need strict error propagation should inspect the returned shape.
-- Column projection (`.columns([...])`) is accepted by the CQL layer but the REST handlers currently return the full row shape returned by n8n. The console mock (SQLite-backed) does honor projection.
-- **Pagination**: n8n uses cursor-based pagination (`nextCursor`). Only `SELECT.limit(N)` is forwarded — offsets and cursor chaining are not currently exposed via CQL.
-- **`retryExecution`** accepts an optional `loadWorkflow: Boolean` in the action payload; omitted → no request body, `true`/`false` → forwarded verbatim.
-- **`archiveWorkflow`** flips `isArchived: true` (and deactivates the workflow); **`publishWorkflow`** / **`unpublishWorkflow`** flip `active` only.
-
----
-
-## Build-time validation
-
-`cds build` validates `@n8n.process.start.*` annotations. The plugin registers
-a `n8n-validation` task via `cds.build.register`.
-
-**Errors** (stop the build):
-
-- Record form requires `path`. `on` is optional (defaults to all CRUD events).
-- `on` must be a string or an array of strings; values are forwarded verbatim
-  to `service.after` (any CAP event name — CRUD, bound-action names, CAP
-  aliases like `SAVE` / `WRITE`, or `*`). CAP validates the actual event names
-  at handler-registration time.
-- `inputs` must be an array of `{ '=': '$self.…' }` entries.
-- `if` must be a CDS expression.
-- The string-shorthand form must be a non-empty string.
-
-**Warnings** (build succeeds, message logged):
-
-- Unknown sub-keys under `@n8n.process.start.*`.
-
----
-
-## MVP scope & limitations
-
-Deliberately excluded from this initial release:
-
-- **No Fiori draft events** (`SAVE`, `EDIT`, `NEW`, `PATCH`, `DISCARD`) -
-  only CRUD + bound actions for now.
-- **No `READ` event triggers** - high volume, easy to create feedback loops.
-  Use bound actions or CDS events instead.
-- **No typed workflow import** - string webhook paths cover the MVP;
-  typed imports are on the roadmap.
-
----
+>[!NOTE] WHERE-clause fields listed are those the handler maps to n8n query params or path segments. Any additional predicates in the CQN clause are ignored by the REST call - apply them client-side over the returned rows if you need them.
 
 ---
 
