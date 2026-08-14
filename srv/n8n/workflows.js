@@ -1,0 +1,142 @@
+const { parseResponse, getProperty, extractIds } = require("../../lib/handlers/utils")
+const { n8nRequest } = require("../../lib/api/connection")
+
+async function readWorkflows(req) {
+  const ids = extractIds(req)
+  if (ids) {
+    const responses = await Promise.all(
+      ids.map((id) =>
+        n8nRequest({ method: "GET", path: `/api/v1/workflows/${encodeURIComponent(id)}` }),
+      ),
+    )
+    const rows = (await Promise.all(responses.map((r) => parseResponse(req, r)))).filter(
+      (row) => row && (typeof row !== "object" || Object.keys(row).length > 0),
+    )
+    if (req.query.SELECT?.one) return rows[0]
+    return rows
+  }
+
+  // No id in the where-clause — list all with optional filters.
+  const where = req.query.SELECT.from.ref.at(-1)?.where || req.query.SELECT.where
+  const params = new URLSearchParams()
+  const active = getProperty(where, "active")
+  const name = getProperty(where, "name")
+  if (active != null) params.set("active", String(active))
+  if (name) params.set("name", name)
+  if (req.query.SELECT.limit?.rows?.val) params.set("limit", req.query.SELECT.limit.rows.val)
+  const qs = params.toString()
+  const path = qs ? `/api/v1/workflows?${qs}` : "/api/v1/workflows"
+
+  const response = await n8nRequest({ method: "GET", path })
+  return parseResponse(req, response)
+}
+
+async function createWorkflow(req) {
+  const body = req.data ?? {}
+  for (const required of ["name", "nodes", "connections", "settings"]) {
+    if (body[required] == null) {
+      return req.reject(400, `Missing required workflow field: ${required}`)
+    }
+  }
+  const response = await n8nRequest({
+    method: "POST",
+    path: "/api/v1/workflows",
+    body,
+  })
+  return parseResponse(req, response)
+}
+
+// n8n's PUT /workflows/{id} rejects a request missing any of `name`,
+// `nodes`, `connections`, `settings`. CQL semantics are the opposite —
+// a partial UPDATE leaves untouched columns alone. Bridge by fetching
+// the current row when the caller omits any PUT-mandatory field and
+// back-filling from that.
+const WORKFLOW_PUT_REQUIRED_FIELDS = ["name", "nodes", "connections", "settings"]
+
+async function updateWorkflow(req) {
+  const [id] = extractIds(req) ?? []
+  if (!id) return req.reject(400, "Missing workflow id for UPDATE")
+  const body = req.data ?? {}
+
+  const missing = WORKFLOW_PUT_REQUIRED_FIELDS.filter((f) => body[f] == null)
+  if (missing.length > 0) {
+    const currentResponse = await n8nRequest({
+      method: "GET",
+      path: `/api/v1/workflows/${encodeURIComponent(id)}`,
+    })
+    const current = await parseResponse(req, currentResponse)
+    if (!current || (typeof current === "object" && Object.keys(current).length === 0)) {
+      return req.reject(404, `Workflow ${id} not found`)
+    }
+    for (const f of missing) {
+      if (current[f] != null) body[f] = current[f]
+    }
+  }
+
+  const response = await n8nRequest({
+    method: "PUT",
+    path: `/api/v1/workflows/${encodeURIComponent(id)}`,
+    body,
+  })
+  return parseResponse(req, response)
+}
+
+async function deleteWorkflow(req) {
+  const ids = extractIds(req)
+  if (!ids || ids.length === 0) return req.reject(400, "Missing workflow id for DELETE")
+
+  const responses = await Promise.all(
+    ids.map((id) =>
+      n8nRequest({ method: "DELETE", path: `/api/v1/workflows/${encodeURIComponent(id)}` }),
+    ),
+  )
+  const results = await Promise.all(responses.map((r) => parseResponse(req, r)))
+  return ids.length === 1 ? results[0] : results
+}
+
+async function publishWorkflow(req) {
+  const { id, versionId, name, description } = req.data ?? {}
+  if (!id) return req.reject(400, "Missing workflow id for publishWorkflow")
+  const body = {}
+  if (versionId) body.versionId = versionId
+  if (name) body.name = name
+  if (description) body.description = description
+  const response = await n8nRequest({
+    method: "POST",
+    path: `/api/v1/workflows/${encodeURIComponent(id)}/publish`,
+    body: Object.keys(body).length > 0 ? body : undefined,
+  })
+  return parseResponse(req, response)
+}
+
+async function unpublishWorkflow(req) {
+  const { id } = req.data ?? {}
+  if (!id) return req.reject(400, "Missing workflow id for unpublishWorkflow")
+  const response = await n8nRequest({
+    method: "POST",
+    path: `/api/v1/workflows/${encodeURIComponent(id)}/unpublish`,
+  })
+  return parseResponse(req, response)
+}
+
+async function archiveWorkflow(req) {
+  const { id } = req.data ?? {}
+  if (!id) return req.reject(400, "Missing workflow id for archiveWorkflow")
+  const response = await n8nRequest({
+    method: "POST",
+    path: `/api/v1/workflows/${encodeURIComponent(id)}/archive`,
+  })
+  return parseResponse(req, response)
+}
+
+module.exports = {
+  readWorkflows,
+  createWorkflow,
+  updateWorkflow,
+  deleteWorkflow,
+  publishWorkflow,
+  unpublishWorkflow,
+  archiveWorkflow,
+  // Exposed for reuse and unit tests.
+  WORKFLOW_PUT_REQUIRED_FIELDS,
+}

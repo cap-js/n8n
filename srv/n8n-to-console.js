@@ -1,75 +1,104 @@
 const cds = require("@sap/cds")
-const { N8N_LOGGER_PREFIX } = require("../lib/constants")
+const LOG = cds.log("@cap-js/n8n")
 
-const LOG = cds.log(N8N_LOGGER_PREFIX)
-
-/**
- * Opt-in log-only implementation of `N8nService`. Selected by:
- *
- *     "cds": { "requires": { "N8nService": { "kind": "n8n-to-console" } } }
- *
- * Useful for CI / offline development. Every `trigger` call logs the intended
- * webhook path and payload, then records an in-memory synthetic execution so
- * `getExecution` / `listExecutions` still return meaningful data during tests.
- */
-class ConsoleN8nService extends cds.Service {
+class ConsoleN8nService extends cds.ApplicationService {
   async init() {
-    /** @type {Array<{id:string,path:string,payload:unknown,startedAt:string,finishedAt:string,status:string}>} */
-    this.executions = []
-    this._counter = 0
+    const { WorkflowDefinitions, WorkflowExecutions } = this.entities
+
+    this.before("trigger", (req) => {
+      if (!req.data?.path || req.data.path.trim() === "") {
+        throw cds.error(400, "Missing required parameter path!")
+      }
+    })
 
     this.on("trigger", async (req) => {
       const { path, payload } = req.data ?? {}
-      if (!path) {
-        throw cds.error(400, "Missing required parameter: path")
-      }
 
-      this._counter += 1
-      const id = `console-exec-${this._counter}`
-      const now = new Date().toISOString()
-      const record = {
-        id,
-        executionId: id,
-        path,
-        payload,
-        startedAt: now,
-        finishedAt: now,
+      await INSERT.into(WorkflowExecutions).entries({
+        id: cds.utils.uuid(),
+        workflowId: path,
+        finished: true,
+        mode: "webhook",
         status: "success",
-      }
-      this.executions.push(record)
+        stoppedAt: new Date().toISOString(),
+        data: { payload },
+      })
 
-      LOG.info("Trigger n8n workflow", {
+      LOG.info("Triggering n8n workflow", {
+        method: "POST",
         webhookUrl: `/webhook/${path}`,
-        executionId: id,
         payload,
       })
 
-      return { ok: true, status: 200, executionId: id, body: { executionId: id } }
+      return payload ?? {}
     })
 
-    this.on("getExecution", async (req) => {
-      const { executionId } = req.data ?? {}
-      if (!executionId) {
-        throw cds.error(400, "Missing required parameter: executionId")
+    this.on(["publishWorkflow", "unpublishWorkflow", "archiveWorkflow"], this._patchWorkflow)
+
+    this.on("retryExecution", async (req) => {
+      const { id } = req.data ?? {}
+      const original = await SELECT.one.from(WorkflowExecutions).where({ id })
+      if (!original) {
+        LOG.warn("retryExecution: no execution", id)
+        return {}
       }
-      const exec = this.executions.find((e) => e.id === executionId)
-      if (!exec) {
-        throw cds.error(404, `Execution not found: ${executionId}`)
-      }
-      return exec
+      const newId = cds.utils.uuid()
+      await INSERT.into(WorkflowExecutions).entries({
+        ...original,
+        id: newId,
+        mode: "retry",
+        retryOf: original.id,
+        status: "success",
+        finished: true,
+        startedAt: new Date().toISOString(),
+        stoppedAt: new Date().toISOString(),
+      })
+      return SELECT.one.from(WorkflowExecutions).where({ id: newId })
     })
 
-    this.on("listExecutions", async (req) => {
-      const { workflowId } = req.data ?? {}
-      if (!workflowId) {
-        throw cds.error(400, "Missing required parameter: workflowId")
+    this.on("stopExecution", async (req) => {
+      const { id } = req.data ?? {}
+      const existing = await SELECT.one.from(WorkflowExecutions).where({ id })
+      if (!existing) {
+        LOG.warn("stopExecution: no execution", id)
+        return {}
       }
-      // Console implementation stores no separate n8n workflow ID; treat the
-      // webhook path as the identifier for filtering purposes.
-      return this.executions.filter((e) => e.path === workflowId)
+      await UPDATE(WorkflowExecutions, id).with({
+        status: "canceled",
+        finished: true,
+        stoppedAt: new Date().toISOString(),
+      })
+      return SELECT.one.from(WorkflowExecutions).where({ id })
     })
 
     return super.init()
+  }
+
+  async _patchWorkflow(req) {
+    const { id, versionId, name, description } = req.data ?? {}
+    const { WorkflowDefinitions } = this.entities
+    const existing = await SELECT.one.from(WorkflowDefinitions).where({ id })
+    if (!existing) {
+      LOG.warn(`${req.event}: no workflow`, id)
+      return {}
+    }
+
+    const statePatch = {
+      publishWorkflow: { active: true },
+      unpublishWorkflow: { active: false },
+      archiveWorkflow: { active: false, isArchived: true },
+    }[req.event]
+
+    const fromReq = {}
+    if (versionId) fromReq.versionId = versionId
+    if (name) fromReq.name = name
+    if (description) fromReq.description = description
+
+    const merged = { ...fromReq, ...statePatch }
+
+    await UPDATE(WorkflowDefinitions, id).with(merged)
+    LOG.info(`Executed ${req.event} with`, merged)
+    return SELECT.one.from(WorkflowDefinitions).where({ id })
   }
 }
 
