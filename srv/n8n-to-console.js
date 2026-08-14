@@ -20,7 +20,6 @@ class ConsoleN8nService extends cds.ApplicationService {
         finished: true,
         mode: "webhook",
         status: "success",
-        startedAt: new Date().toISOString(),
         stoppedAt: new Date().toISOString(),
         data: { payload },
       })
