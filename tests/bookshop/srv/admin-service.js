@@ -16,10 +16,10 @@ module.exports = class AdminService extends cds.ApplicationService {
       req.data.ID = Math.max(id1 || 0, id2 || 0) + 1
     })
 
-    // Warm the outbox-backed N8nService connection so the plugin can register
+    // Warm the outbox-backed n8n connection so the plugin can register
     // its handlers. Also serves as an example integration point for programmatic
     // triggering - see README.md for details.
-    const n8n = await cds.connect.to("N8nService")
+    const n8n = await cds.connect.to("n8n")
     void n8n
 
     return super.init()

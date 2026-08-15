@@ -21,7 +21,7 @@
   ],
   "cds": {
     "requires": {
-      "N8nService": {
+      "n8n": {
         "[hybrid]": {
           "kind": "n8n-to-rest",
           "credentials": {

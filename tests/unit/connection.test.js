@@ -1,7 +1,7 @@
 const cds = require("@sap/cds")
 const { resolveN8nConnection, resolveUseTestWebhook } = require("../../lib/api/connection")
 
-const SVC = "N8nService"
+const SVC = "n8n"
 
 describe("resolveN8nConnection", () => {
   let originalEnv

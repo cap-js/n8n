@@ -25,7 +25,7 @@ describe("Workflow handlers", () => {
     }
     savedRequires = cds.env.requires
     cds.env.requires = {
-      N8nService: {
+      n8n: {
         credentials: { url: "http://x:5678", apiKey: "key-1" },
       },
     }
@@ -55,7 +55,7 @@ describe("Workflow handlers", () => {
       data: {},
       params: [],
       query: {},
-      target: { name: "N8nService.WorkflowDefinitions" },
+      target: { name: "n8n.WorkflowDefinitions" },
       reject: vi.fn((code, message) => {
         const err = new Error(typeof message === "string" ? message : code?.message)
         err.code = code
@@ -73,7 +73,7 @@ describe("Workflow handlers", () => {
             from: {
               ref: [
                 {
-                  id: "N8nService.WorkflowDefinitions",
+                  id: "n8n.WorkflowDefinitions",
                   where: [{ ref: ["id"] }, "=", { val: "abc" }],
                 },
               ],
@@ -88,7 +88,7 @@ describe("Workflow handlers", () => {
 
     it("GETs the list when there is no where-clause", async () => {
       const req = makeReq({
-        query: { SELECT: { from: { ref: [{ id: "N8nService.WorkflowDefinitions" }] } } },
+        query: { SELECT: { from: { ref: [{ id: "n8n.WorkflowDefinitions" }] } } },
       })
       await readWorkflows(req)
       expect(capturedInit.url).toBe("http://x:5678/api/v1/workflows")
@@ -116,7 +116,7 @@ describe("Workflow handlers", () => {
             from: {
               ref: [
                 {
-                  id: "N8nService.WorkflowDefinitions",
+                  id: "n8n.WorkflowDefinitions",
                   where: [
                     { ref: ["id"] },
                     "in",
@@ -163,7 +163,7 @@ describe("Workflow handlers", () => {
             from: {
               ref: [
                 {
-                  id: "N8nService.WorkflowDefinitions",
+                  id: "n8n.WorkflowDefinitions",
                   where: [{ ref: ["id"] }, "in", { list: [{ val: "a" }] }],
                 },
               ],
@@ -203,7 +203,7 @@ describe("Workflow handlers", () => {
             from: {
               ref: [
                 {
-                  id: "N8nService.WorkflowDefinitions",
+                  id: "n8n.WorkflowDefinitions",
                   where: [
                     { ref: ["id"] },
                     "in",
@@ -407,7 +407,7 @@ describe("Workflow handlers", () => {
             from: {
               ref: [
                 {
-                  id: "N8nService.WorkflowDefinitions",
+                  id: "n8n.WorkflowDefinitions",
                   where: [
                     { ref: ["id"] },
                     "in",
@@ -489,7 +489,7 @@ describe("Workflow handlers — error propagation via unified parseResponse", ()
     originalFetch = globalThis.fetch
     savedRequires = cds.env.requires
     cds.env.requires = {
-      N8nService: { credentials: { url: "http://x:5678", apiKey: "k" } },
+      n8n: { credentials: { url: "http://x:5678", apiKey: "k" } },
     }
   })
   afterEach(() => {
@@ -514,7 +514,7 @@ describe("Workflow handlers — error propagation via unified parseResponse", ()
       data: { id: "abc" },
       params: [],
       query: {},
-      target: { name: "N8nService.WorkflowDefinitions" },
+      target: { name: "n8n.WorkflowDefinitions" },
     }
     const out = await publishWorkflow(req)
     expect(out).toEqual({})

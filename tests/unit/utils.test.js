@@ -15,13 +15,13 @@ describe("extractWhereClause", () => {
   })
 
   it("reads the where-clause from a CQL SELECT", () => {
-    const req = { query: parse("SELECT from N8nService.WorkflowDefinitions where id = 'abc'") }
+    const req = { query: parse("SELECT from n8n.WorkflowDefinitions where id = 'abc'") }
     expect(extractWhereClause(req)).toEqual([{ ref: ["id"] }, "=", { val: "abc" }])
   })
 
   it("reads the where-clause from a fluent UPDATE.entity().where()", () => {
     const req = {
-      query: UPDATE.entity("N8nService.WorkflowDefinitions")
+      query: UPDATE.entity("n8n.WorkflowDefinitions")
         .where({ id: "abc" })
         .with({ name: "x" }),
     }
@@ -38,7 +38,7 @@ describe("extractWhereClause", () => {
           entity: {
             ref: [
               {
-                id: "N8nService.WorkflowDefinitions",
+                id: "n8n.WorkflowDefinitions",
                 where: [{ ref: ["id"] }, "=", { val: "abc" }],
               },
             ],
@@ -51,7 +51,7 @@ describe("extractWhereClause", () => {
 
   it("reads the where-clause from a fluent DELETE.from().where({id})", () => {
     // DELETE.from().where(...) puts `where` at the CQN top level.
-    const req = { query: DELETE.from("N8nService.WorkflowDefinitions").where({ id: "abc" }) }
+    const req = { query: DELETE.from("n8n.WorkflowDefinitions").where({ id: "abc" }) }
     expect(extractWhereClause(req)).toEqual([{ ref: ["id"] }, "=", { val: "abc" }])
   })
 })
@@ -77,7 +77,7 @@ describe("extractIds", () => {
 
   it("returns a one-element array for a CQN `= <val>` where-clause", () => {
     const req = {
-      query: UPDATE.entity("N8nService.WorkflowDefinitions")
+      query: UPDATE.entity("n8n.WorkflowDefinitions")
         .where({ id: "abc" })
         .with({ name: "x" }),
     }
@@ -86,14 +86,14 @@ describe("extractIds", () => {
 
   it("returns the full list for a CQN `WHERE id IN (...)` where-clause", () => {
     const req = {
-      query: parse("SELECT from N8nService.WorkflowDefinitions where id in ('a','b','c')"),
+      query: parse("SELECT from n8n.WorkflowDefinitions where id in ('a','b','c')"),
     }
     expect(extractIds(req)).toEqual(["a", "b", "c"])
   })
 
   it("extracts from a fluent DELETE ... WHERE id IN (...)", () => {
     const req = {
-      query: DELETE.from("N8nService.WorkflowExecutions").where({ id: { in: ["1", "2"] } }),
+      query: DELETE.from("n8n.WorkflowExecutions").where({ id: { in: ["1", "2"] } }),
     }
     expect(extractIds(req)).toEqual(["1", "2"])
   })
@@ -103,7 +103,7 @@ describe("extractIds", () => {
     const req = {
       query: {
         DELETE: {
-          from: { ref: ["N8nService.WorkflowDefinitions"] },
+          from: { ref: ["n8n.WorkflowDefinitions"] },
           where: [{ ref: ["id"] }, "in", { list: [] }],
         },
       },
@@ -115,7 +115,7 @@ describe("extractIds", () => {
     expect(extractIds({ data: { workflowId: "wf-1" } }, "workflowId")).toEqual(["wf-1"])
     expect(extractIds({ params: [{ workflowId: "wf-1" }] }, "workflowId")).toEqual(["wf-1"])
     const req = {
-      query: parse("SELECT from N8nService.WorkflowExecutions where workflowId in ('wf-1','wf-2')"),
+      query: parse("SELECT from n8n.WorkflowExecutions where workflowId in ('wf-1','wf-2')"),
     }
     expect(extractIds(req, "workflowId")).toEqual(["wf-1", "wf-2"])
     // Default key `"id"` — no match for the "workflowId" property.

@@ -19,7 +19,7 @@ Initial release of the `@cap-js/n8n` plugin.
   - Multiple triggers per entity via CDS qualifiers.
   - DELETE prefetch that stashes the row in a before-handler so payloads
     carry the full record.
-- Programmatic `N8nService` with `trigger` (outboxed event), `getExecution`
+- Programmatic `n8n` with `trigger` (outboxed event), `getExecution`
   and `listExecutions` (synchronous functions).
 - Two service kinds:
   - `n8n-to-rest` - real HTTP client with configurable timeouts,

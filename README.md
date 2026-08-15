@@ -4,7 +4,7 @@
 
 CAP plugin to trigger [n8n](https://n8n.io/) workflows from CAP applications -
 declaratively via `@n8n.process.start` annotations and programmatically via a
-`N8nService` you can `cds.connect.to`.
+`n8n` you can `cds.connect.to`.
 
 - [Requirements](#requirements)
 - [Setup](#setup)
@@ -72,7 +72,7 @@ The default profile matrix is:
 {
   "cds": {
     "requires": {
-      "N8nService": {
+      "n8n": {
         "kind": "n8n-to-rest",
         "credentials": {
           "baseUrl": "env:N8N_BASE_URL",
@@ -99,7 +99,7 @@ The default profile matrix is:
 
 ```bash
 cf create-user-provided-service n8n -p '{"baseUrl":"https://your.n8n.cloud","apiKey":"eyJ..."}'
-cds bind N8nService -2 n8n
+cds bind n8n -2 n8n
 ```
 
 **Production** - the same user-provided service (tagged `n8n`) is picked up
@@ -112,7 +112,7 @@ local n8n instance):
 {
   "cds": {
     "requires": {
-      "N8nService": {
+      "n8n": {
         "[development]": {
           "kind": "n8n-to-rest",
           "credentials": { "baseUrl": "http://localhost:5678" },
@@ -138,7 +138,7 @@ Toggle via the `useTestWebhook` flag on the service credentials:
 {
   "cds": {
     "requires": {
-      "N8nService": {
+      "n8n": {
         "credentials": {
           "baseUrl": "http://localhost:5678",
           "useTestWebhook": true,
@@ -224,7 +224,7 @@ Setting `on: []` (empty array) is a deliberate no-op — the annotation is kept
 but registers no handlers. Useful for temporarily disabling a trigger without
 deleting the annotation.
 
-The plugin's `after` handler emits to the outboxed `N8nService`, which
+The plugin's `after` handler emits to the outboxed `n8n`, which
 persists the emit in the same transaction. The actual HTTP call to n8n is
 dispatched after the transaction commits, so a failing n8n call never rolls
 back your business transaction.
@@ -283,7 +283,7 @@ entity Books as projection on my.Books;
 ## Programmatic API
 
 ```js
-const n8n = await cds.connect.to("N8nService")
+const n8n = await cds.connect.to("n8n")
 
 // Fire a webhook - routed through the outbox, POSTed after commit
 await n8n.emit("trigger", {
@@ -294,10 +294,10 @@ await n8n.emit("trigger", {
 
 ### Querying executions and workflows
 
-`N8nService` exposes two entities projected from n8n's public REST API: `WorkflowDefinitions` and `WorkflowExecutions`. In addition, five unbound actions are specified: `publishWorkflow`, `unpublishWorkflow`, `archiveWorkflow`, `retryExecution`, `stopExecution`.
+`n8n` exposes two entities projected from n8n's public REST API: `WorkflowDefinitions` and `WorkflowExecutions`. In addition, five unbound actions are specified: `publishWorkflow`, `unpublishWorkflow`, `archiveWorkflow`, `retryExecution`, `stopExecution`.
 
 ```js
-const n8n = await cds.connect.to("N8nService")
+const n8n = await cds.connect.to("n8n")
 const { WorkflowExecutions, WorkflowDefinitions } = n8n.entities
 
 // List executions for a specific workflow

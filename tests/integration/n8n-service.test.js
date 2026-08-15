@@ -29,7 +29,7 @@ let WorkflowDefinitions
 let WorkflowExecutions
 
 beforeAll(async () => {
-  n8n = await cds.connect.to("N8nService")
+  n8n = await cds.connect.to("n8n")
   ;({ WorkflowDefinitions, WorkflowExecutions } = n8n.entities)
 })
 

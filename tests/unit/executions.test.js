@@ -17,7 +17,7 @@ describe("Execution handlers", () => {
     }
     savedRequires = cds.env.requires
     cds.env.requires = {
-      N8nService: { credentials: { url: "http://x:5678", apiKey: "key-1" } },
+      n8n: { credentials: { url: "http://x:5678", apiKey: "key-1" } },
     }
     globalThis.fetch = async (url, init) => {
       capturedInit = { url, init }
@@ -45,7 +45,7 @@ describe("Execution handlers", () => {
       data: {},
       params: [],
       query: {},
-      target: { name: "N8nService.WorkflowExecutions" },
+      target: { name: "n8n.WorkflowExecutions" },
       reject: vi.fn((code, message) => {
         const err = new Error(typeof message === "string" ? message : code?.message)
         err.code = code
@@ -63,7 +63,7 @@ describe("Execution handlers", () => {
             from: {
               ref: [
                 {
-                  id: "N8nService.WorkflowExecutions",
+                  id: "n8n.WorkflowExecutions",
                   where: [{ ref: ["id"] }, "=", { val: "42" }],
                 },
               ],
@@ -83,7 +83,7 @@ describe("Execution handlers", () => {
             from: {
               ref: [
                 {
-                  id: "N8nService.WorkflowExecutions",
+                  id: "n8n.WorkflowExecutions",
                   where: [
                     { ref: ["workflowId"] },
                     "=",
@@ -130,7 +130,7 @@ describe("Execution handlers", () => {
             from: {
               ref: [
                 {
-                  id: "N8nService.WorkflowExecutions",
+                  id: "n8n.WorkflowExecutions",
                   where: [{ ref: ["id"] }, "in", { list: [{ val: "1" }, { val: "2" }] }],
                 },
               ],
@@ -166,7 +166,7 @@ describe("Execution handlers", () => {
             from: {
               ref: [
                 {
-                  id: "N8nService.WorkflowExecutions",
+                  id: "n8n.WorkflowExecutions",
                   where: [{ ref: ["id"] }, "=", { val: "abc" }],
                 },
               ],
@@ -202,7 +202,7 @@ describe("Execution handlers", () => {
             from: {
               ref: [
                 {
-                  id: "N8nService.WorkflowExecutions",
+                  id: "n8n.WorkflowExecutions",
                   where: [{ ref: ["id"] }, "in", { list: [{ val: "1" }, { val: "2" }] }],
                 },
               ],

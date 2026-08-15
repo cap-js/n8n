@@ -2,7 +2,7 @@ using {N8nApi} from './external/n8n-api';
 
 @protocol: 'none'
 @impl: './n8n-to-rest'
-service N8nService {
+service n8n {
 
   /**
    * Fires an n8n production webhook.

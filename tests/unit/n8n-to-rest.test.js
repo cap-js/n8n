@@ -50,7 +50,7 @@ describe("N8nService._trigger HTTP method selection", () => {
     delete process.env.N8N_USE_TEST_WEBHOOK
     savedRequires = cds.env.requires
     cds.env.requires = {
-      N8nService: {
+      n8n: {
         credentials: {
           url: "http://x:5678",
           apiKey: "key-1",
@@ -120,7 +120,7 @@ describe("N8nService._trigger HTTP method selection", () => {
   })
 
   it("uses /webhook-test prefix when useTestWebhook is true", async () => {
-    cds.env.requires.N8nService.credentials.useTestWebhook = true
+    cds.env.requires.n8n.credentials.useTestWebhook = true
     const srv = makeService()
     await srv._trigger(makeReq({ path: "my-hook", payload: { a: 1 } }))
     expect(capturedInit.url).toBe("http://x:5678/webhook-test/my-hook")
