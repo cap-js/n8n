@@ -48,6 +48,7 @@ async function createTestWorkflow(name, webhookPath = cds.utils.uuid()) {
 
 beforeAll(async () => {
   n8n = await cds.connect.to("n8n")
+  n8n = await cds.connect.to("n8n")
   ;({ WorkflowDefinitions, WorkflowExecutions } = n8n.entities)
 })
 
