@@ -1,4 +1,4 @@
-const { parseResponse, getProperty, extractIds } = require("../../lib/handlers/utils")
+const { parseResponse, getProperty, extractIds, writeResult } = require("../../lib/handlers/utils")
 const { n8nRequest } = require("../../lib/api/connection")
 
 async function readWorkflows(req) {
@@ -43,7 +43,12 @@ async function createWorkflow(req) {
     path: "/api/v1/workflows",
     body,
   })
-  return parseResponse(req, response)
+  const created = await parseResponse(req, response)
+
+  if (!created || typeof created !== "object" || !created.id) {
+    return created // error path — parseResponse already logged and returned {}
+  }
+  return writeResult([{ id: created.id }], 1)
 }
 
 // n8n's PUT /workflows/{id} rejects a request missing any of `name`,
@@ -78,7 +83,10 @@ async function updateWorkflow(req) {
     path: `/api/v1/workflows/${encodeURIComponent(id)}`,
     body,
   })
-  return parseResponse(req, response)
+  const updated = await parseResponse(req, response)
+  // conform to CAP return shape
+  const affected = updated && typeof updated === "object" && updated.id ? 1 : 0
+  return writeResult([], affected)
 }
 
 async function deleteWorkflow(req) {
@@ -91,7 +99,12 @@ async function deleteWorkflow(req) {
     ),
   )
   const results = await Promise.all(responses.map((r) => parseResponse(req, r)))
-  return ids.length === 1 ? results[0] : results
+
+  // conform to CAP return shape
+  const affected = results.filter(
+    (r) => r && typeof r === "object" && Object.keys(r).length > 0,
+  ).length
+  return writeResult([], affected)
 }
 
 async function publishWorkflow(req) {

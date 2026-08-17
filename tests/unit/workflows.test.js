@@ -427,9 +427,9 @@ describe("Workflow handlers", () => {
         "http://x:5678/api/v1/workflows/c",
       ])
       for (const c of calls) expect(c.init.method).toBe("DELETE")
-      // Returns an aggregated array of per-id responses.
       expect(Array.isArray(res)).toBe(true)
-      expect(res).toHaveLength(3)
+      expect(res).toHaveLength(0)
+      expect(res.affected).toBe(3)
     })
   })
 

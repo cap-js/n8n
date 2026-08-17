@@ -5,7 +5,7 @@ const app = path.join(__dirname, "../bookshop")
 const { expect } = cds.test(app)
 
 // Minimal n8n-valid workflow body with webhook-trigger node
-function makeWebhookWorkflowBody(name, webhookPath) {
+function makeWorkflowBody(name, webhookPath) {
   return {
     id: cds.utils.uuid(),
     name,
@@ -40,14 +40,9 @@ const createdWorkflowIds = new Set()
 // webhook path defaults to a fresh UUID so parallel and repeated runs
 // don't collide against a persistent n8n instance under REST mode.
 async function createTestWorkflow(name, webhookPath = cds.utils.uuid()) {
-  const body = makeWebhookWorkflowBody(name, webhookPath)
-  const created = await n8n.run(INSERT.into(WorkflowDefinitions).entries(body))
-  // The REST backend returns the created row (with a server-minted id);
-  // the console mock (SQLite-backed) returns an affected-rows count.
-  // Fall back to the pre-generated id from the request body in the
-  // latter case.
-  const id = (Array.isArray(created) ? created[0]?.id : created?.id) ?? body.id
-  if (id) createdWorkflowIds.add(id)
+  const body = makeWorkflowBody(name, webhookPath)
+  const [{ id }] = await n8n.run(INSERT.into(WorkflowDefinitions).entries(body))
+  createdWorkflowIds.add(id)
   return { id, name, webhookPath, body }
 }
 
@@ -214,6 +209,38 @@ describe("WorkflowDefinitions", () => {
     expect(!after || Object.keys(after).length === 0).to.equal(true)
   })
 
+  it("INSERT returns an array of generated keys with .affected = 1", async () => {
+    const body = makeWorkflowBody("shape-insert", cds.utils.uuid())
+    const result = await n8n.run(INSERT.into(WorkflowDefinitions).entries(body))
+    createdWorkflowIds.add(body.id)
+
+    expect(Array.isArray(result)).to.equal(true)
+    expect(result).toHaveLength(1)
+    expect(result[0]).toHaveProperty("id")
+    expect(result.affected).toEqual(1)
+  })
+
+  it("UPDATE returns an empty array with .affected = 1", async () => {
+    const { id } = await createTestWorkflow("shape-update")
+
+    const result = await n8n.run(UPDATE(WorkflowDefinitions, id).with({ name: "renamed" }))
+
+    expect(Array.isArray(result)).to.equal(true)
+    expect(result).toHaveLength(0)
+    expect(result.affected).toEqual(1)
+  })
+
+  it("DELETE returns an empty array with .affected = 1", async () => {
+    const { id } = await createTestWorkflow("shape-delete")
+
+    const result = await n8n.run(DELETE.from(WorkflowDefinitions).where({ id }))
+    createdWorkflowIds.delete(id) // don't double-delete in afterAll
+
+    expect(Array.isArray(result)).to.equal(true)
+    expect(result).toHaveLength(0)
+    expect(result.affected).toEqual(1)
+  })
+
   it("should return a workflow when calling publishWorkflow action", async () => {
     // create test workflow
     const { id } = await createTestWorkflow("publish")
@@ -356,6 +383,18 @@ describe("WorkflowExecutions", () => {
 
     const after = await n8n.run(SELECT.one.from(WorkflowExecutions).where({ id: execId }))
     expect(!after || Object.keys(after).length === 0).to.equal(true)
+  })
+
+  it("DELETE returns an empty array with .affected = 1", async () => {
+    // create test execution
+    const execId = await seedExecution("delete-exec-shape")
+
+    const result = await n8n.run(DELETE.from(WorkflowExecutions).where({ id: execId }))
+    executionIds.delete(execId) // don't attempt a double-delete in afterAll
+
+    expect(Array.isArray(result)).to.equal(true)
+    expect(result).toHaveLength(0)
+    expect(result.affected).toEqual(1)
   })
 
   it("should return an execution when calling stopExecution action", async () => {

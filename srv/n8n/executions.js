@@ -1,5 +1,5 @@
 const { n8nRequest } = require("../../lib/api/connection")
-const { parseResponse, getProperty, extractIds } = require("../../lib/handlers/utils")
+const { parseResponse, getProperty, extractIds, writeResult } = require("../../lib/handlers/utils")
 
 async function readExecutions(req) {
   const ids = extractIds(req)
@@ -44,7 +44,12 @@ async function deleteExecution(req) {
     ),
   )
   const results = await Promise.all(responses.map((r) => parseResponse(req, r)))
-  return ids.length === 1 ? results[0] : results
+
+  // conform to CAP return shape
+  const affected = results.filter(
+    (r) => r && typeof r === "object" && Object.keys(r).length > 0,
+  ).length
+  return writeResult([], affected)
 }
 
 async function retryExecution(req) {

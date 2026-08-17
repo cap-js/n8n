@@ -218,7 +218,8 @@ describe("Execution handlers", () => {
       ])
       for (const c of calls) expect(c.init.method).toBe("DELETE")
       expect(Array.isArray(res)).toBe(true)
-      expect(res).toHaveLength(2)
+      expect(res).toHaveLength(0)
+      expect(res.affected).toBe(2)
     })
   })
 

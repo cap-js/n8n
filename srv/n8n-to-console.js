@@ -1,4 +1,5 @@
 const cds = require("@sap/cds")
+const { writeResult } = require("../lib/handlers/utils")
 const LOG = cds.log("@cap-js/n8n")
 
 // REVISIT: could be replaced by a single CQL query with `WHERE nodes LIKE '%"path":"<value>"%'`
@@ -22,6 +23,12 @@ class ConsoleN8nService extends cds.ApplicationService {
       if (!req.data?.path || req.data.path.trim() === "") {
         throw cds.error(400, "Missing required parameter path!")
       }
+    })
+
+    this.on("CREATE", WorkflowDefinitions, async (req, next) => {
+      await next() // run generic CRUD → persists the row
+      const id = req.data?.id
+      return id ? writeResult([{ id }], 1) : writeResult([], 1)
     })
 
     this.on("triggerWorkflow", async (req) => {
