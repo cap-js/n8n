@@ -29,15 +29,15 @@ let WorkflowDefinitions
 let WorkflowExecutions
 
 beforeAll(async () => {
-  n8n = await cds.connect.to("N8nService")
+  n8n = await cds.connect.to("n8n")
   ;({ WorkflowDefinitions, WorkflowExecutions } = n8n.entities)
 })
 
-describe("trigger", () => {
-  it("rejects trigger without path parameter", async () => {
+describe("triggerWorkflow", () => {
+  it("rejects triggerWorkflow without path parameter", async () => {
     let err
     try {
-      await n8n.emit("trigger", { payload: {} })
+      await n8n.emit("triggerWorkflow", { payload: {} })
     } catch (e) {
       err = e
     }
@@ -45,10 +45,10 @@ describe("trigger", () => {
     expect(String(err.message)).to.match(/path/i)
   })
 
-  it("rejects trigger with an empty / whitespace path parameter", async () => {
+  it("rejects triggerWorkflow with an empty / whitespace path parameter", async () => {
     let err
     try {
-      await n8n.emit("trigger", { path: "   ", payload: {} })
+      await n8n.emit("triggerWorkflow", { path: "   ", payload: {} })
     } catch (e) {
       err = e
     }
@@ -56,9 +56,9 @@ describe("trigger", () => {
     expect(String(err.message)).to.match(/path/i)
   })
 
-  it("records a synthetic execution row when trigger fires", async () => {
-    const workflowId = `trigger-record-${Date.now()}`
-    await n8n.emit("trigger", { path: workflowId, payload: { greeting: "hi" } })
+  it("records a synthetic execution row when triggerWorkflow fires", async () => {
+    const workflowId = `triggerWorkflow-record-${Date.now()}`
+    await n8n.emit("triggerWorkflow", { path: workflowId, payload: { greeting: "hi" } })
 
     const rows = await n8n.run(SELECT.from(WorkflowExecutions).where({ workflowId }))
     expect(rows).to.have.length(1)
@@ -66,9 +66,9 @@ describe("trigger", () => {
   })
 
   it("carries the payload through to the recorded execution", async () => {
-    const workflowId = `trigger-payload-${Date.now()}`
+    const workflowId = `triggerWorkflow-payload-${Date.now()}`
     const payload = { title: "Moby Dick", quantity: 3 }
-    await n8n.emit("trigger", { path: workflowId, payload })
+    await n8n.emit("triggerWorkflow", { path: workflowId, payload })
 
     const rows = await n8n.run(SELECT.from(WorkflowExecutions).where({ workflowId }))
     expect(rows).to.have.length(1)
@@ -80,9 +80,9 @@ describe("trigger", () => {
     expect(rows[0].data).to.deep.include({ payload })
   })
 
-  it("accepts trigger without a payload", async () => {
-    const workflowId = `trigger-ping-${Date.now()}`
-    await n8n.emit("trigger", { path: workflowId })
+  it("accepts triggerWorkflow without a payload", async () => {
+    const workflowId = `triggerWorkflow-ping-${Date.now()}`
+    await n8n.emit("triggerWorkflow", { path: workflowId })
 
     const rows = await n8n.run(SELECT.from(WorkflowExecutions).where({ workflowId }))
     expect(rows).to.have.length(1)
@@ -271,7 +271,7 @@ describe("WorkflowExecutions", () => {
   const executionIds = new Set()
 
   async function seedExecution(webhookPath) {
-    await n8n.emit("trigger", { path: webhookPath, payload: { hello: "world" } })
+    await n8n.emit("triggerWorkflow", { path: webhookPath, payload: { hello: "world" } })
     const rows = await n8n.run(SELECT.from(WorkflowExecutions).where({ workflowId: webhookPath }))
     if (!Array.isArray(rows) || rows.length === 0) return null
     const id = rows[0].id

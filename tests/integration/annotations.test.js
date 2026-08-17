@@ -12,7 +12,7 @@ describe("@n8n.process.start - annotation-driven flow", () => {
   let WorkflowExecutions
 
   beforeAll(async () => {
-    n8n = await cds.connect.to("N8nService")
+    n8n = await cds.connect.to("n8n")
     ;({ WorkflowExecutions } = n8n.entities)
   })
 

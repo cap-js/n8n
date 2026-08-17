@@ -43,8 +43,8 @@ class N8nService extends cds.Service {
   async init() {
     const { WorkflowExecutions, WorkflowDefinitions } = this.entities
 
-    this.before("trigger", (req) => assertPathSafe(req.data?.path))
-    this.on("trigger", this._trigger)
+    this.before("triggerWorkflow", (req) => assertPathSafe(req.data?.path))
+    this.on("triggerWorkflow", this._trigger)
 
     this.on("READ", WorkflowExecutions, readExecutions)
     this.on("DELETE", WorkflowExecutions, deleteExecution)
@@ -86,5 +86,3 @@ class N8nService extends cds.Service {
 }
 
 module.exports = N8nService
-// Exported for unit tests only.
-module.exports._internals = { assertPathSafe }

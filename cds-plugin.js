@@ -10,13 +10,13 @@ cds.build?.register?.("n8n-validation", N8nValidationPlugin)
 // Register event handlers for @n8n.process.start annotation
 cds.on("served", (services) => {
   for (const srv of services) {
-    if (!(srv instanceof cds.ApplicationService) || srv.name === "N8nService") continue
+    if (!(srv instanceof cds.ApplicationService) || srv.name === "n8n") continue
     registerAnnotationHandlers(srv)
   }
 })
 
 cds.once("served", () => {
-  const cfg = cds.env.requires?.["N8nService"]
+  const cfg = cds.env.requires?.["n8n"]
   if (cfg) {
     LOG.debug(`Using kind: ${cfg.kind ?? "default"}`)
   }
