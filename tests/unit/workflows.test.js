@@ -175,7 +175,7 @@ describe("Workflow handlers", () => {
       expect(row).toEqual({ id: "a", name: "wf-a" })
     })
 
-    it("skips missing rows (parser returns {}) in the batch aggregation", async () => {
+    it("rejects the batch when one requested workflow is missing", async () => {
       globalThis.fetch = async (url) => {
         const id = url.split("/").at(-1)
         if (id === "missing") {
@@ -215,11 +215,7 @@ describe("Workflow handlers", () => {
           },
         },
       })
-      const rows = await readWorkflows(req)
-      expect(rows).toEqual([
-        { id: "a", name: "wf-a" },
-        { id: "c", name: "wf-c" },
-      ])
+      await expect(readWorkflows(req)).rejects.toMatchObject({ status: 502 })
     })
   })
 
@@ -278,6 +274,16 @@ describe("Workflow handlers", () => {
 
     it("rejects when no id is provided", async () => {
       await expect(updateWorkflow(makeReq({ params: [] }))).rejects.toThrow(/id/i)
+    })
+
+    it("rejects batch updates", async () => {
+      const req = makeReq({
+        query: UPDATE.entity("n8n.WorkflowDefinitions")
+          .where({ id: { in: ["a", "b"] } })
+          .with({ name: "renamed" }),
+        data: { name: "renamed" },
+      })
+      await expect(updateWorkflow(req)).rejects.toThrow(/batch/i)
     })
 
     it("back-fills PUT-mandatory fields from the current workflow when omitted", async () => {
@@ -497,7 +503,7 @@ describe("Workflow handlers — error propagation via unified parseResponse", ()
     cds.env.requires = savedRequires
   })
 
-  it("returns {} on a 409 publish conflict (parser never throws) — JSON body", async () => {
+  it("rejects with 502 on a 409 publish conflict", async () => {
     globalThis.fetch = async () => ({
       ok: false,
       status: 409,
@@ -516,11 +522,10 @@ describe("Workflow handlers — error propagation via unified parseResponse", ()
       query: {},
       target: { name: "n8n.WorkflowDefinitions" },
     }
-    const out = await publishWorkflow(req)
-    expect(out).toEqual({})
+    await expect(publishWorkflow(req)).rejects.toMatchObject({ status: 502 })
   })
 
-  it("returns {} on a 404 in an event context (no req.reject, no query)", async () => {
+  it("rejects with 502 on a 404 in an event context", async () => {
     globalThis.fetch = async () => ({
       ok: false,
       status: 404,
@@ -531,7 +536,6 @@ describe("Workflow handlers — error propagation via unified parseResponse", ()
     })
     // Event context — no `reject`, no `query`, no `target.name`.
     const req = { data: { id: "abc" }, params: [], event: "publishWorkflow" }
-    const out = await publishWorkflow(req)
-    expect(out).toEqual({})
+    await expect(publishWorkflow(req)).rejects.toMatchObject({ status: 502 })
   })
 })

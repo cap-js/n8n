@@ -19,12 +19,10 @@ service AdminService {
       $self.book_ID
     ]
   }
-  // The DELETE trigger relies on the plugin's prefetch: at after-handler
-  // time the row is already gone, so we grab it in a before-handler and
-  // stash it on the request context.
   @n8n.process.start #deleted: {
     path: 'order-deleted',
     on: 'DELETE',
+    if: (status = 'new'),
     inputs: [ $self.ID, $self.quantity, $self.status ]
   }
   entity Orders  as projection on my.Orders;
