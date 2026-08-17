@@ -21,9 +21,7 @@ describe("extractWhereClause", () => {
 
   it("reads the where-clause from a fluent UPDATE.entity().where()", () => {
     const req = {
-      query: UPDATE.entity("n8n.WorkflowDefinitions")
-        .where({ id: "abc" })
-        .with({ name: "x" }),
+      query: UPDATE.entity("n8n.WorkflowDefinitions").where({ id: "abc" }).with({ name: "x" }),
     }
     expect(extractWhereClause(req)).toEqual([{ ref: ["id"] }, "=", { val: "abc" }])
   })
@@ -77,9 +75,7 @@ describe("extractIds", () => {
 
   it("returns a one-element array for a CQN `= <val>` where-clause", () => {
     const req = {
-      query: UPDATE.entity("n8n.WorkflowDefinitions")
-        .where({ id: "abc" })
-        .with({ name: "x" }),
+      query: UPDATE.entity("n8n.WorkflowDefinitions").where({ id: "abc" }).with({ name: "x" }),
     }
     expect(extractIds(req)).toEqual(["abc"])
   })

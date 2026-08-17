@@ -1,4 +1,4 @@
-using {N8nApi} from './external/n8n-api';
+using { N8nApi } from './external/n8n-api';
 
 @protocol: 'none'
 @impl: './n8n-to-rest'
@@ -9,7 +9,7 @@ service n8n {
    * - path : the webhook path segment (POSTed to `{baseUrl}/webhook/<path>`)
    * - payload : arbitrary JSON body sent to the webhook
    */
-  event trigger {
+  event triggerWorkflow {
     path    : String(256);
     payload : Map;
   }

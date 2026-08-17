@@ -5,13 +5,13 @@ class ConsoleN8nService extends cds.ApplicationService {
   async init() {
     const { WorkflowDefinitions, WorkflowExecutions } = this.entities
 
-    this.before("trigger", (req) => {
+    this.before("triggerWorkflow", (req) => {
       if (!req.data?.path || req.data.path.trim() === "") {
         throw cds.error(400, "Missing required parameter path!")
       }
     })
 
-    this.on("trigger", async (req) => {
+    this.on("triggerWorkflow", async (req) => {
       const { path, payload } = req.data ?? {}
 
       await INSERT.into(WorkflowExecutions).entries({
