@@ -142,7 +142,7 @@ cds repl --profile hybrid
 ```
 
 ```js
-const n8n = await cds.connect.to("N8nService")
+const n8n = await cds.connect.to("n8n")
 const { WorkflowExecutions, WorkflowDefinitions } = n8n.entities
 
 await n8n.run(SELECT.from(WorkflowDefinitions))
@@ -157,7 +157,7 @@ That means n8n rejected the read (typically 401 for a missing/wrong API key).
 The plugin remaps upstream 4xx/5xx to `502 Bad Gateway` to avoid this loop, but
 if you still see a popup:
 
-- Check the CAP log for `N8nService: no n8n API key resolved` — the preflight
+- Check the CAP log for `n8n: no n8n API key resolved` — the preflight
   warning printed at startup.
 - Verify `N8N_API_KEY` is actually in `process.env`. `.env` files are only
   loaded when `cds watch` runs from the directory containing the `.env`, so
@@ -171,7 +171,7 @@ If your n8n instance enforces auth, add an `apiKey` next to `url` under the
 `[hybrid]` block in `package.json`:
 
 ```jsonc
-"N8nService": {
+"n8n": {
   "[hybrid]": {
     "kind": "n8n-to-rest",
     "credentials": {

@@ -38,7 +38,7 @@
   },
   "cds": {
     "requires": {
-      "N8nService": {
+      "n8n": {
         "[development]": {
           "kind": "n8n-to-console"
         },
@@ -59,7 +59,7 @@
           "outboxed": true
         },
         "n8n-to-rest": {
-          "model": "@cap-js/n8n/srv/N8nService",
+          "model": "@cap-js/n8n/srv/n8n",
           "impl": "@cap-js/n8n/srv/n8n-to-rest",
           "outboxed": true,
           "vcap": {

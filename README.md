@@ -4,7 +4,7 @@
 
 CAP plugin to trigger [n8n](https://n8n.io/) workflows from CAP applications -
 declaratively via `@n8n.process.start` annotations and programmatically via a
-`N8nService` you can `cds.connect.to`.
+`n8n` you can `cds.connect.to`.
 
 - [CAP - n8n Plugin](#cap---n8n-plugin)
   - [Requirements](#requirements)
@@ -101,7 +101,7 @@ The package supplies this profile configuration:
 {
   "cds": {
     "requires": {
-      "N8nService": {
+      "n8n": {
         "[development]": {
           "kind": "n8n-to-console",
         },
@@ -156,7 +156,7 @@ cds watch --profile hybrid
 
 ```bash
 cf create-user-provided-service n8n -p '{"url":"https://your.n8n.cloud","apiKey":"eyJ..."}'
-cds bind N8nService --to n8n
+cds bind n8n --to n8n
 cds watch --profile hybrid
 ```
 
@@ -170,7 +170,7 @@ BTP destination instead, select it explicitly:
 {
   "cds": {
     "requires": {
-      "N8nService": {
+      "n8n": {
         "[production]": {
           "credentials": {
             "destination": "n8n",
@@ -189,7 +189,7 @@ local n8n instance):
 {
   "cds": {
     "requires": {
-      "N8nService": {
+      "n8n": {
         "[development]": {
           "kind": "n8n-to-rest",
           "credentials": { "url": "http://localhost:5678" },
@@ -215,7 +215,7 @@ Toggle via the `useTestWebhook` flag on the service credentials:
 {
   "cds": {
     "requires": {
-      "N8nService": {
+      "n8n": {
         "credentials": {
           "url": "http://localhost:5678",
           "useTestWebhook": true,
@@ -272,7 +272,7 @@ Setting `on: []` (empty array) is a deliberate no-op - the annotation is kept
 but registers no handlers. Useful for temporarily disabling a trigger without
 deleting the annotation.
 
-The plugin's `after` handler emits to the outboxed `N8nService`, which
+The plugin's `after` handler emits to the outboxed `n8n`, which
 persists the emit in the same transaction. The actual HTTP call to n8n is
 dispatched after the transaction commits, so a failing n8n call never rolls
 back your business transaction.
@@ -331,10 +331,10 @@ entity Books as projection on my.Books;
 ## Programmatic API
 
 ```js
-const n8n = await cds.connect.to("N8nService")
+const n8n = await cds.connect.to("n8n")
 
 // Fire a webhook - routed through the outbox, POSTed after commit
-await n8n.emit("trigger", {
+await n8n.emit("triggerWorkflow", {
   path: "book-created",
   payload: { title: "Moby Dick", quantity: 3 },
 })
@@ -342,10 +342,10 @@ await n8n.emit("trigger", {
 
 ### Querying executions and workflows
 
-`N8nService` exposes two entities projected from n8n's public REST API: `WorkflowDefinitions` and `WorkflowExecutions`. In addition, five unbound actions are specified: `publishWorkflow`, `unpublishWorkflow`, `archiveWorkflow`, `retryExecution`, `stopExecution`.
+`n8n` exposes two entities projected from n8n's public REST API: `WorkflowDefinitions` and `WorkflowExecutions`. In addition, five unbound actions are specified: `publishWorkflow`, `unpublishWorkflow`, `archiveWorkflow`, `retryExecution`, `stopExecution`.
 
 ```js
-const n8n = await cds.connect.to("N8nService")
+const n8n = await cds.connect.to("n8n")
 const { WorkflowExecutions, WorkflowDefinitions } = n8n.entities
 
 // List executions for a specific workflow
