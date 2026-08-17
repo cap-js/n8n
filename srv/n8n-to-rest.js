@@ -17,13 +17,13 @@ const {
   retryExecution,
   stopExecution,
 } = require("./n8n/executions")
-const { resolveN8nConnection } = require("../lib/api/connection")
+const { resolveN8nConnection, n8nRequest } = require("../lib/api/connection")
 
 const LOG = cds.log("@cap-js/n8n")
 
 // SSRF + log-injection defence on webhook path segments. Absolute URLs,
 // protocol-relative paths, CR/LF, and `..` segments are refused.
-function assertPathSafe(path) {
+function checkPathParam(path) {
   if (!path || String(path).trim() === "") {
     throw cds.error(400, "Missing required parameter path!")
   }
@@ -43,7 +43,7 @@ class N8nService extends cds.Service {
   async init() {
     const { WorkflowExecutions, WorkflowDefinitions } = this.entities
 
-    this.before("triggerWorkflow", (req) => assertPathSafe(req.data?.path))
+    this.before("triggerWorkflow", (req) => checkPathParam(req.data?.path))
     this.on("triggerWorkflow", this._trigger)
 
     this.on("READ", WorkflowExecutions, readExecutions)
@@ -63,28 +63,19 @@ class N8nService extends cds.Service {
   }
 
   async _trigger(req) {
-    const { baseUrl, apiKey, useTestWebhook, authHeaders } = await resolveN8nConnection()
+    const { useTestWebhook } = await resolveN8nConnection()
     const { path, payload } = req.data ?? {}
     const prefix = useTestWebhook ? "/webhook-test" : "/webhook"
-    const url = `${baseUrl}${prefix}/${String(path).replace(/^\/+/, "")}`
+    const webhookPath = `${prefix}/${String(path).replace(/^\/+/, "")}`
 
-    // Always POST with a JSON body
-    const init = {
+    LOG.info("Triggering n8n webhook", { path: webhookPath })
+    const response = await n8nRequest({
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(apiKey ? { "X-N8N-API-KEY": apiKey } : {}),
-        ...(authHeaders ?? {}),
-      },
-      body: JSON.stringify(payload ?? {}),
-    }
-
-    LOG.info("Triggering n8n webhook", { method: "POST", url })
-    const response = await fetch(url, init)
+      path: webhookPath,
+      body: payload ?? {},
+    })
     return parseResponse(req, response)
   }
 }
 
 module.exports = N8nService
-// Exported for unit tests only.
-module.exports._internals = { assertPathSafe }
