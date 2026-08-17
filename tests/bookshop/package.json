@@ -23,13 +23,14 @@
     "requires": {
       "N8nService": {
         "[hybrid]": {
-          "kind": "rest-n8n-service",
+          "kind": "n8n-to-rest",
           "credentials": {
-            "baseUrl": "http://localhost:5678"
+            "url": "http://localhost:5678",
+            "useTestWebhook": true
           }
         },
         "[test]": {
-          "kind": "console-n8n-service",
+          "kind": "n8n-to-console",
           "outboxed": false
         }
       }

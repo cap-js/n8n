@@ -30,9 +30,6 @@ declaratively via `@n8n.process.start` annotations and programmatically via a
 - Node.js 22 or newer
 - `@sap/cds` 9 or newer
 - An n8n instance for anything beyond local development (either local via
-  Docker or remote)
-
----
 
 ## Setup
 
@@ -40,13 +37,10 @@ declaratively via `@n8n.process.start` annotations and programmatically via a
 npm add @cap-js/n8n
 ```
 
-The plugin auto-registers on CAP boot. No further wiring is needed for the
-common cases.
-
 ### Local development
 
 By default in the `[development]` profile, the plugin uses the
-`console-n8n-service` kind: workflow triggers are logged to stdout and stored
+`n8n-to-console` kind: workflow triggers are logged to stdout and stored
 in an in-memory execution store. No n8n instance is required.
 
 To develop against a real n8n instance, the [sample bookshop](tests/bookshop)
@@ -67,10 +61,10 @@ cds watch --profile hybrid
 
 The plugin ships two service kinds:
 
-| Kind                  | Used when                              | Behavior                                                                   |
-| --------------------- | -------------------------------------- | -------------------------------------------------------------------------- |
-| `console-n8n-service` | default in `[development]`             | Log-only impl with an in-memory execution store. No n8n instance required. |
-| `rest-n8n-service`    | default in any non-development profile | Real HTTP calls against an n8n instance.                                   |
+| Kind             | Used when                              | Behavior                                                                   |
+| ---------------- | -------------------------------------- | -------------------------------------------------------------------------- |
+| `n8n-to-console` | default in `[development]`             | Log-only impl with an in-memory execution store. No n8n instance required. |
+| `n8n-to-rest`    | default in any non-development profile | Real HTTP calls against an n8n instance.                                   |
 
 The default profile matrix is:
 
@@ -79,7 +73,11 @@ The default profile matrix is:
   "cds": {
     "requires": {
       "N8nService": {
-        "kind": "rest-n8n-service",
+        "kind": "n8n-to-rest",
+        "credentials": {
+          "baseUrl": "env:N8N_BASE_URL",
+          "apiKey": "env:N8N_API_KEY",
+        },
         "[development]": {
           "kind": "console-n8n-service",
         },
@@ -116,7 +114,7 @@ local n8n instance):
     "requires": {
       "N8nService": {
         "[development]": {
-          "kind": "rest-n8n-service",
+          "kind": "n8n-to-rest",
           "credentials": { "baseUrl": "http://localhost:5678" },
         },
       },
@@ -158,6 +156,17 @@ first, then `N8N_USE_TEST_WEBHOOK`, then a BTP destination property
 The flag only affects webhook POSTs. Calls to n8n's public REST API
 (`/api/v1/executions/…`) always use the canonical `/api/v1` prefix.
 
+### HTTP method - PLACEHOLDER
+
+Every webhook trigger is a `POST {baseUrl}/webhook/<path>` with a JSON
+body — even when the caller emits no payload. In that case the body is
+just `{}`. The plugin doesn't switch between `GET` and `POST` based on
+payload contents: annotation-driven flows without an explicit `.inputs`
+mapping forward the full entity row, so a body is always the natural
+shape to expect on the n8n side.
+
+Configure your n8n Webhook node for `POST` accordingly.
+
 ### Retry semantics
 
 Failed webhook calls are retried by the CAP outbox (persistent queue backed
@@ -193,22 +202,27 @@ credential to the Webhook node with:
 
 ### Triggering a workflow
 
-**String shorthand** - fires on CREATE + UPDATE:
+**String shorthand** - fires on all CRUD events (CREATE + UPSERT + UPDATE + DELETE):
 
 ```cds
 @n8n.process.start: 'book-created'
 entity Books as projection on my.Books;
 ```
 
-**Record form** - pick events explicitly:
+**Record form** - `on` is optional and defaults to all CRUD events; specify it to
+narrow the event set (any CAP event: CRUD, bound-action names, `SAVE` / `WRITE`, or `*`):
 
 ```cds
 @n8n.process.start: {
   path: 'order-shipped',
-  on:   'UPDATE'                         // CREATE | UPDATE | DELETE | <boundAction> | '*'
+  on:   'UPDATE'                         // any CAP event name, or '*'
 }
 entity Orders as projection on my.Orders;
 ```
+
+Setting `on: []` (empty array) is a deliberate no-op — the annotation is kept
+but registers no handlers. Useful for temporarily disabling a trigger without
+deleting the annotation.
 
 The plugin's `after` handler emits to the outboxed `N8nService`, which
 persists the emit in the same transaction. The actual HTTP call to n8n is
@@ -232,17 +246,17 @@ to `false`, no trigger is fired.
 
 ### Input mapping
 
-Without `inputs`, all direct scalar attributes are sent.
+The `@n8n.process.start.inputs` annotation allows you to specify which elements are part of the request sent to n8n to trigger the workflow. All direct entity attributes are sent by default when no inputs are specified.
 
 ```cds
 @n8n.process.start: {
   path: 'shipment-ready',
   on:   'UPDATE',
   inputs: [
-    $self.ID,                                       // scalar
-    $self.total,                                    // scalar
-    $self.items,                                    // expand all child fields
-    $self.items.ID,                                 // combined: wildcard + specific
+    $self.ID,
+    $self.total,
+    $self.items,                          // expand all child fields
+    $self.items.ID,                       // combined: wildcard + specific
     $self.items.title
   ]
 }
@@ -251,8 +265,8 @@ entity Shipments as projection on my.Shipments;
 
 Special values:
 
-- `$self` alone means "all scalar fields of the current entity" (=> which is the default).
-- `$self.assoc` alone expands all direct attributes of the associated entity.
+- `$self` alone means that all fields of the current entity are sent (default)
+- `$self.<assoc>` expands all direct attributes of the associated entity
 
 ### Multiple triggers per entity
 
@@ -276,19 +290,65 @@ await n8n.emit("trigger", {
   path: "book-created",
   payload: { title: "Moby Dick", quantity: 3 },
 })
-
-// Query executions (synchronous)
-const list = await n8n.send("listExecutions", { workflowId: "abcd" })
-const one = await n8n.send("getExecution", { executionId: "exec-42" })
 ```
 
-The `N8nService` model (`srv/N8nService.cds`):
+### Querying executions and workflows
 
-| Operation        | Type     | Purpose                                                   |
-| ---------------- | -------- | --------------------------------------------------------- |
-| `trigger`        | event    | POST `{baseUrl}/webhook/<path>` with `payload`            |
-| `getExecution`   | function | GET `/api/v1/executions/{id}?includeData=true`            |
-| `listExecutions` | function | GET `/api/v1/executions?workflowId={id}&includeData=true` |
+`N8nService` exposes two entities projected from n8n's public REST API: `WorkflowDefinitions` and `WorkflowExecutions`. In addition, five unbound actions are specified: `publishWorkflow`, `unpublishWorkflow`, `archiveWorkflow`, `retryExecution`, `stopExecution`.
+
+```js
+const n8n = await cds.connect.to("N8nService")
+const { WorkflowExecutions, WorkflowDefinitions } = n8n.entities
+
+// List executions for a specific workflow
+const list = await SELECT.from(WorkflowExecutions).where({ workflowId: "abcd" })
+
+// Fetch a single execution (includes the heavy `data` payload)
+const one = await SELECT.one.from(WorkflowExecutions).where({ id: "exec-42" })
+
+// Only active workflows, top 20
+const active = await SELECT.from(WorkflowDefinitions).where({ active: true }).limit(20)
+
+// Batch read
+const some = await SELECT.from(WorkflowDefinitions).where({ id: ["a", "b", "c"] })
+
+await UPDATE(WorkflowDefinitions, "abc").with({ name: "Renamed" })
+
+// Actions
+await n8n.send("publishWorkflow", { id: "abc" })
+await n8n.send("archiveWorkflow", { id: "abc" })
+await n8n.send("stopExecution", { id: "exec-42" })
+await n8n.send("retryExecution", { id: "exec-42", loadWorkflow: true })
+```
+
+#### Supported `cds.ql` operations
+
+| Operation            | `WorkflowDefinitions`                                     | `WorkflowExecutions`                      |
+| -------------------- | --------------------------------------------------------- | ----------------------------------------- |
+| **READ (list)**      | ✓                                                         | ✓                                         |
+| – limit              | ✓                                                         | ✓                                         |
+| – where\*            | `id`, `id in […]`, `active`, `name`                       | `id`, `id in […]`, `workflowId`, `status` |
+| – columns projection | –                                                         | –                                         |
+| **READ (single)**    | ✓                                                         | ✓                                         |
+| **CREATE**           | ✓                                                         | –                                         |
+| – required fields    | `name`, `nodes`, `connections`, `settings`                | –                                         |
+| **UPDATE**           | ✓ (partial — missing fields back-filled)                  | –                                         |
+| – where\*            | `id`, `id in […]`                                         | –                                         |
+| **UPSERT**           | –                                                         | –                                         |
+| **DELETE**           | ✓                                                         | ✓                                         |
+| – where\*            | `id`, `id in […]`                                         | `id`, `id in […]`                         |
+| **Unbound actions**  | `publishWorkflow`, `unpublishWorkflow`, `archiveWorkflow` | `retryExecution`, `stopExecution`         |
+
+\* WHERE-clause fields listed are those the handler maps to n8n query params or path segments. Any additional predicates in the CQN clause are ignored by the REST call — apply them client-side over the returned rows if you need them.
+
+Notes:
+
+- `id in […]` batch operations fan out to per-id HTTP calls (n8n has no bulk endpoints). Missing rows drop out of READ results; failures on individual DELETE calls are logged but don't short-circuit the batch.
+- On non-2xx responses the parser logs and returns `{}` instead of throwing — same contract as `cap-js/ai`. Callers that need strict error propagation should inspect the returned shape.
+- Column projection (`.columns([...])`) is accepted by the CQL layer but the REST handlers currently return the full row shape returned by n8n. The console mock (SQLite-backed) does honor projection.
+- **Pagination**: n8n uses cursor-based pagination (`nextCursor`). Only `SELECT.limit(N)` is forwarded — offsets and cursor chaining are not currently exposed via CQL.
+- **`retryExecution`** accepts an optional `loadWorkflow: Boolean` in the action payload; omitted → no request body, `true`/`false` → forwarded verbatim.
+- **`archiveWorkflow`** flips `isArchived: true` (and deactivates the workflow); **`publishWorkflow`** / **`unpublishWorkflow`** flip `active` only.
 
 ---
 
@@ -299,9 +359,11 @@ a `n8n-validation` task via `cds.build.register`.
 
 **Errors** (stop the build):
 
-- `path` and `on` must be present together in the record form.
-- `on` must be `CREATE | UPDATE | DELETE`, a declared bound action of the
-  entity, or `*`.
+- Record form requires `path`. `on` is optional (defaults to all CRUD events).
+- `on` must be a string or an array of strings; values are forwarded verbatim
+  to `service.after` (any CAP event name — CRUD, bound-action names, CAP
+  aliases like `SAVE` / `WRITE`, or `*`). CAP validates the actual event names
+  at handler-registration time.
 - `inputs` must be an array of `{ '=': '$self.…' }` entries.
 - `if` must be a CDS expression.
 - The string-shorthand form must be a non-empty string.
@@ -324,14 +386,6 @@ Deliberately excluded from this initial release:
   typed imports are on the roadmap.
 
 ---
-
-## Development
-
-```bash
-npm install
-npm test           # unit + console-integration tests (no docker required)
-npm run test:live  # add: real REST calls against localhost:5678 (docker up first)
-```
 
 ---
 

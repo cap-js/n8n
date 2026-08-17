@@ -2,7 +2,7 @@ using {sap.capire.bookshop as my} from '../db/schema';
 
 service AdminService {
 
-  // String shorthand - fires the `book-created` webhook on CREATE + UPDATE.
+  // String shorthand - fires the `book-created` webhook on all CRUD events.
   @n8n.process.start: 'book-created'
   entity Books   as projection on my.Books;
 
