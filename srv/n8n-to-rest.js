@@ -86,5 +86,3 @@ class N8nService extends cds.Service {
 }
 
 module.exports = N8nService
-// Exported for unit tests only.
-module.exports._internals = { assertPathSafe }

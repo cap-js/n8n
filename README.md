@@ -286,7 +286,7 @@ entity Books as projection on my.Books;
 const n8n = await cds.connect.to("n8n")
 
 // Fire a webhook - routed through the outbox, POSTed after commit
-await n8n.emit("trigger", {
+await n8n.emit("triggerWorkflow", {
   path: "book-created",
   payload: { title: "Moby Dick", quantity: 3 },
 })
