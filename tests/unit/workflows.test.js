@@ -522,7 +522,12 @@ describe("Workflow handlers — error propagation via unified parseResponse", ()
       query: {},
       target: { name: "n8n.WorkflowDefinitions" },
     }
-    await expect(publishWorkflow(req)).rejects.toMatchObject({ status: 502 })
+    await expect(publishWorkflow(req)).rejects.toMatchObject({
+      status: 502,
+      message: expect.stringContaining(
+        "Error requesting n8n.WorkflowDefinitions from n8n: HTTP 409: publication blocked by review",
+      ),
+    })
   })
 
   it("rejects with 502 on a 404 in an event context", async () => {
@@ -536,6 +541,9 @@ describe("Workflow handlers — error propagation via unified parseResponse", ()
     })
     // Event context — no `reject`, no `query`, no `target.name`.
     const req = { data: { id: "abc" }, params: [], event: "publishWorkflow" }
-    await expect(publishWorkflow(req)).rejects.toMatchObject({ status: 502 })
+    await expect(publishWorkflow(req)).rejects.toMatchObject({
+      status: 502,
+      message: expect.stringContaining("Error requesting publishWorkflow from n8n: HTTP 404"),
+    })
   })
 })
