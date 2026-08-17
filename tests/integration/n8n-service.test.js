@@ -4,19 +4,25 @@ const path = require("path")
 const app = path.join(__dirname, "../bookshop")
 const { expect } = cds.test(app)
 
-// Minimal n8n-valid workflow body — a single manual-trigger node
-function makeWorkflowBody(name) {
+// Minimal n8n-valid workflow body with webhook-trigger node
+function makeWebhookWorkflowBody(name, webhookPath) {
   return {
     id: cds.utils.uuid(),
     name,
     nodes: [
       {
         id: cds.utils.uuid(),
-        name: "Manual Trigger",
-        type: "n8n-nodes-base.manualTrigger",
+        name: "Webhook",
+        type: "n8n-nodes-base.webhook",
         typeVersion: 1,
         position: [250, 300],
-        parameters: {},
+        parameters: {
+          httpMethod: "POST",
+          path: webhookPath,
+          responseMode: "onReceived",
+          options: {},
+        },
+        webhookId: webhookPath,
       },
     ],
     connections: {},
@@ -28,9 +34,31 @@ let n8n
 let WorkflowDefinitions
 let WorkflowExecutions
 
+const createdWorkflowIds = new Set()
+
+// Creates a real workflow definition with a webhook trigger node. The
+// webhook path defaults to a fresh UUID so parallel and repeated runs
+// don't collide against a persistent n8n instance under REST mode.
+async function createTestWorkflow(name, webhookPath = cds.utils.uuid()) {
+  const body = makeWebhookWorkflowBody(name, webhookPath)
+  const created = await n8n.run(INSERT.into(WorkflowDefinitions).entries(body))
+  // The REST backend returns the created row (with a server-minted id);
+  // the console mock (SQLite-backed) returns an affected-rows count.
+  // Fall back to the pre-generated id from the request body in the
+  // latter case.
+  const id = (Array.isArray(created) ? created[0]?.id : created?.id) ?? body.id
+  if (id) createdWorkflowIds.add(id)
+  return { id, name, webhookPath, body }
+}
+
 beforeAll(async () => {
   n8n = await cds.connect.to("n8n")
   ;({ WorkflowDefinitions, WorkflowExecutions } = n8n.entities)
+})
+
+afterAll(async () => {
+  if (createdWorkflowIds.size === 0) return
+  await n8n.run(DELETE.from(WorkflowDefinitions).where({ id: [...createdWorkflowIds] }))
 })
 
 describe("triggerWorkflow", () => {
@@ -56,9 +84,10 @@ describe("triggerWorkflow", () => {
     expect(String(err.message)).to.match(/path/i)
   })
 
-  it("records a synthetic execution row when triggerWorkflow fires", async () => {
-    const workflowId = `triggerWorkflow-record-${Date.now()}`
-    await n8n.emit("triggerWorkflow", { path: workflowId, payload: { greeting: "hi" } })
+  it("records an execution when triggering a workflow with a webhook node at that path", async () => {
+    const { id: workflowId, webhookPath } = await createTestWorkflow("trigger-record")
+
+    await n8n.emit("triggerWorkflow", { path: webhookPath, payload: { greeting: "hi" } })
 
     const rows = await n8n.run(SELECT.from(WorkflowExecutions).where({ workflowId }))
     expect(rows).to.have.length(1)
@@ -66,9 +95,10 @@ describe("triggerWorkflow", () => {
   })
 
   it("carries the payload through to the recorded execution", async () => {
-    const workflowId = `triggerWorkflow-payload-${Date.now()}`
+    const { id: workflowId, webhookPath } = await createTestWorkflow("trigger-payload")
     const payload = { title: "Moby Dick", quantity: 3 }
-    await n8n.emit("triggerWorkflow", { path: workflowId, payload })
+
+    await n8n.emit("triggerWorkflow", { path: webhookPath, payload })
 
     const rows = await n8n.run(SELECT.from(WorkflowExecutions).where({ workflowId }))
     expect(rows).to.have.length(1)
@@ -81,8 +111,9 @@ describe("triggerWorkflow", () => {
   })
 
   it("accepts triggerWorkflow without a payload", async () => {
-    const workflowId = `triggerWorkflow-ping-${Date.now()}`
-    await n8n.emit("triggerWorkflow", { path: workflowId })
+    const { id: workflowId, webhookPath } = await createTestWorkflow("trigger-ping")
+
+    await n8n.emit("triggerWorkflow", { path: webhookPath })
 
     const rows = await n8n.run(SELECT.from(WorkflowExecutions).where({ workflowId }))
     expect(rows).to.have.length(1)
@@ -90,25 +121,6 @@ describe("triggerWorkflow", () => {
 })
 
 describe("WorkflowDefinitions", () => {
-  const createdIds = new Set()
-
-  async function createTestWorkflow(name) {
-    const body = makeWorkflowBody(name)
-    const created = await n8n.run(INSERT.into(WorkflowDefinitions).entries(body))
-    // The REST backend returns the created row (with a server-minted id);
-    // the console mock (SQLite-backed) returns an affected-rows count.
-    // Fall back to the pre-generated id from the request body in the
-    // latter case.
-    const id = (Array.isArray(created) ? created[0]?.id : created?.id) ?? body.id
-    if (id) createdIds.add(id)
-    return { id, name }
-  }
-
-  afterAll(async () => {
-    if (createdIds.size === 0) return
-    await n8n.run(DELETE.from(WorkflowDefinitions).where({ id: [...createdIds] }))
-  })
-
   it("should return a list of workflows when running SELECT", async () => {
     // create test workflows
     await createTestWorkflow("select-1")
@@ -195,7 +207,7 @@ describe("WorkflowDefinitions", () => {
     expect(before.id).toEqual(id)
 
     await n8n.run(DELETE.from(WorkflowDefinitions).where({ id }))
-    createdIds.delete(id) // don't attempt a double-delete in afterAll
+    createdWorkflowIds.delete(id) // don't attempt a double-delete in afterAll
 
     const after = await n8n.run(SELECT.one.from(WorkflowDefinitions).where({ id }))
     // Both backends signal "not present" as either falsy or `{}`.
@@ -270,9 +282,15 @@ describe("WorkflowDefinitions", () => {
 describe("WorkflowExecutions", () => {
   const executionIds = new Set()
 
-  async function seedExecution(webhookPath) {
+  // Seeds a webhook workflow at `webhookPath` and fires it. Returns the
+  // resulting execution's id (or null under backends that don't surface
+  // the row synchronously). Under the console mock the workflow is not
+  // consulted, but creating it mirrors production usage — same pattern
+  // as `triggerWorkflow` tests above.
+  async function seedExecution(name) {
+    const { id: workflowId, webhookPath } = await createTestWorkflow(`exec-${name}`)
     await n8n.emit("triggerWorkflow", { path: webhookPath, payload: { hello: "world" } })
-    const rows = await n8n.run(SELECT.from(WorkflowExecutions).where({ workflowId: webhookPath }))
+    const rows = await n8n.run(SELECT.from(WorkflowExecutions).where({ workflowId }))
     if (!Array.isArray(rows) || rows.length === 0) return null
     const id = rows[0].id
     executionIds.add(id)

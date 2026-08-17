@@ -1,6 +1,19 @@
 const cds = require("@sap/cds")
 const LOG = cds.log("@cap-js/n8n")
 
+// REVISIT: could be replaced by a single CQL query with `WHERE nodes LIKE '%"path":"<value>"%'`
+async function resolveWorkflowIdByWebhookPath(WorkflowDefinitions, webhookPath) {
+  const workflows = await SELECT.from(WorkflowDefinitions).columns("id", "nodes")
+  for (const wf of workflows ?? []) {
+    const nodes = Array.isArray(wf.nodes) ? wf.nodes : []
+    const hit = nodes.some(
+      (n) => n?.type === "n8n-nodes-base.webhook" && n?.parameters?.path === webhookPath,
+    )
+    if (hit) return wf.id
+  }
+  return undefined
+}
+
 class ConsoleN8nService extends cds.ApplicationService {
   async init() {
     const { WorkflowDefinitions, WorkflowExecutions } = this.entities
@@ -14,9 +27,12 @@ class ConsoleN8nService extends cds.ApplicationService {
     this.on("triggerWorkflow", async (req) => {
       const { path, payload } = req.data ?? {}
 
+      // Resolve the workflow id by webhook path
+      const workflowId = (await resolveWorkflowIdByWebhookPath(WorkflowDefinitions, path)) ?? path
+
       await INSERT.into(WorkflowExecutions).entries({
         id: cds.utils.uuid(),
-        workflowId: path,
+        workflowId,
         finished: true,
         mode: "webhook",
         status: "success",
