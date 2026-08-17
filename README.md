@@ -90,25 +90,29 @@ n8n **Executions** view.
 
 The plugin ships two service kinds:
 
-| Kind             | Used when                              | Behavior                                                                   |
-| ---------------- | -------------------------------------- | -------------------------------------------------------------------------- |
-| `n8n-to-console` | default in `[development]`             | Log-only impl with an in-memory execution store. No n8n instance required. |
-| `n8n-to-rest`    | default in any non-development profile | Real HTTP calls against an n8n instance.                                   |
+| Kind             | Used when                    | Behavior                                                                   |
+| ---------------- | ---------------------------- | -------------------------------------------------------------------------- |
+| `n8n-to-console` | `[development]`              | Log-only impl with an in-memory execution store. No n8n instance required. |
+| `n8n-to-rest`    | `[hybrid]` or `[production]` | Real HTTP calls against an n8n instance.                                   |
 
-The default profile matrix is:
+The package supplies this profile configuration:
 
 ```jsonc
 {
   "cds": {
     "requires": {
       "N8nService": {
-        "kind": "n8n-to-rest",
-        "credentials": {
-          "baseUrl": "env:N8N_BASE_URL",
-          "apiKey": "env:N8N_API_KEY",
-        },
         "[development]": {
-          "kind": "console-n8n-service",
+          "kind": "n8n-to-console",
+        },
+        "[hybrid]": {
+          "kind": "n8n-to-rest",
+          "credentials": {
+            "url": "http://localhost:5678",
+          },
+        },
+        "[production]": {
+          "kind": "n8n-to-rest",
         },
       },
     },
@@ -116,23 +120,67 @@ The default profile matrix is:
 }
 ```
 
-**Resolution order** for the REST kind:
+The REST kind accepts credentials from a bound service, inline CAP configuration,
+a BTP destination, or the environment. Environment variables are read directly;
+values such as `"env:N8N_BASE_URL"` are not interpolated and must not be placed in
+`credentials`.
 
-1. Bound / inline `credentials.{baseUrl, apiKey}`
-2. BTP destination via `credentials.destination` or top-level `destination`
+**Resolution order** for the REST kind, from highest to lowest precedence:
+
+1. BTP destination named by `credentials.destination` or top-level `destination`
+2. Bound or inline `credentials.{url, apiKey}`
 3. Environment variables `N8N_BASE_URL` + `N8N_API_KEY`
-4. Dev-only fallback `http://localhost:5678` (development profile only -
-   throws in any other profile)
+
+Resolution fails if none of these sources provides a URL. When inline credentials
+provide only `url`, `N8N_API_KEY` can still supply the API key. The `[hybrid]`
+profile's built-in `http://localhost:5678` URL is configuration, not a general
+development fallback.
+
+**Environment variables** - useful for local or containerized deployments:
+
+```bash
+export N8N_BASE_URL=https://your.n8n.cloud
+export N8N_API_KEY=eyJ...
+cds watch --profile production
+```
+
+For a local n8n instance, `[hybrid]` already supplies the URL, so only the API key
+is required:
+
+```bash
+export N8N_API_KEY=eyJ...
+cds watch --profile hybrid
+```
 
 **Hybrid** - bind against a user-provided service with `cds bind`:
 
 ```bash
-cf create-user-provided-service n8n -p '{"baseUrl":"https://your.n8n.cloud","apiKey":"eyJ..."}'
-cds bind N8nService -2 n8n
+cf create-user-provided-service n8n -p '{"url":"https://your.n8n.cloud","apiKey":"eyJ..."}'
+cds bind N8nService --to n8n
+cds watch --profile hybrid
 ```
 
-**Production** - the same user-provided service (tagged `n8n`) is picked up
-via VCAP, or use a BTP destination named `n8n`.
+`cds bind` stores binding metadata under the `[hybrid]` profile in
+`.cdsrc-private.json`; it does not store the service credentials in the project.
+
+**Production** - a bound service tagged `n8n` is picked up through VCAP. To use a
+BTP destination instead, select it explicitly:
+
+```jsonc
+{
+  "cds": {
+    "requires": {
+      "N8nService": {
+        "[production]": {
+          "credentials": {
+            "destination": "n8n",
+          },
+        },
+      },
+    },
+  },
+}
+```
 
 **Opt into the REST kind in `[development]`** (e.g. when developing against a
 local n8n instance):
@@ -144,7 +192,7 @@ local n8n instance):
       "N8nService": {
         "[development]": {
           "kind": "n8n-to-rest",
-          "credentials": { "baseUrl": "http://localhost:5678" },
+          "credentials": { "url": "http://localhost:5678" },
         },
       },
     },
@@ -169,7 +217,7 @@ Toggle via the `useTestWebhook` flag on the service credentials:
     "requires": {
       "N8nService": {
         "credentials": {
-          "baseUrl": "http://localhost:5678",
+          "url": "http://localhost:5678",
           "useTestWebhook": true,
         },
       },
@@ -178,9 +226,9 @@ Toggle via the `useTestWebhook` flag on the service credentials:
 }
 ```
 
-Resolution order for the flag mirrors the base URL: bound / inline credentials
-first, then `N8N_USE_TEST_WEBHOOK`, then a BTP destination property
-`URL.useTestWebhook`, then `false`.
+Resolution order for the flag is a BTP destination property
+`URL.useTestWebhook`, then bound / inline credentials, then
+`N8N_USE_TEST_WEBHOOK`, then `false`.
 
 The flag only affects webhook POSTs. Calls to n8n's public REST API
 (`/api/v1/executions/…`) always use the canonical `/api/v1` prefix.

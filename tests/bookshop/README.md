@@ -18,7 +18,7 @@ Three annotation flavors, one workflow per flavor under `workflows/`:
 Also demonstrates **profile-driven config**:
 
 - **Default (no profile / `[development]`)** - inherits the plugin's built-in
-  `console-n8n-service` kind. Payloads are logged to the CDS log; no network
+  `n8n-to-console` kind. Payloads are logged to the CDS log; no network
   calls, no docker, no auth. This is the default `cds watch` experience.
 - **`[hybrid]`** - opts into `n8n-to-rest` pointing at a local n8n docker
   container on `http://localhost:5678`. Fires real webhooks. See
