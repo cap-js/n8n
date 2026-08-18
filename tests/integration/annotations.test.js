@@ -20,7 +20,7 @@ describe("@n8n.process.start - annotation-driven flow", () => {
     await cds.run(cql_DELETE.from(WorkflowExecutions))
   })
 
-  it('fires the "book-created" webhook on CREATE (string shorthand)', async () => {
+  it('fires the "book-created" webhook on CREATE', async () => {
     // AdminService.Books is @odata.draft.enabled via the Fiori app, so
     // creation is a two-step flow: POST creates a draft, then draftActivate
     // creates the active row (which is what triggers the CREATE handler).

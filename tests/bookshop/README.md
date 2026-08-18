@@ -11,7 +11,7 @@ Three annotation flavors, one workflow per flavor under `workflows/`:
 
 | Flow            | CDS pattern                                    | Fires on                                      | Payload                               |
 | --------------- | ---------------------------------------------- | --------------------------------------------- | ------------------------------------- |
-| `book-created`  | String shorthand on `Books`                    | Books CREATE, UPSERT, UPDATE, and DELETE      | All root scalar fields                |
+| `book-created`  | Record form with explicit `on` on `Books`      | Books CREATE                                  | All root scalar fields                |
 | `order-shipped` | Record form with `if` and `inputs` on `Orders` | Orders UPDATE where `status = 'shipped'`      | `{ ID, quantity, book_ID }`           |
 | `order-deleted` | Qualified record form (`#deleted`) on `Orders` | Orders DELETE where the prior status is `new` | Pre-delete `{ ID, quantity, status }` |
 
@@ -41,7 +41,7 @@ instance.
 The AdminService is mounted at `/odata/v4/admin`. `Books` keys are integers;
 `Orders` keys are UUIDs. OData v4 accepts both unquoted in parentheses.
 
-### Flow 1 - `book-created` (Books CREATE and UPDATE)
+### Flow 1 - `book-created` (Books CREATE)
 
 Sends the full row as payload.
 
@@ -51,10 +51,6 @@ curl -X POST http://localhost:4004/odata/v4/admin/Books \
   -H 'Content-Type: application/json' \
   -d '{ "ID": 999, "title": "Moby Dick", "author_ID": 101, "stock": 5, "price": 12.50 }'
 
-# UPDATE - also fires book-created (string shorthand includes UPDATE)
-curl -X PATCH "http://localhost:4004/odata/v4/admin/Books(999)" \
-  -H 'Content-Type: application/json' \
-  -d '{ "stock": 4 }'
 ```
 
 ### Flow 2 - `order-shipped` (Orders UPDATE, gated by `if`)

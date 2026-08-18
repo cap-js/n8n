@@ -26,16 +26,20 @@ function ent(annotations, actions) {
 }
 
 describe("validateTriggerAnnotations - string shorthand", () => {
-  it("accepts a non-empty string", () => {
+  it("rejects a string annotation", () => {
     const plugin = makePlugin()
     validateTriggerAnnotations("Foo", ent({ "@n8n.process.start": "my-hook" }), plugin)
-    expect(plugin.messages).toEqual([])
+    expect(plugin.messages.some((m) => /shorthand is no longer supported/i.test(m.message))).toBe(
+      true,
+    )
   })
 
-  it("rejects empty string", () => {
+  it("rejects an empty string annotation", () => {
     const plugin = makePlugin()
     validateTriggerAnnotations("Foo", ent({ "@n8n.process.start": "" }), plugin)
-    expect(plugin.messages.some((m) => m.severity === "Error")).toBe(true)
+    expect(plugin.messages.some((m) => /shorthand is no longer supported/i.test(m.message))).toBe(
+      true,
+    )
   })
 })
 
@@ -53,16 +57,26 @@ describe("validateTriggerAnnotations - record form", () => {
     expect(plugin.messages).toEqual([])
   })
 
-  it("accepts path-only record (on defaults to all CRUD)", () => {
+  it("rejects path-only record without on", () => {
     const plugin = makePlugin()
     validateTriggerAnnotations("Orders", ent({ "@n8n.process.start.path": "wf" }), plugin)
-    expect(plugin.messages).toEqual([])
+    expect(plugin.messages.some((m) => /\.on is required/i.test(m.message))).toBe(true)
   })
 
   it("reports error when only on is set (path is required)", () => {
     const plugin = makePlugin()
     validateTriggerAnnotations("Orders", ent({ "@n8n.process.start.on": "CREATE" }), plugin)
     expect(plugin.messages.some((m) => /is required/i.test(m.message))).toBe(true)
+  })
+
+  it("rejects a record without path or on", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "Orders",
+      ent({ "@n8n.process.start.if": { xpr: [{ ref: ["status"] }] } }),
+      plugin,
+    )
+    expect(plugin.messages.some((m) => /path is required/i.test(m.message))).toBe(true)
   })
 
   it("passes arbitrary on values through without error (no allowlist)", () => {
