@@ -31,6 +31,27 @@ class ConsoleN8nService extends cds.ApplicationService {
       return id ? writeResult([{ id }], 1) : writeResult([], 1)
     })
 
+    // REVISIT: Normalize UPDATE/DELETE return shape across CDS versions
+    //   CDS 9's db-service returns a plain number (row count)
+    //   CDS 10 returns an array with `.affected`
+    // Tests and consumers expect the array-with-`.affected` shape, so we run the query
+    // explicitly against the underlying db here and rebuild the shape
+    const _runOnDb = async (req) => {
+      const db = await cds.connect.to("db")
+      const res = await db.run(req.query)
+      const affected =
+        typeof res === "number"
+          ? res
+          : Array.isArray(res)
+            ? res.affected ?? res.length
+            : (res?.affected ?? 0)
+      return writeResult([], affected)
+    }
+    this.on("UPDATE", WorkflowDefinitions, _runOnDb)
+    this.on("DELETE", WorkflowDefinitions, _runOnDb)
+    this.on("UPDATE", WorkflowExecutions, _runOnDb)
+    this.on("DELETE", WorkflowExecutions, _runOnDb)
+
     this.on("triggerWorkflow", async (req) => {
       const { path, payload } = req.data ?? {}
 
