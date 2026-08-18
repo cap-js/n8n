@@ -1,5 +1,5 @@
 {
-  "name": "bookshop",
+  "name": "bookshop-n8n",
   "version": "1.0.0",
   "description": "Bookshop sample demonstrating @cap-js/n8n annotation-driven and programmatic workflow triggering.",
   "private": true,
@@ -26,11 +26,10 @@
           "kind": "n8n-to-rest",
           "credentials": {
             "url": "http://localhost:5678",
-            "useTestWebhook": true
+            "useTestWebhook": false
           }
         },
         "[test]": {
-          "kind": "n8n-to-console",
           "outboxed": false
         }
       }
