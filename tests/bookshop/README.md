@@ -9,16 +9,16 @@ additional `Orders` entity used to showcase the plugin.
 
 Three annotation flavors, one workflow per flavor under `workflows/`:
 
-| Flow            | CDS pattern                                                                             | Fires on                                 | Payload                               |
-| --------------- | --------------------------------------------------------------------------------------- | ---------------------------------------- | ------------------------------------- |
-| `book-created`  | String shorthand - `@n8n.process.start: 'book-created'` on `Books`                      | Books CRUD (all events)                  | Full row                              |
-| `order-shipped` | Record form with `if` + `inputs` on `Orders`                                            | Orders UPDATE where `status = 'shipped'` | `{ ID, quantity, book_ID }`           |
-| `order-deleted` | Qualified record form (`#deleted`) on `Orders` - relies on the plugin's DELETE prefetch | Orders DELETE                            | Pre-delete `{ ID, quantity, status }` |
+| Flow            | CDS pattern                                    | Fires on                                      | Payload                               |
+| --------------- | ---------------------------------------------- | --------------------------------------------- | ------------------------------------- |
+| `book-created`  | Record form with explicit `on` on `Books`      | Books CREATE                                  | All root scalar fields                |
+| `order-shipped` | Record form with `if` and `inputs` on `Orders` | Orders UPDATE where `status = 'shipped'`      | `{ ID, quantity, book_ID }`           |
+| `order-deleted` | Qualified record form (`#deleted`) on `Orders` | Orders DELETE where the prior status is `new` | Pre-delete `{ ID, quantity, status }` |
 
 Also demonstrates **profile-driven config**:
 
 - **Default (no profile / `[development]`)** - inherits the plugin's built-in
-  `console-n8n-service` kind. Payloads are logged to the CDS log; no network
+  `n8n-to-console` kind. Payloads are logged to the CDS log; no network
   calls, no docker, no auth. This is the default `cds watch` experience.
 - **`[hybrid]`** - opts into `n8n-to-rest` pointing at a local n8n docker
   container on `http://localhost:5678`. Fires real webhooks. See
@@ -41,7 +41,7 @@ instance.
 The AdminService is mounted at `/odata/v4/admin`. `Books` keys are integers;
 `Orders` keys are UUIDs. OData v4 accepts both unquoted in parentheses.
 
-### Flow 1 - `book-created` (Books CREATE + UPDATE)
+### Flow 1 - `book-created` (Books CREATE)
 
 Sends the full row as payload.
 
@@ -51,10 +51,6 @@ curl -X POST http://localhost:4004/odata/v4/admin/Books \
   -H 'Content-Type: application/json' \
   -d '{ "ID": 999, "title": "Moby Dick", "author_ID": 101, "stock": 5, "price": 12.50 }'
 
-# UPDATE - also fires book-created (string shorthand → all CRUD events)
-curl -X PATCH "http://localhost:4004/odata/v4/admin/Books(999)" \
-  -H 'Content-Type: application/json' \
-  -d '{ "stock": 4 }'
 ```
 
 ### Flow 2 - `order-shipped` (Orders UPDATE, gated by `if`)
@@ -81,8 +77,8 @@ curl -X PATCH "http://localhost:4004/odata/v4/admin/Orders(<order-uuid>)" \
 
 ### Flow 3 - `order-deleted` (Orders DELETE)
 
-Sends the **pre-delete** snapshot `{ ID, quantity, status }` - the plugin's
-before-DELETE handler stashes the row so the webhook still sees its state.
+Deletes an order with status `new` and sends its pre-delete state as
+`{ ID, quantity, status }`.
 
 ```bash
 curl -X DELETE "http://localhost:4004/odata/v4/admin/Orders(<order-uuid>)"
@@ -115,7 +111,7 @@ docker compose up -d
 
 # 3) Generate an n8n API key (Settings → n8n API → Create API Key) and
 #    put it in tests/bookshop/.env as N8N_API_KEY=<key>, or export it.
-#    The plugin uses it for both webhook triggers and REST reads.
+#    The key is required for the REST API examples below.
 
 # 4) Run CAP with the hybrid profile, FROM THE BOOKSHOP DIRECTORY so the
 #    local .env is picked up.
@@ -123,8 +119,9 @@ cd tests/bookshop
 cds watch --profile hybrid
 ```
 
-Trigger any of the curl commands above and the CAP outbox will dispatch a POST
-to `http://localhost:5678/webhook/<path>` with the shaped payload.
+Trigger any of the curl commands above and CAP sends a POST to
+`http://localhost:5678/webhook-test/<path>` with the shaped payload. Select
+**Listen for Test Event** in the matching n8n workflow before each call.
 
 ### Reading executions & workflows over the entity surface
 
@@ -154,11 +151,9 @@ await n8n.run(SELECT.one.from(WorkflowExecutions).where({ id: "<execId>" }))
 
 **Browser shows an endless Basic-auth login popup when hitting `/odata/v4/n8n/…`.**
 That means n8n rejected the read (typically 401 for a missing/wrong API key).
-The plugin remaps upstream 4xx/5xx to `502 Bad Gateway` to avoid this loop, but
-if you still see a popup:
+The plugin reports an upstream rejection as `502 Bad Gateway`. If the request
+still fails:
 
-- Check the CAP log for `n8n: no n8n API key resolved` — the preflight
-  warning printed at startup.
 - Verify `N8N_API_KEY` is actually in `process.env`. `.env` files are only
   loaded when `cds watch` runs from the directory containing the `.env`, so
   `cd tests/bookshop && cds watch --profile hybrid` is correct;

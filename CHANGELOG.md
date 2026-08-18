@@ -11,11 +11,9 @@ Initial release of the `@cap-js/n8n` plugin.
 ### Added
 
 - `@n8n.process.start` annotation to declaratively trigger n8n workflows on
-  CRUD events (CREATE / UPDATE / DELETE) and bound actions. Supports:
-  - String shorthand (`@n8n.process.start: 'workflow-path'`) firing on
-    CREATE + UPDATE.
-  - Record form with `path`, `on`, `if` (CDS predicate) and `inputs`
-    (subset / alias / association expansion).
+  explicitly selected events and bound actions. The record form requires
+  `path` and `on`, and supports `if` (CDS predicate) and `inputs`
+  (subset / association expansion).
   - Multiple triggers per entity via CDS qualifiers.
   - DELETE prefetch that stashes the row in a before-handler so payloads
     carry the full record.
