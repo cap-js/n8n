@@ -1,6 +1,6 @@
 const cds = require("@sap/cds")
 const executions = require("../../srv/n8n/executions")
-const { readExecutions, deleteExecution, retryExecution, stopExecution } = executions
+const { readExecutions, deleteExecution, retryExecution, stopExecution, stopExecutions } = executions
 
 describe("Execution handlers", () => {
   let originalFetch
@@ -258,6 +258,41 @@ describe("Execution handlers", () => {
 
     it("rejects when id is missing", async () => {
       await expect(stopExecution(makeReq({ data: {} }))).rejects.toThrow(/id/i)
+    })
+  })
+
+  describe("stopExecutions", () => {
+    it("POSTs workflow and status filters to /executions/stop", async () => {
+      globalThis.fetch = async (url, init) => {
+        capturedInit = { url, init }
+        return {
+          ok: true,
+          status: 200,
+          statusText: "OK",
+          headers: { get: () => "application/json" },
+          json: async () => ({ stopped: 2 }),
+          text: async () => "",
+        }
+      }
+      const result = await stopExecutions(
+        makeReq({ data: { workflowId: "workflow-1", status: ["waiting", "running"] } }),
+      )
+      expect(capturedInit.url).toBe("http://x:5678/api/v1/executions/stop")
+      expect(capturedInit.init.method).toBe("POST")
+      expect(JSON.parse(capturedInit.init.body)).toEqual({
+        workflowId: "workflow-1",
+        status: ["waiting", "running"],
+      })
+      expect(result).toBe(2)
+    })
+
+    it("rejects without a workflow id or status", async () => {
+      await expect(stopExecutions(makeReq({ data: { status: ["waiting"] } }))).rejects.toThrow(
+        /workflow id/i,
+      )
+      await expect(stopExecutions(makeReq({ data: { workflowId: "workflow-1" } }))).rejects.toThrow(
+        /status/i,
+      )
     })
   })
 })

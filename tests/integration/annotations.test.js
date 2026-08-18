@@ -1,31 +1,89 @@
 const cds = require("@sap/cds")
+const { waitForExecution } = require("../utils")
 
 const path = require("path")
 const app = path.join(__dirname, "../bookshop")
 const { POST, PATCH, DELETE, expect } = cds.test(app)
-// `DELETE` above is the HTTP helper from cds.test. For CQL wipes we reach
-// through cds.ql to avoid the name clash.
-const { DELETE: cql_DELETE } = cds.ql
+const isRest = cds.env.requires?.n8n?.kind === "n8n-to-rest"
+
+function executionPayload(execution) {
+  const data = typeof execution.data === "string" ? JSON.parse(execution.data) : execution.data
+  return data?.payload ?? data?.resultData?.runData?.Webhook?.[0]?.data?.main?.[0]?.[0]?.json?.body
+}
+
+function makeWebhookWorkflow(name, webhookPath) {
+  return {
+    id: cds.utils.uuid(),
+    name,
+    nodes: [
+      {
+        id: cds.utils.uuid(),
+        name: "Webhook",
+        type: "n8n-nodes-base.webhook",
+        typeVersion: 1,
+        position: [250, 300],
+        parameters: { httpMethod: "POST", path: webhookPath, responseMode: "onReceived", options: {} },
+        webhookId: webhookPath,
+      },
+    ],
+    connections: "{}",
+    settings: "{}",
+  }
+}
 
 describe("@n8n.process.start - annotation-driven flow", () => {
   let n8n
+  let WorkflowDefinitions
   let WorkflowExecutions
+  const workflowIds = new Map()
+  const createdWorkflowIds = new Set()
+  const executionIds = new Set()
+
+  async function executionsFor(path) {
+    const workflowId = workflowIds.get(path)
+    if (!workflowId) return []
+    return n8n.run(SELECT.from(WorkflowExecutions).where({ workflowId }))
+  }
 
   beforeAll(async () => {
     n8n = await cds.connect.to("n8n")
-    ;({ WorkflowExecutions } = n8n.entities)
+    ;({ WorkflowDefinitions, WorkflowExecutions } = n8n.entities)
+    for (const path of [
+      "annotation-test-book-created",
+      "annotation-test-order-shipped",
+      "annotation-test-order-deleted",
+    ]) {
+      const [{ id }] = await n8n.run(
+        INSERT.into(WorkflowDefinitions).entries(makeWebhookWorkflow(`annotation-${path}`, path)),
+      )
+      createdWorkflowIds.add(id)
+      workflowIds.set(path, id)
+      if (isRest) await n8n.send("publishWorkflow", { id })
+    }
+  })
+
+  afterAll(async () => {
+    if (isRest && executionIds.size > 0) {
+      await n8n.run(cds.delete(WorkflowExecutions).where({ id: [...executionIds] }))
+    }
+    if (createdWorkflowIds.size > 0) {
+      await n8n.run(cds.delete(WorkflowDefinitions).where({ id: [...createdWorkflowIds] }))
+    }
   })
 
   beforeEach(async () => {
-    await cds.run(cql_DELETE.from(WorkflowExecutions))
+    if (isRest) return
+    const rows = await n8n.run(SELECT.from(WorkflowExecutions))
+    if (rows.length > 0) await n8n.run(cds.delete(WorkflowExecutions).where({ id: rows.map((row) => row.id) }))
   })
 
   it('fires the "book-created" webhook on CREATE (string shorthand)', async () => {
     // AdminService.Books is @odata.draft.enabled via the Fiori app, so
     // creation is a two-step flow: POST creates a draft, then draftActivate
     // creates the active row (which is what triggers the CREATE handler).
+    const bookId = Math.floor(Math.random() * 1_000_000_000)
     const { status: draftStatus, data: draft } = await POST("/odata/v4/admin/Books", {
-      ID: 9001,
+      ID: bookId,
       title: "Moby Dick",
       author_ID: 101,
       stock: 5,
@@ -33,16 +91,22 @@ describe("@n8n.process.start - annotation-driven flow", () => {
     })
     expect(draftStatus).to.equal(201)
     // No trigger yet - the row is still a draft.
-    let created = await SELECT.from(WorkflowExecutions).where({ workflowId: "book-created" })
-    expect(created).to.have.length(0)
+    let created = await executionsFor("annotation-test-book-created")
+    const createdBeforeActivation = created.length
 
     const activateUrl = `/odata/v4/admin/Books(ID=${draft.ID},IsActiveEntity=false)/AdminService.draftActivate`
     const { status: actStatus } = await POST(activateUrl)
     expect(actStatus).to.equal(201)
 
-    created = await SELECT.from(WorkflowExecutions).where({ workflowId: "book-created" })
-    expect(created).to.have.length(1)
-    expect(created[0].data?.payload).to.include({ title: "Moby Dick", author_ID: 101 })
+    const execution = await waitForExecution(
+      n8n,
+      WorkflowExecutions,
+      { workflowId: workflowIds.get("annotation-test-book-created") },
+      (row) => !created.some((previous) => String(previous.id) === String(row.id)),
+      true,
+    )
+    expect(createdBeforeActivation).to.equal(0)
+    expect(executionPayload(execution)).to.include({ title: "Moby Dick", author_ID: 101 })
   })
 
   it('does NOT fire "order-shipped" when status is not "shipped"', async () => {
@@ -52,12 +116,12 @@ describe("@n8n.process.start - annotation-driven flow", () => {
     })
     expect(status).to.equal(201)
     // The Orders trigger is only for UPDATE + status=shipped, so CREATE fires nothing.
-    let shipped = await SELECT.from(WorkflowExecutions).where({ workflowId: "order-shipped" })
-    expect(shipped).to.have.length(0)
+    let shipped = await executionsFor("annotation-test-order-shipped")
+    const shippedBeforeUpdate = shipped.length
 
     await PATCH(`/odata/v4/admin/Orders(${order.ID})`, { status: "cancelled" })
-    shipped = await SELECT.from(WorkflowExecutions).where({ workflowId: "order-shipped" })
-    expect(shipped).to.have.length(0)
+    shipped = await executionsFor("annotation-test-order-shipped")
+    expect(shipped).to.have.length(shippedBeforeUpdate)
   })
 
   it('fires "order-shipped" only when status transitions to "shipped"', async () => {
@@ -65,16 +129,21 @@ describe("@n8n.process.start - annotation-driven flow", () => {
       quantity: 3,
       status: "new",
     })
-    await cds.run(cql_DELETE.from(WorkflowExecutions))
+    const before = await executionsFor("annotation-test-order-shipped")
 
     await PATCH(`/odata/v4/admin/Orders(${order.ID})`, { status: "shipped" })
 
-    const shipped = await SELECT.from(WorkflowExecutions).where({ workflowId: "order-shipped" })
-    expect(shipped).to.have.length(1)
+    const execution = await waitForExecution(
+      n8n,
+      WorkflowExecutions,
+      { workflowId: workflowIds.get("annotation-test-order-shipped") },
+      (row) => !before.some((previous) => String(previous.id) === String(row.id)),
+      true,
+    )
     // Payload carries only the mapped columns (ID + quantity + book_ID).
-    expect(shipped[0].data?.payload).to.have.property("ID", order.ID)
-    expect(shipped[0].data?.payload).to.have.property("quantity", 3)
-    expect(shipped[0].data?.payload).to.have.property("book_ID")
+    expect(executionPayload(execution)).to.have.property("ID", order.ID)
+    expect(executionPayload(execution)).to.have.property("quantity", 3)
+    expect(executionPayload(execution)).to.have.property("book_ID")
   })
 
   it("sends the full pre-delete row on DELETE via the prefetch stash", async () => {
@@ -82,15 +151,20 @@ describe("@n8n.process.start - annotation-driven flow", () => {
       quantity: 7,
       status: "new",
     })
-    await cds.run(cql_DELETE.from(WorkflowExecutions))
+    const before = await executionsFor("annotation-test-order-deleted")
 
     await DELETE(`/odata/v4/admin/Orders(${order.ID})`)
 
-    const deleted = await SELECT.from(WorkflowExecutions).where({ workflowId: "order-deleted" })
-    expect(deleted, "DELETE trigger should fire exactly once").to.have.length(1)
+    const execution = await waitForExecution(
+      n8n,
+      WorkflowExecutions,
+      { workflowId: workflowIds.get("annotation-test-order-deleted") },
+      (row) => !before.some((previous) => String(previous.id) === String(row.id)),
+      true,
+    )
     // Without the before-DELETE prefetch, `quantity` and `status` would be
     // missing here because the after-handler runs against a row that's gone.
-    expect(deleted[0].data?.payload).to.deep.include({
+    expect(executionPayload(execution)).to.deep.include({
       ID: order.ID,
       quantity: 7,
       status: "new",
