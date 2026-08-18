@@ -43,7 +43,7 @@ class ConsoleN8nService extends cds.ApplicationService {
         typeof res === "number"
           ? res
           : Array.isArray(res)
-            ? res.affected ?? res.length
+            ? (res.affected ?? res.length)
             : (res?.affected ?? 0)
       return writeResult([], affected)
     }
