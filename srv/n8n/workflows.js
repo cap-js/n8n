@@ -74,7 +74,9 @@ async function createWorkflow(req) {
 const WORKFLOW_PUT_REQUIRED_FIELDS = ["name", "nodes", "connections", "settings"]
 
 async function updateWorkflow(req) {
-  const [id] = extractIds(req) ?? []
+  const ids = extractIds(req) ?? []
+  if (ids.length > 1) return req.reject(400, "Batch workflow UPDATE is not supported")
+  const [id] = ids
   if (!id) return req.reject(400, "Missing workflow id for UPDATE")
   const body = { ...(req.data ?? {}) }
   // These fields are computed by n8n and must not be sent back in a PUT.

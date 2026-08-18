@@ -64,7 +64,7 @@ describe("@n8n.process.start - annotation-driven flow", () => {
       await n8n.run(cds.delete(WorkflowExecutions).where({ id: rows.map((row) => row.id) }))
   })
 
-  it('fires the "book-created" webhook on CREATE (string shorthand)', async () => {
+  it('fires the "book-created" webhook on CREATE', async () => {
     // AdminService.Books is @odata.draft.enabled via the Fiori app, so
     // creation is a two-step flow: POST creates a draft, then draftActivate
     // creates the active row (which is what triggers the CREATE handler).
@@ -156,5 +156,18 @@ describe("@n8n.process.start - annotation-driven flow", () => {
       quantity: 7,
       status: "new",
     })
+  })
+
+  it("does not fire a DELETE trigger when its condition is false", async () => {
+    const { data: order } = await POST("/odata/v4/admin/Orders", {
+      quantity: 1,
+      status: "shipped",
+    })
+    await cds.run(cql_DELETE.from(WorkflowExecutions))
+
+    await DELETE(`/odata/v4/admin/Orders(${order.ID})`)
+
+    const deleted = await SELECT.from(WorkflowExecutions).where({ workflowId: "order-deleted" })
+    expect(deleted).to.have.length(0)
   })
 })
