@@ -28,17 +28,23 @@ describe("@n8n.process.start - annotation-driven flow", () => {
   beforeAll(async () => {
     n8n = await cds.connect.to("n8n")
     ;({ WorkflowDefinitions, WorkflowExecutions } = n8n.entities)
-    for (const path of [
+    const paths = [
       "annotation-test-book-created",
       "annotation-test-order-shipped",
       "annotation-test-order-deleted",
-    ]) {
-      const [{ id }] = await n8n.run(
-        INSERT.into(WorkflowDefinitions).entries(makeWorkflowBody(`annotation-${path}`, path)),
-      )
+    ]
+    const workflows = await Promise.all(
+      paths.map(async (path) => {
+        const [{ id }] = await n8n.run(
+          INSERT.into(WorkflowDefinitions).entries(makeWorkflowBody(`annotation-${path}`, path)),
+        )
+        if (isRest) await n8n.send("publishWorkflow", { id })
+        return { path, id }
+      }),
+    )
+    for (const { path, id } of workflows) {
       createdWorkflowIds.add(id)
       workflowIds.set(path, id)
-      if (isRest) await n8n.send("publishWorkflow", { id })
     }
   })
 
@@ -54,7 +60,8 @@ describe("@n8n.process.start - annotation-driven flow", () => {
   beforeEach(async () => {
     if (isRest) return
     const rows = await n8n.run(SELECT.from(WorkflowExecutions))
-    if (rows.length > 0) await n8n.run(cds.delete(WorkflowExecutions).where({ id: rows.map((row) => row.id) }))
+    if (rows.length > 0)
+      await n8n.run(cds.delete(WorkflowExecutions).where({ id: rows.map((row) => row.id) }))
   })
 
   it('fires the "book-created" webhook on CREATE (string shorthand)', async () => {

@@ -45,8 +45,8 @@ async function readWorkflows(req) {
 }
 
 async function createWorkflow(req) {
-  // skip id from body
-  const { id: _id, ...body } = req.data ?? {}
+  const body = { ...(req.data ?? {}) }
+  delete body.id // n8n assigns workflow IDs
   parseJsonFields(body)
   for (const required of ["name", "nodes", "connections", "settings"]) {
     if (body[required] == null) {
@@ -76,8 +76,11 @@ const WORKFLOW_PUT_REQUIRED_FIELDS = ["name", "nodes", "connections", "settings"
 async function updateWorkflow(req) {
   const [id] = extractIds(req) ?? []
   if (!id) return req.reject(400, "Missing workflow id for UPDATE")
+  const body = { ...(req.data ?? {}) }
   // These fields are computed by n8n and must not be sent back in a PUT.
-  const { id: _id, active: _active, isArchived: _isArchived, ...body } = req.data ?? {}
+  delete body.id
+  delete body.active
+  delete body.isArchived
   parseJsonFields(body)
 
   const missing = WORKFLOW_PUT_REQUIRED_FIELDS.filter((f) => body[f] == null)

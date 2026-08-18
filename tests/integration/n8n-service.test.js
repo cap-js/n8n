@@ -71,11 +71,14 @@ async function createPublishedWebhookWorkflow(name, executionKind) {
 
 async function waitForStoppedExecutions(workflowId) {
   for (let attempt = 0; attempt < 20; attempt++) {
+    // Retrying is intentional until n8n has made the execution stoppable.
+    // eslint-disable-next-line no-await-in-loop
     const stopped = await n8n.send("stopExecutions", {
       workflowId,
       status: ["waiting", "running"],
     })
     if (stopped > 0) return stopped
+    // eslint-disable-next-line no-await-in-loop
     await new Promise((resolve) => setTimeout(resolve, 250))
   }
   throw new Error(`Timed out stopping executions of workflow ${workflowId}`)
@@ -117,7 +120,10 @@ describe("triggerWorkflow", () => {
   it("records an execution when triggering a workflow with a webhook node at that path", async () => {
     const { webhookPath } = await createPublishedWebhookWorkflow("trigger-record", "echo")
 
-    const result = await n8n.send("triggerWorkflow", { path: webhookPath, payload: { greeting: "hi" } })
+    const result = await n8n.send("triggerWorkflow", {
+      path: webhookPath,
+      payload: { greeting: "hi" },
+    })
 
     expect(result).toEqual({ greeting: "hi" })
   })

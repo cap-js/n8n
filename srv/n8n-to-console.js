@@ -100,11 +100,13 @@ class ConsoleN8nService extends cds.ApplicationService {
       const { workflowId, status } = req.data ?? {}
       const executions = await SELECT.from(WorkflowExecutions).where({ workflowId, status })
       if (executions.length === 0) return 0
-      await UPDATE(WorkflowExecutions).where({ id: executions.map((execution) => execution.id) }).with({
-        status: "canceled",
-        finished: true,
-        stoppedAt: new Date().toISOString(),
-      })
+      await UPDATE(WorkflowExecutions)
+        .where({ id: executions.map((execution) => execution.id) })
+        .with({
+          status: "canceled",
+          finished: true,
+          stoppedAt: new Date().toISOString(),
+        })
       return executions.length
     })
 

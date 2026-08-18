@@ -1,6 +1,7 @@
 const cds = require("@sap/cds")
 const executions = require("../../srv/n8n/executions")
-const { readExecutions, deleteExecution, retryExecution, stopExecution, stopExecutions } = executions
+const { readExecutions, deleteExecution, retryExecution, stopExecution, stopExecutions } =
+  executions
 
 describe("Execution handlers", () => {
   let originalFetch
