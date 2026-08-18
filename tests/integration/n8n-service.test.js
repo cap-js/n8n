@@ -1,29 +1,13 @@
 const cds = require("@sap/cds")
 const path = require("path")
-const { waitForExecution } = require("../utils")
+const { waitForExecution, makeWorkflowBody } = require("../utils")
 
 const app = path.join(__dirname, "../bookshop")
 const { expect } = cds.test(app)
 const isRest = cds.env.requires?.n8n?.kind === "n8n-to-rest"
 
-// Minimal n8n-valid workflow body with webhook-trigger node
-function makeWorkflowBody(name, webhookPath, executionKind) {
-  const nodes = [
-    {
-      id: cds.utils.uuid(),
-      name: "Webhook",
-      type: "n8n-nodes-base.webhook",
-      typeVersion: 1,
-      position: [250, 300],
-      parameters: {
-        httpMethod: "POST",
-        path: webhookPath,
-        responseMode: "onReceived",
-        options: {},
-      },
-      webhookId: webhookPath,
-    },
-  ]
+function makeTestWorkflowBody(name, webhookPath, executionKind) {
+  const nodes = []
   const connections = {}
   if (executionKind === "waiting") {
     nodes.push({
@@ -48,7 +32,6 @@ function makeWorkflowBody(name, webhookPath, executionKind) {
     connections.Webhook = { main: [[{ node: "Fail", type: "main", index: 0 }]] }
   }
   if (executionKind === "echo") {
-    nodes[0].parameters.responseMode = "responseNode"
     nodes.push({
       id: cds.utils.uuid(),
       name: "Respond",
@@ -59,13 +42,9 @@ function makeWorkflowBody(name, webhookPath, executionKind) {
     })
     connections.Webhook = { main: [[{ node: "Respond", type: "main", index: 0 }]] }
   }
-  return {
-    id: cds.utils.uuid(),
-    name,
-    nodes,
-    connections: JSON.stringify(connections),
-    settings: "{}",
-  }
+  const body = makeWorkflowBody(name, webhookPath, nodes, connections)
+  if (executionKind === "echo") body.nodes[0].parameters.responseMode = "responseNode"
+  return body
 }
 
 let n8n
@@ -78,7 +57,7 @@ const createdWorkflowIds = new Set()
 // webhook path defaults to a fresh UUID so parallel and repeated runs
 // don't collide against a persistent n8n instance under REST mode.
 async function createTestWorkflow(name, webhookPath = cds.utils.uuid(), executionKind) {
-  const body = makeWorkflowBody(name, webhookPath, executionKind)
+  const body = makeTestWorkflowBody(name, webhookPath, executionKind)
   const [{ id }] = await n8n.run(INSERT.into(WorkflowDefinitions).entries(body))
   createdWorkflowIds.add(id)
   return { id, name, webhookPath, body }

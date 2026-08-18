@@ -1,5 +1,5 @@
 const cds = require("@sap/cds")
-const { waitForExecution } = require("../utils")
+const { waitForExecution, makeWorkflowBody } = require("../utils")
 
 const path = require("path")
 const app = path.join(__dirname, "../bookshop")
@@ -9,26 +9,6 @@ const isRest = cds.env.requires?.n8n?.kind === "n8n-to-rest"
 function executionPayload(execution) {
   const data = typeof execution.data === "string" ? JSON.parse(execution.data) : execution.data
   return data?.payload ?? data?.resultData?.runData?.Webhook?.[0]?.data?.main?.[0]?.[0]?.json?.body
-}
-
-function makeWebhookWorkflow(name, webhookPath) {
-  return {
-    id: cds.utils.uuid(),
-    name,
-    nodes: [
-      {
-        id: cds.utils.uuid(),
-        name: "Webhook",
-        type: "n8n-nodes-base.webhook",
-        typeVersion: 1,
-        position: [250, 300],
-        parameters: { httpMethod: "POST", path: webhookPath, responseMode: "onReceived", options: {} },
-        webhookId: webhookPath,
-      },
-    ],
-    connections: "{}",
-    settings: "{}",
-  }
 }
 
 describe("@n8n.process.start - annotation-driven flow", () => {
@@ -54,7 +34,7 @@ describe("@n8n.process.start - annotation-driven flow", () => {
       "annotation-test-order-deleted",
     ]) {
       const [{ id }] = await n8n.run(
-        INSERT.into(WorkflowDefinitions).entries(makeWebhookWorkflow(`annotation-${path}`, path)),
+        INSERT.into(WorkflowDefinitions).entries(makeWorkflowBody(`annotation-${path}`, path)),
       )
       createdWorkflowIds.add(id)
       workflowIds.set(path, id)

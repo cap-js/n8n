@@ -1,3 +1,5 @@
+const cds = require("@sap/cds")
+
 async function waitForExecution(
   n8n,
   WorkflowExecutions,
@@ -17,4 +19,30 @@ async function waitForExecution(
   throw new Error(`Timed out waiting for execution matching ${JSON.stringify(where)}`)
 }
 
-module.exports = { waitForExecution }
+function makeWorkflowBody(name, webhookPath, nodes = [], connections = {}) {
+  return {
+    id: cds.utils.uuid(),
+    name,
+    nodes: [
+      {
+        id: cds.utils.uuid(),
+        name: "Webhook",
+        type: "n8n-nodes-base.webhook",
+        typeVersion: 1,
+        position: [250, 300],
+        parameters: {
+          httpMethod: "POST",
+          path: webhookPath,
+          responseMode: "onReceived",
+          options: {},
+        },
+        webhookId: webhookPath,
+      },
+      ...nodes,
+    ],
+    connections: JSON.stringify(connections),
+    settings: "{}",
+  }
+}
+
+module.exports = { waitForExecution, makeWorkflowBody }
