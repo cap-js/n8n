@@ -163,11 +163,11 @@ describe("@n8n.process.start - annotation-driven flow", () => {
       quantity: 1,
       status: "shipped",
     })
-    await cds.run(cql_DELETE.from(WorkflowExecutions))
+    const before = await executionsFor("annotation-test-order-deleted")
 
     await DELETE(`/odata/v4/admin/Orders(${order.ID})`)
 
-    const deleted = await SELECT.from(WorkflowExecutions).where({ workflowId: "order-deleted" })
-    expect(deleted).to.have.length(0)
+    const deleted = await executionsFor("annotation-test-order-deleted")
+    expect(deleted).to.have.length(before.length)
   })
 })

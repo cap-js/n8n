@@ -3,7 +3,7 @@ using {sap.capire.bookshop as my} from '../db/schema';
 service AdminService {
 
   @n8n.process.start: {
-    path: 'book-created',
+    path: 'annotation-test-book-created',
     on: 'CREATE'
   }
   entity Books   as projection on my.Books;

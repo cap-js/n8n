@@ -12,9 +12,12 @@ async function readExecutions(req) {
         }),
       ),
     )
-    const rows = (await Promise.all(responses.map((r) => parseResponse(req, r)))).filter(
-      (row) => row && (typeof row !== "object" || Object.keys(row).length > 0),
-    )
+    // A missing execution is an empty CQL result, not a failed query.
+    const rows = (
+      await Promise.all(
+        responses.map((r) => (r.status === 404 ? undefined : parseResponse(req, r))),
+      )
+    ).filter((row) => row && (typeof row !== "object" || Object.keys(row).length > 0))
     if (req.query.SELECT?.one) return rows[0]
     return rows
   }

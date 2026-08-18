@@ -151,6 +151,52 @@ describe("Execution handlers", () => {
         { id: "2", status: "success" },
       ])
     })
+
+    it("omits missing executions from an id batch", async () => {
+      globalThis.fetch = async (url) => {
+        const id = url.split("?")[0].split("/").at(-1)
+        if (id === "missing") {
+          return {
+            ok: false,
+            status: 404,
+            statusText: "Not Found",
+            headers: { get: () => "application/json" },
+            json: async () => ({ message: "not found" }),
+            text: async () => "",
+          }
+        }
+        return {
+          ok: true,
+          status: 200,
+          statusText: "OK",
+          headers: { get: () => "application/json" },
+          json: async () => ({ id, status: "success" }),
+          text: async () => "",
+        }
+      }
+      const req = makeReq({
+        query: {
+          SELECT: {
+            from: {
+              ref: [
+                {
+                  id: "n8n.WorkflowExecutions",
+                  where: [
+                    { ref: ["id"] },
+                    "in",
+                    { list: [{ val: "1" }, { val: "missing" }, { val: "2" }] },
+                  ],
+                },
+              ],
+            },
+          },
+        },
+      })
+      await expect(readExecutions(req)).resolves.toEqual([
+        { id: "1", status: "success" },
+        { id: "2", status: "success" },
+      ])
+    })
   })
 
   describe("deleteExecution", () => {

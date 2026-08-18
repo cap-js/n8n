@@ -236,14 +236,13 @@ describe("WorkflowDefinitions", () => {
     createdWorkflowIds.delete(id) // don't attempt a double-delete in afterAll
 
     const after = await n8n.run(SELECT.one.from(WorkflowDefinitions).where({ id }))
-    // Both backends signal "not present" as either falsy or `{}`.
     expect(!after || Object.keys(after).length === 0).to.equal(true)
   })
 
   it("INSERT returns an array of generated keys with .affected = 1", async () => {
     const body = makeWorkflowBody("shape-insert", cds.utils.uuid())
     const result = await n8n.run(INSERT.into(WorkflowDefinitions).entries(body))
-    createdWorkflowIds.add(body.id)
+    createdWorkflowIds.add(result[0].id)
 
     expect(Array.isArray(result)).to.equal(true)
     expect(result).toHaveLength(1)
