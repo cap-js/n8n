@@ -3,14 +3,14 @@ const { writeResult } = require("../lib/handlers/utils")
 const LOG = cds.log("@cap-js/n8n")
 
 // REVISIT: could be replaced by a single CQL query with `WHERE nodes LIKE '%"path":"<value>"%'`
-async function resolveWorkflowIdByWebhookPath(WorkflowDefinitions, webhookPath) {
+async function resolveWorkflowByWebhookPath(WorkflowDefinitions, webhookPath) {
   const workflows = await SELECT.from(WorkflowDefinitions).columns("id", "nodes")
   for (const wf of workflows ?? []) {
     const nodes = Array.isArray(wf.nodes) ? wf.nodes : []
     const hit = nodes.some(
       (n) => n?.type === "n8n-nodes-base.webhook" && n?.parameters?.path === webhookPath,
     )
-    if (hit) return wf.id
+    if (hit) return wf
   }
   return undefined
 }
@@ -35,15 +35,17 @@ class ConsoleN8nService extends cds.ApplicationService {
       const { path, payload } = req.data ?? {}
 
       // Resolve the workflow id by webhook path
-      const workflowId = (await resolveWorkflowIdByWebhookPath(WorkflowDefinitions, path)) ?? path
+      const workflow = await resolveWorkflowByWebhookPath(WorkflowDefinitions, path)
+      const workflowId = workflow?.id ?? path
+      const waiting = workflow?.nodes?.some((node) => node?.type === "n8n-nodes-base.wait")
 
       await INSERT.into(WorkflowExecutions).entries({
         id: cds.utils.uuid(),
         workflowId,
-        finished: true,
+        finished: !waiting,
         mode: "webhook",
-        status: "success",
-        stoppedAt: new Date().toISOString(),
+        status: waiting ? "waiting" : "success",
+        stoppedAt: waiting ? undefined : new Date().toISOString(),
         data: { payload },
       })
 
@@ -92,6 +94,18 @@ class ConsoleN8nService extends cds.ApplicationService {
         stoppedAt: new Date().toISOString(),
       })
       return SELECT.one.from(WorkflowExecutions).where({ id })
+    })
+
+    this.on("stopExecutions", async (req) => {
+      const { workflowId, status } = req.data ?? {}
+      const executions = await SELECT.from(WorkflowExecutions).where({ workflowId, status })
+      if (executions.length === 0) return 0
+      await UPDATE(WorkflowExecutions).where({ id: executions.map((execution) => execution.id) }).with({
+        status: "canceled",
+        finished: true,
+        stoppedAt: new Date().toISOString(),
+      })
+      return executions.length
     })
 
     return super.init()

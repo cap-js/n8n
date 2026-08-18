@@ -1,6 +1,19 @@
 const { parseResponse, getProperty, extractIds, writeResult } = require("../../lib/handlers/utils")
 const { n8nRequest } = require("../../lib/api/connection")
 
+function parseJsonFields(workflow) {
+  for (const field of ["connections", "settings", "staticData"]) {
+    if (typeof workflow[field] === "string") {
+      try {
+        workflow[field] = JSON.parse(workflow[field])
+      } catch {
+        // Let n8n return its validation error for malformed JSON.
+      }
+    }
+  }
+  return workflow
+}
+
 async function readWorkflows(req) {
   const ids = extractIds(req)
   if (ids) {
@@ -32,7 +45,9 @@ async function readWorkflows(req) {
 }
 
 async function createWorkflow(req) {
-  const body = req.data ?? {}
+  // skip id from body
+  const { id: _id, ...body } = req.data ?? {}
+  parseJsonFields(body)
   for (const required of ["name", "nodes", "connections", "settings"]) {
     if (body[required] == null) {
       return req.reject(400, `Missing required workflow field: ${required}`)
@@ -61,7 +76,9 @@ const WORKFLOW_PUT_REQUIRED_FIELDS = ["name", "nodes", "connections", "settings"
 async function updateWorkflow(req) {
   const [id] = extractIds(req) ?? []
   if (!id) return req.reject(400, "Missing workflow id for UPDATE")
-  const body = req.data ?? {}
+  // These fields are computed by n8n and must not be sent back in a PUT.
+  const { id: _id, active: _active, isArchived: _isArchived, ...body } = req.data ?? {}
+  parseJsonFields(body)
 
   const missing = WORKFLOW_PUT_REQUIRED_FIELDS.filter((f) => body[f] == null)
   if (missing.length > 0) {
@@ -150,6 +167,7 @@ module.exports = {
   publishWorkflow,
   unpublishWorkflow,
   archiveWorkflow,
+  parseJsonFields,
   // Exposed for reuse and unit tests.
   WORKFLOW_PUT_REQUIRED_FIELDS,
 }

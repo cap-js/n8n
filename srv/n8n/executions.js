@@ -74,9 +74,25 @@ async function stopExecution(req) {
   return parseResponse(req, response)
 }
 
+async function stopExecutions(req) {
+  const { workflowId, status } = req.data ?? {}
+  if (!workflowId) return req.reject(400, "Missing workflow id for stopExecutions")
+  if (!Array.isArray(status) || status.length === 0) {
+    return req.reject(400, "At least one execution status is required for stopExecutions")
+  }
+  const response = await n8nRequest({
+    method: "POST",
+    path: "/api/v1/executions/stop",
+    body: { workflowId, status },
+  })
+  const result = await parseResponse(req, response)
+  return typeof result?.stopped === "number" ? result.stopped : 0
+}
+
 module.exports = {
   readExecutions,
   deleteExecution,
   retryExecution,
   stopExecution,
+  stopExecutions,
 }

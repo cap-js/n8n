@@ -16,6 +16,7 @@ const {
   deleteExecution,
   retryExecution,
   stopExecution,
+  stopExecutions,
 } = require("./n8n/executions")
 const { resolveN8nConnection, n8nRequest } = require("../lib/api/connection")
 
@@ -50,6 +51,7 @@ class N8nService extends cds.Service {
     this.on("DELETE", WorkflowExecutions, deleteExecution)
     this.on("retryExecution", retryExecution)
     this.on("stopExecution", stopExecution)
+    this.on("stopExecutions", stopExecutions)
 
     this.on("READ", WorkflowDefinitions, readWorkflows)
     this.on("CREATE", WorkflowDefinitions, createWorkflow)
