@@ -10,19 +10,8 @@ permissions:
   contents: read
 
 jobs:
-  requires-approval:
-    runs-on: ubuntu-latest
-    name: "Waiting for PR approval as this workflow runs on pull_request_target"
-    if: github.event_name == 'pull_request_target' && github.event.pull_request.head.repo.owner.login != 'cap-js'
-    environment: pr-approval
-    steps:
-      - name: Approval Step
-        run: echo "This job has been approved!"
-
   test:
     name: Tests with Node.js ${{ matrix.node-version }} (CDS ${{ matrix.cds-version }})
-    needs: requires-approval
-    if: always() && (needs.requires-approval.result == 'success' || needs.requires-approval.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 3
     strategy:
@@ -52,8 +41,6 @@ jobs:
 
   integration-tests:
     name: Integration Tests with Node.js ${{ matrix.node-version }} (CDS ${{ matrix.cds-version }})
-    needs: requires-approval
-    if: always() && (needs.requires-approval.result == 'success' || needs.requires-approval.result == 'skipped')
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
