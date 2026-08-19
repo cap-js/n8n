@@ -22,7 +22,7 @@ async function waitForExecution(
   throw new Error(`Timed out waiting for execution matching ${JSON.stringify(where)}`)
 }
 
-function makeWorkflowBody(name, webhookPath, nodes = [], connections = {}) {
+function makeWorkflowBody(name, webhookPath, nodes = [], connections = {}, method = "POST") {
   return {
     id: cds.utils.uuid(),
     name,
@@ -34,7 +34,7 @@ function makeWorkflowBody(name, webhookPath, nodes = [], connections = {}) {
         typeVersion: 1,
         position: [250, 300],
         parameters: {
-          httpMethod: "POST",
+          httpMethod: method,
           path: webhookPath,
           responseMode: "onReceived",
           options: {},

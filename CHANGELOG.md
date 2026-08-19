@@ -8,8 +8,7 @@
 
 ### Added
 
-- Configurable webhook methods on `@n8n.process.start` annotations, defaulting
-  to `POST`.
+- Configurable webhook methods on `@n8n.process.start` annotations, defaulting to `POST`
 
 - Array form for `@n8n.process.start`: multiple triggers can be declared in a
   single annotation:

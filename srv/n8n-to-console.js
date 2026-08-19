@@ -1,14 +1,18 @@
 const cds = require("@sap/cds")
 const { writeResult } = require("../lib/handlers/utils")
+const { HTTP_METHODS, normalizeHttpMethod } = require("../lib/shared/http-methods")
 const LOG = cds.log("@cap-js/n8n")
 
 // REVISIT: could be replaced by a single CQL query with `WHERE nodes LIKE '%"path":"<value>"%'`
-async function resolveWorkflowByWebhookPath(WorkflowDefinitions, webhookPath) {
+async function resolveWorkflowByWebhookPath(WorkflowDefinitions, webhookPath, method) {
   const workflows = await SELECT.from(WorkflowDefinitions).columns("id", "nodes")
   for (const wf of workflows ?? []) {
     const nodes = Array.isArray(wf.nodes) ? wf.nodes : []
     const hit = nodes.some(
-      (n) => n?.type === "n8n-nodes-base.webhook" && n?.parameters?.path === webhookPath,
+      (n) =>
+        n?.type === "n8n-nodes-base.webhook" &&
+        n?.parameters?.path === webhookPath &&
+        (normalizeHttpMethod(n?.parameters?.httpMethod) ?? "POST") === method,
     )
     if (hit) return wf
   }
@@ -53,10 +57,13 @@ class ConsoleN8nService extends cds.ApplicationService {
     this.on("DELETE", WorkflowExecutions, _runOnDb)
 
     this.on("triggerWorkflow", async (req) => {
-      const { path, method = "POST", payload } = req.data ?? {}
+      const { path, payload } = req.data ?? {}
+      const method = req.data?.method === undefined ? "POST" : normalizeHttpMethod(req.data.method)
+      if (!method) throw cds.error(400, `method must be one of ${HTTP_METHODS.join(", ")}`)
 
       // Resolve the workflow id by webhook path
-      const workflow = await resolveWorkflowByWebhookPath(WorkflowDefinitions, path)
+      const workflow = await resolveWorkflowByWebhookPath(WorkflowDefinitions, path, method)
+      if (!workflow) throw cds.error(404, `No webhook found for ${method} ${path}`)
       const workflowId = workflow?.id ?? path
       const waiting = workflow?.nodes?.some((node) => node?.type === "n8n-nodes-base.wait")
 
