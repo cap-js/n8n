@@ -4,7 +4,7 @@
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "order-shipped",
+        "path": "annotation-test-order-shipped",
         "responseMode": "onReceived",
         "options": {}
       },

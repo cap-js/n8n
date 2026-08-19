@@ -298,13 +298,17 @@ Mapping rules:
 
 ### Multiple triggers
 
-Use CDS qualifiers to attach independent triggers to one entity:
+Use the array form to register independent triggers on one entity:
 
 ```cds
-@n8n.process.start #created:  { path: 'book-created',  on: 'CREATE' }
-@n8n.process.start #archived: { path: 'book-archived', on: 'DELETE' }
+@n8n.process.start: [
+  { path: 'wf-created',  on: 'CREATE' },
+  { path: 'wf-archived', on: 'DELETE' }
+]
 entity Books as projection on my.Books;
 ```
+
+Each element supports the same fields as the record form (`path`, `on`, `if`, `inputs`).
 
 ## Programmatic API
 

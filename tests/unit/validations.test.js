@@ -25,24 +25,6 @@ function ent(annotations, actions) {
   return { actions, ...annotations }
 }
 
-describe("validateTriggerAnnotations - string shorthand", () => {
-  it("rejects a string annotation", () => {
-    const plugin = makePlugin()
-    validateTriggerAnnotations("Foo", ent({ "@n8n.process.start": "my-hook" }), plugin)
-    expect(plugin.messages.some((m) => /shorthand is no longer supported/i.test(m.message))).toBe(
-      true,
-    )
-  })
-
-  it("rejects an empty string annotation", () => {
-    const plugin = makePlugin()
-    validateTriggerAnnotations("Foo", ent({ "@n8n.process.start": "" }), plugin)
-    expect(plugin.messages.some((m) => /shorthand is no longer supported/i.test(m.message))).toBe(
-      true,
-    )
-  })
-})
-
 describe("validateTriggerAnnotations - record form", () => {
   it("accepts a complete record", () => {
     const plugin = makePlugin()
@@ -228,5 +210,141 @@ describe("validateTriggerAnnotations - record form", () => {
     for (const m of plugin.messages) {
       expect(["Error", "Warning"]).toContain(m.severity)
     }
+  })
+})
+
+describe("validateTriggerAnnotations - array form", () => {
+  it("accepts a valid two-element array", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "Books",
+      ent({
+        "@n8n.process.start": [
+          { path: "book-created", on: "CREATE" },
+          { path: "book-deleted", on: "DELETE" },
+        ],
+      }),
+      plugin,
+    )
+    expect(plugin.messages).toEqual([])
+  })
+
+  it("accepts an element with on as array", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "Books",
+      ent({ "@n8n.process.start": [{ path: "wf", on: ["CREATE", "UPDATE"] }] }),
+      plugin,
+    )
+    expect(plugin.messages).toEqual([])
+  })
+
+  it("accepts an element with valid inputs", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "Books",
+      ent({ "@n8n.process.start": [{ path: "wf", on: "CREATE", inputs: [{ "=": "$self.ID" }] }] }),
+      plugin,
+    )
+    expect(plugin.messages).toEqual([])
+  })
+
+  it("rejects an element missing path", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations("Books", ent({ "@n8n.process.start": [{ on: "CREATE" }] }), plugin)
+    expect(
+      plugin.messages.some((m) => m.severity === "Error" && /path.*required/i.test(m.message)),
+    ).toBe(true)
+  })
+
+  it("rejects an element with empty path", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations("Books", ent({ "@n8n.process.start": [{ path: "  " }] }), plugin)
+    expect(plugin.messages.some((m) => m.severity === "Error")).toBe(true)
+  })
+
+  it("rejects a non-object element (e.g. a string)", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations("Books", ent({ "@n8n.process.start": ["not-an-object"] }), plugin)
+    expect(plugin.messages.some((m) => m.severity === "Error")).toBe(true)
+  })
+
+  it("rejects an element with on of invalid type", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "Books",
+      ent({ "@n8n.process.start": [{ path: "wf", on: 42 }] }),
+      plugin,
+    )
+    expect(plugin.messages.some((m) => /must be a string or an array/i.test(m.message))).toBe(true)
+  })
+
+  it("rejects an element with empty-string in on array", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "Books",
+      ent({ "@n8n.process.start": [{ path: "wf", on: ["CREATE", ""] }] }),
+      plugin,
+    )
+    expect(plugin.messages.some((m) => /values must be non-empty/i.test(m.message))).toBe(true)
+  })
+
+  it("rejects an element with non-expression if", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "Books",
+      ent({ "@n8n.process.start": [{ path: "wf", if: "invalid" }] }),
+      plugin,
+    )
+    expect(plugin.messages.some((m) => /must be a CDS expression/i.test(m.message))).toBe(true)
+  })
+
+  it("rejects an element with non-array inputs", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "Books",
+      ent({ "@n8n.process.start": [{ path: "wf", inputs: "foo" }] }),
+      plugin,
+    )
+    expect(plugin.messages.some((m) => /must be an array/i.test(m.message))).toBe(true)
+  })
+
+  it("rejects aliased inputs entries", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "Books",
+      ent({
+        "@n8n.process.start": [{ path: "wf", inputs: [{ path: { "=": "$self.ID" }, as: "id" }] }],
+      }),
+      plugin,
+    )
+    expect(plugin.messages.some((m) => /Aliasing is not supported/i.test(m.message))).toBe(true)
+  })
+
+  it("warns on unknown keys in an element", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "Books",
+      ent({ "@n8n.process.start": [{ path: "wf", bogus: "value" }] }),
+      plugin,
+    )
+    expect(
+      plugin.messages.some((m) => m.severity === "Warning" && /unknown key/i.test(m.message)),
+    ).toBe(true)
+  })
+
+  it("reports errors on the correct element index", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "Books",
+      ent({
+        "@n8n.process.start": [
+          { path: "wf-ok" },
+          { on: "CREATE" }, // missing path — index 1
+        ],
+      }),
+      plugin,
+    )
+    expect(plugin.messages.some((m) => /\[1\]/.test(m.message))).toBe(true)
   })
 })
