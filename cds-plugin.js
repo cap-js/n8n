@@ -17,7 +17,5 @@ cds.on("served", (services) => {
 
 cds.once("served", () => {
   const cfg = cds.env.requires?.["n8n"]
-  if (cfg) {
-    LOG.debug(`Using kind: ${cfg.kind ?? "default"}`)
-  }
+  if (cfg) LOG.info(`Using kind: ${cfg.kind}`)
 })
