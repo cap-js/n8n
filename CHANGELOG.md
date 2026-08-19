@@ -4,14 +4,12 @@
 - The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - This project adheres to [Semantic Versioning](https://semver.org/).
 
-## Version 0.1.0 - 2026-08-17
-
-Initial release of the `@cap-js/n8n` plugin.
+## [Unreleased]
 
 ### Added
 
-- Array form for `@n8n.process.start`: multiple triggers can now be declared
-  in a single annotation instead of requiring separate qualified annotations:
+- Array form for `@n8n.process.start`: multiple triggers can be declared in a
+  single annotation:
 
   ```cds
   @n8n.process.start: [
@@ -29,7 +27,7 @@ Initial release of the `@cap-js/n8n` plugin.
   explicitly selected events and bound actions. The record form requires
   `path` and `on`, and supports `if` (CDS predicate) and `inputs`
   (subset / association expansion).
-  - Multiple triggers per entity via CDS qualifiers.
+  - Multiple triggers per entity via the array form.
   - DELETE prefetch that stashes the row in a before-handler so payloads
     carry the full record.
 - Programmatic `n8n` with `triggerWorkflow` (outboxed event)
