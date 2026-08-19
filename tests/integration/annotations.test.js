@@ -254,4 +254,13 @@ describe("@n8n.process.start - array form", () => {
     executionIds.add(execution.id)
     expect(executionPayload(execution)).to.include({ ID: shelf.ID })
   })
+
+  it("does not register or fire an array trigger without on", async () => {
+    const before = await executionsFor("annotation-test-shelf-no-on")
+    const { status } = await POST("/odata/v4/admin/Shelves", { label: "No trigger" })
+    expect(status).to.equal(201)
+
+    const executions = await executionsFor("annotation-test-shelf-no-on")
+    expect(executions).to.have.length(before.length)
+  })
 })
