@@ -27,36 +27,8 @@
             "integration_id": 15368
           },
           {
-            "context": "integration-tests (20.x)",
+            "context": "Summary",
             "integration_id": 15368
-          },
-          {
-            "context": "integration-tests (22.x)",
-            "integration_id": 15368
-          },
-          {
-            "context": "test (20.x, 8.9.4)",
-            "integration_id": 15368
-          },
-          {
-            "context": "test (20.x, latest)",
-            "integration_id": 15368
-          },
-          {
-            "context": "test (22.x, 8.9.4)",
-            "integration_id": 15368
-          },
-          {
-            "context": "test (22.x, latest)",
-            "integration_id": 15368
-          },
-          {
-            "context": "Check Changelog Action",
-            "integration_id": 15368
-          },
-          {
-            "context": "Inclusive Language",
-            "integration_id": 75645
           }
         ]
       }
@@ -66,11 +38,27 @@
       "parameters": {
         "required_approving_review_count": 2,
         "dismiss_stale_reviews_on_push": true,
+        "required_reviewers": [],
         "require_code_owner_review": true,
+        "dismissal_restriction": {
+          "enabled": false,
+          "allowed_actors": []
+        },
         "require_last_push_approval": true,
         "required_review_thread_resolution": true,
-        "automatic_copilot_code_review_enabled": false,
         "allowed_merge_methods": ["squash"]
+      }
+    },
+    {
+      "type": "merge_queue",
+      "parameters": {
+        "merge_method": "SQUASH",
+        "max_entries_to_build": 5,
+        "min_entries_to_merge": 1,
+        "max_entries_to_merge": 5,
+        "min_entries_to_merge_wait_minutes": 5,
+        "grouping_strategy": "ALLGREEN",
+        "check_response_timeout_minutes": 60
       }
     },
     {
