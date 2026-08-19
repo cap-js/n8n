@@ -4,7 +4,7 @@
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "book-created",
+        "path": "annotation-test-book-created",
         "responseMode": "onReceived",
         "options": {}
       },

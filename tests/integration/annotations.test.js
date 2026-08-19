@@ -171,3 +171,96 @@ describe("@n8n.process.start - annotation-driven flow", () => {
     expect(deleted).to.have.length(before.length)
   })
 })
+
+describe("@n8n.process.start - array form", () => {
+  let n8n
+  let WorkflowDefinitions
+  let WorkflowExecutions
+  const workflowIds = new Map()
+  const createdWorkflowIds = new Set()
+  const executionIds = new Set()
+
+  async function executionsFor(path) {
+    const workflowId = workflowIds.get(path)
+    if (!workflowId) return []
+    return n8n.run(SELECT.from(WorkflowExecutions).where({ workflowId }))
+  }
+
+  beforeAll(async () => {
+    n8n = await cds.connect.to("n8n")
+    ;({ WorkflowDefinitions, WorkflowExecutions } = n8n.entities)
+    const paths = ["annotation-test-shelf-created", "annotation-test-shelf-deleted"]
+    const workflows = await Promise.all(
+      paths.map(async (path) => {
+        const [{ id }] = await n8n.run(
+          INSERT.into(WorkflowDefinitions).entries(makeWorkflowBody(`annotation-${path}`, path)),
+        )
+        if (isRest) await n8n.send("publishWorkflow", { id })
+        return { path, id }
+      }),
+    )
+    for (const { path, id } of workflows) {
+      createdWorkflowIds.add(id)
+      workflowIds.set(path, id)
+    }
+  })
+
+  afterAll(async () => {
+    if (isRest && executionIds.size > 0) {
+      await n8n.run(cds.delete(WorkflowExecutions).where({ id: [...executionIds] }))
+    }
+    if (createdWorkflowIds.size > 0) {
+      await n8n.run(cds.delete(WorkflowDefinitions).where({ id: [...createdWorkflowIds] }))
+    }
+  })
+
+  beforeEach(async () => {
+    if (isRest) return
+    const rows = await n8n.run(SELECT.from(WorkflowExecutions))
+    if (rows.length > 0)
+      await n8n.run(cds.delete(WorkflowExecutions).where({ id: rows.map((row) => row.id) }))
+  })
+
+  it('fires "shelf-created" on CREATE via array annotation', async () => {
+    const before = await executionsFor("annotation-test-shelf-created")
+    const { status, data: shelf } = await POST("/odata/v4/admin/Shelves", { label: "Fiction" })
+    expect(status).to.equal(201)
+    expect(shelf).to.have.property("ID")
+
+    const execution = await waitForExecution(
+      n8n,
+      WorkflowExecutions,
+      { workflowId: workflowIds.get("annotation-test-shelf-created") },
+      (row) => !before.some((previous) => String(previous.id) === String(row.id)),
+      true,
+    )
+    executionIds.add(execution.id)
+    expect(executionPayload(execution)).to.include({ ID: shelf.ID, label: "Fiction" })
+  })
+
+  it('fires "shelf-deleted" on DELETE via array annotation', async () => {
+    const { data: shelf } = await POST("/odata/v4/admin/Shelves", { label: "Science" })
+    const before = await executionsFor("annotation-test-shelf-deleted")
+
+    await DELETE(`/odata/v4/admin/Shelves(${shelf.ID})`)
+
+    const execution = await waitForExecution(
+      n8n,
+      WorkflowExecutions,
+      { workflowId: workflowIds.get("annotation-test-shelf-deleted") },
+      (row) => !before.some((previous) => String(previous.id) === String(row.id)),
+      true,
+    )
+    executionIds.add(execution.id)
+    expect(executionPayload(execution)).to.include({ ID: shelf.ID })
+  })
+
+  it("does not register or fire an array trigger without on", async () => {
+    const before = await executionsFor("annotation-test-shelf-no-on")
+    const { status } = await POST("/odata/v4/admin/Shelves", { label: "No trigger" })
+    expect(status).to.equal(201)
+
+    const executions = await executionsFor("annotation-test-shelf-no-on")
+    expect(executions).to.have.length(before.length)
+  })
+})

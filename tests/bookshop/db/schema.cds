@@ -43,3 +43,9 @@ entity Orders : managed {
       quantity : Integer;
       status   : String(20) default 'new'; // new | shipped | cancelled
 }
+
+/** Used to test the array-form annotation syntax. */
+entity Shelves : managed {
+  key ID    : UUID;
+      label : String(100);
+}

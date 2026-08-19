@@ -1,0 +1,23 @@
+{
+  "name": "Shelf Created",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "annotation-test-shelf-created",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "shelf-created"
+    }
+  ],
+  "connections": {},
+  "active": true,
+  "settings": {},
+  "versionId": "1"
+}

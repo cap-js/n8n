@@ -1,0 +1,23 @@
+{
+  "name": "Shelf Deleted",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "annotation-test-shelf-deleted",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "shelf-deleted"
+    }
+  ],
+  "connections": {},
+  "active": true,
+  "settings": {},
+  "versionId": "1"
+}
