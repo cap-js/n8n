@@ -30,7 +30,6 @@
           }
         },
         "[test]": {
-          "kind": "n8n-to-console",
           "outboxed": false
         }
       }
