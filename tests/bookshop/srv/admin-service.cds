@@ -31,8 +31,8 @@ service AdminService {
 
   // Array form — two triggers registered via a single annotation.
   @n8n.process.start: [
-    { path: 'shelf-created', on: 'CREATE' },
-    { path: 'shelf-deleted', on: 'DELETE' }
+    { path: 'annotation-test-shelf-created', on: 'CREATE' },
+    { path: 'annotation-test-shelf-deleted', on: 'DELETE' }
   ]
   entity Shelves as projection on my.Shelves;
 }

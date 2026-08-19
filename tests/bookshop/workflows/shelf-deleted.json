@@ -4,7 +4,7 @@
     {
       "parameters": {
         "httpMethod": "POST",
-        "path": "shelf-deleted",
+        "path": "annotation-test-shelf-deleted",
         "responseMode": "onReceived",
         "options": {}
       },
