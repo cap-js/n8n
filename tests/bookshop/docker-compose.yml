@@ -24,7 +24,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          'wget -qO- http://localhost:5678/healthz | grep -q ''"status":"ok"'' || exit 1',
+          'wget -qO- http://localhost:5678/rest/settings | grep -q ''"settingsMode"'' || exit 1',
         ]
       interval: 5s
       timeout: 5s
