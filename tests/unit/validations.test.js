@@ -26,6 +26,34 @@ function ent(annotations, actions) {
 }
 
 describe("validateTriggerAnnotations - record form", () => {
+  it("accepts supported webhook methods case-insensitively", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "Orders",
+      ent({
+        "@n8n.process.start.path": "wf",
+        "@n8n.process.start.method": "get",
+        "@n8n.process.start.on": "CREATE",
+      }),
+      plugin,
+    )
+    expect(plugin.messages).toEqual([])
+  })
+
+  it("rejects unsupported webhook methods", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "Orders",
+      ent({
+        "@n8n.process.start.path": "wf",
+        "@n8n.process.start.method": "TRACE",
+        "@n8n.process.start.on": "CREATE",
+      }),
+      plugin,
+    )
+    expect(plugin.messages.some((m) => /must be one of/i.test(m.message))).toBe(true)
+  })
+
   it("accepts a complete record", () => {
     const plugin = makePlugin()
     validateTriggerAnnotations(
