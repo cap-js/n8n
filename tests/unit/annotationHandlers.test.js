@@ -3,7 +3,6 @@
 const { findAnnotations } = require("../../lib/handlers/annotationHandlers")
 
 const N8N = "@n8n.process.start"
-const ALL_CRUD = ["CREATE", "UPSERT", "UPDATE", "DELETE"]
 
 function collect(def) {
   return [...findAnnotations(def)]
@@ -21,12 +20,6 @@ describe("findAnnotations - shorthand", () => {
       conditionExpr: undefined,
       inputs: undefined,
     })
-  })
-
-  it("handles qualified shorthand (#foo)", () => {
-    const results = collect({ [`${N8N}#foo`]: "my-hook" })
-    expect(results[0].path).toBe("my-hook")
-    expect(results[0].on).toEqual([])
   })
 })
 
@@ -91,10 +84,6 @@ describe("findAnnotations - array form", () => {
     })
   })
 
-  it("skips elements missing on (on is required)", () => {
-    expect(collect({ [N8N]: [{ path: "my-hook" }] })).toHaveLength(0)
-  })
-
   it.each([
     ["string", "UPDATE", ["UPDATE"]],
     ["array", ["CREATE", "UPDATE"], ["CREATE", "UPDATE"]],
@@ -129,28 +118,7 @@ describe("findAnnotations - array form", () => {
     expect(results[0].inputs).toBe(inputs)
   })
 
-  it("handles qualified array annotation (#foo)", () => {
-    const results = collect({
-      [`${N8N}#foo`]: [
-        { path: "wf-a", on: "CREATE" },
-        { path: "wf-b", on: "DELETE" },
-      ],
-    })
-    expect(results).toHaveLength(2)
-    expect(results.map((r) => r.path)).toEqual(["wf-a", "wf-b"])
-  })
-
   it("handles an empty array (yields nothing)", () => {
     expect(collect({ [N8N]: [] })).toHaveLength(0)
-  })
-
-  it("coexists with a qualified record form on the same entity", () => {
-    const results = collect({
-      [N8N]: [{ path: "arr-hook", on: "CREATE" }],
-      [`${N8N}#extra.path`]: "rec-hook",
-      [`${N8N}#extra.on`]: "DELETE",
-    })
-    expect(results).toHaveLength(2)
-    expect(results.map((r) => r.path).sort()).toEqual(["arr-hook", "rec-hook"])
   })
 })

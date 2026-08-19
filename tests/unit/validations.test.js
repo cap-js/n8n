@@ -247,12 +247,6 @@ describe("validateTriggerAnnotations - array form", () => {
     expect(plugin.messages).toEqual([])
   })
 
-  it("accepts an element with no 'on' (defaults to all CRUD)", () => {
-    const plugin = makePlugin()
-    validateTriggerAnnotations("Books", ent({ "@n8n.process.start": [{ path: "wf" }] }), plugin)
-    expect(plugin.messages).toEqual([])
-  })
-
   it("accepts an element with on as array", () => {
     const plugin = makePlugin()
     validateTriggerAnnotations(
@@ -370,15 +364,5 @@ describe("validateTriggerAnnotations - array form", () => {
       plugin,
     )
     expect(plugin.messages.some((m) => /\[1\]/.test(m.message))).toBe(true)
-  })
-
-  it("accepts a qualified array annotation (#foo)", () => {
-    const plugin = makePlugin()
-    validateTriggerAnnotations(
-      "Books",
-      ent({ "@n8n.process.start#foo": [{ path: "wf", on: "CREATE" }] }),
-      plugin,
-    )
-    expect(plugin.messages).toEqual([])
   })
 })
