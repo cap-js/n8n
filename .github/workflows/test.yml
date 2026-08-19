@@ -162,6 +162,10 @@ jobs:
             cf delete-service $HANA_SERVICE -f && break
             echo "HDI container delete failed, retrying ($i/3)..."
             sleep 10
+            if [ "$i" -eq 5 ]; then
+              echo "❌ HDI container delete failed after 3 attempts."
+              exit 1
+            fi
           done
 
   results:
