@@ -87,6 +87,15 @@ describe("findAnnotations - array form", () => {
     expect(collect({ [N8N]: [{ path: "wf", on: "CREATE" }] })[0].method).toBe("POST")
   })
 
+  it("does not let a method-only key suppress the array form", () => {
+    const results = collect({
+      [N8N]: [{ path: "array-hook", on: "CREATE" }],
+      [`${N8N}.method`]: "GET",
+    })
+    expect(results).toHaveLength(1)
+    expect(results[0].path).toBe("array-hook")
+  })
+
   it("skips elements missing or non-string path", () => {
     const results = collect({
       [N8N]: [{ on: "CREATE" }, { path: 42 }, { path: "wf", on: "DELETE" }],

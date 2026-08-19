@@ -111,6 +111,29 @@ describe("triggerWorkflow", () => {
     }
   })
 
+  it("defaults a missing webhook method to POST", async () => {
+    if (!isRest) return
+    const originalFetch = globalThis.fetch
+    let request
+    globalThis.fetch = async (...args) => {
+      request = args
+      return new Response("{}", { status: 200, headers: { "content-type": "application/json" } })
+    }
+    try {
+      await n8n.send("triggerWorkflow", { path: "method-default", payload: {} })
+      expect(request[1].method).toBe("POST")
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+  })
+
+  it("rejects unsupported runtime webhook methods", async () => {
+    if (!isRest) return
+    await expect(
+      n8n.send("triggerWorkflow", { path: "method-invalid", method: "TRACE", payload: {} }),
+    ).rejects.toThrow(/method must be one of/i)
+  })
+
   it("rejects triggerWorkflow without path parameter", async () => {
     let err
     try {

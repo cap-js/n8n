@@ -19,6 +19,7 @@ const {
   stopExecutions,
 } = require("./n8n/executions")
 const { resolveN8nConnection, n8nRequest } = require("../lib/api/connection")
+const { HTTP_METHODS, normalizeHttpMethod } = require("../lib/shared/http-methods")
 
 const LOG = cds.log("@cap-js/n8n")
 
@@ -38,6 +39,14 @@ function checkPathParam(path) {
   if (t.split("/").some((s) => s === "..")) {
     throw cds.error(400, `path must not contain ".." segments`)
   }
+}
+
+function checkMethod(method) {
+  const normalized = method === undefined ? "POST" : normalizeHttpMethod(method)
+  if (!normalized) {
+    throw cds.error(400, `method must be one of ${HTTP_METHODS.join(", ")}`)
+  }
+  return normalized
 }
 
 class N8nService extends cds.Service {
@@ -66,7 +75,8 @@ class N8nService extends cds.Service {
 
   async _trigger(req) {
     const { useTestWebhook } = await resolveN8nConnection()
-    const { path, method = "POST", payload } = req.data ?? {}
+    const { path, payload } = req.data ?? {}
+    const method = checkMethod(req.data?.method)
     const prefix = useTestWebhook ? "/webhook-test" : "/webhook"
     const webhookPath = `${prefix}/${String(path).replace(/^\/+/, "")}`
 
