@@ -108,6 +108,9 @@ jobs:
         run: |
           rm -rf ./.n8n-data
           mkdir -p ./.n8n-data
+          # Ensure the bind-mounted data dir is writable by the container user.
+          export N8N_UID="$(id -u)" N8N_GID="$(id -g)"
+          echo "Running n8n as $N8N_UID:$N8N_GID"
           docker compose up -d
           # Wait up to ~5 min for the healthcheck to turn healthy
           for i in $(seq 1 60); do

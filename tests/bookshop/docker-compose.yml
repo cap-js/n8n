@@ -2,6 +2,10 @@ services:
   n8n:
     image: n8nio/n8n:latest
     container_name: bookshop-n8n
+    # Run as the host user so bind-mounted ./.n8n-data is writable regardless of
+    # host UID/GID. In CI, N8N_UID/N8N_GID are exported before `docker compose up`.
+    # Locally, they default to the current user via the shell expansion below.
+    user: "${N8N_UID:-1000}:${N8N_GID:-1000}"
     ports:
       - "5678:5678"
     environment:
