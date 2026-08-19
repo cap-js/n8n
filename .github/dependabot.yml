@@ -34,3 +34,9 @@ updates:
       actions:
         patterns: ["*"]
         update-types: [minor, patch]
+
+  - package-ecosystem: docker-compose
+    directory: /tests/bookshop
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 3

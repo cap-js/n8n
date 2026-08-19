@@ -2,39 +2,29 @@ name: CI
 
 on:
   workflow_dispatch:
-  push:
+  merge_group:
+  pull_request:
     branches: [main]
-  pull_request_target:
-    branches: [main]
-    types: [reopened, synchronize, opened]
 
 permissions:
   contents: read
 
 jobs:
-  requires-approval:
-    runs-on: ubuntu-latest
-    name: "Waiting for PR approval as this workflow runs on pull_request_target"
-    if: github.event_name == 'pull_request_target' && github.event.pull_request.head.repo.owner.login != 'cap-js'
-    environment: pr-approval
-    steps:
-      - name: Approval Step
-        run: echo "This job has been approved!"
   test:
-    needs: requires-approval
-    if: always() && (needs.requires-approval.result == 'success' || needs.requires-approval.result == 'skipped')
+    name: Tests with Node.js ${{ matrix.node-version }} (CDS ${{ matrix.cds-version }})
     runs-on: ubuntu-latest
+    timeout-minutes: 3
     strategy:
       fail-fast: false
       matrix:
+        node-version: [22, 24]
         cds-version: [9, latest]
-        node-version: [22.x, 24.x]
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: ${{ matrix.node-version }}
       - name: Set CDS version-specific dependencies
@@ -46,28 +36,130 @@ jobs:
           npm pkg set --workspace=tests/bookshop "dependencies.@sap/cds=^9"
       - run: npm i -g @sap/cds-dk@${{ matrix.cds-version }}
       - run: npm i
-      - run: cds v -i
+      - run: cd tests/bookshop && cds v -i
       - run: npm run test
+
   integration-tests:
-    needs: requires-approval
-    if: always() && (needs.requires-approval.result == 'success' || needs.requires-approval.result == 'skipped')
+    name: Integration Tests with Node.js ${{ matrix.node-version }} (CDS ${{ matrix.cds-version }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
+        node-version: [22, 24]
         cds-version: [9, latest]
-        node-version: [22.x, 24.x]
+        # On PRs only latest/Node 24 runs; the merge queue runs the full matrix.
+        exclude: ${{ github.event_name == 'merge_group' && fromJSON('[]') || fromJSON('[{"node-version":22,"cds-version":9},{"node-version":24,"cds-version":9},{"node-version":22,"cds-version":"latest"}]') }}
+    env:
+      HANA_SERVICE: cap-js-n8n-${{ github.run_id }}-${{ github.run_number }}-${{ github.run_attempt }}-${{ matrix.cds-version }}-${{ matrix.node-version }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - name: Integration tests
-        uses: ./.github/actions/integration-tests
+
+      - name: Setup CF CLI and authenticate
+        uses: cap-js/cf-setup@d9f989795c045b8ba9f80103ae4979de71131844 # v2
         with:
-          CF_API: ${{ secrets.CF_API }}
-          CF_USERNAME: ${{ secrets.CF_USERNAME }}
-          CF_PASSWORD: ${{ secrets.CF_PASSWORD }}
-          CF_ORG: ${{ secrets.CF_ORG }}
-          CF_SPACE: ${{ secrets.CF_SPACE }}
-          NODE_VERSION: ${{ matrix.node-version }}
+          api: ${{ secrets.CF_API }}
+          org: ${{ secrets.CF_ORG }}
+          space: ${{ secrets.CF_SPACE }}
+          username: ${{ secrets.CF_USERNAME }}
+          password: ${{ secrets.CF_PASSWORD }}
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - run: npm i -g @sap/cds-dk@${{ matrix.cds-version }}
+
+      - name: Pin CDS 9 compatible stack
+        if: matrix.cds-version == '9'
+        run: |
+          npm pkg set "overrides.@cap-js/sqlite=^2"
+          npm pkg set "overrides.@cap-js/hana=^2"
+          npm pkg set "devDependencies.@sap/cds=^9"
+          npm pkg set --workspace=tests/bookshop "dependencies.@sap/cds=^9"
+
+      - run: npm i
+      - run: cds v -i
+
+      # Deploy bookshop model to HANA and bind against it for hybrid tests
+      - run: cf create-service hana hdi-shared $HANA_SERVICE
+      - run: cd tests/bookshop && CDS_ENV=production cds deploy --to hana:$HANA_SERVICE
+      - run: cds bind db -2 $HANA_SERVICE -o package.json
+
+      # Start local n8n instance (hybrid tests exercise CAP -> n8n workflow triggers)
+      - name: Start n8n instance
+        working-directory: tests/bookshop
+        run: |
+          rm -rf ./.n8n-data
+          mkdir -p ./.n8n-data
+          # Ensure the bind-mounted data dir is writable by the container user.
+          export N8N_UID="$(id -u)" N8N_GID="$(id -g)"
+          echo "Running n8n as $N8N_UID:$N8N_GID"
+          docker compose up -d
+          # Wait up to ~5 min for the healthcheck to turn healthy
+          for i in $(seq 1 60); do
+            status=$(docker inspect -f '{{.State.Health.Status}}' bookshop-n8n 2>/dev/null || echo "missing")
+            echo "[$i/60] n8n health=$status"
+            if [ "$status" = "healthy" ]; then break; fi
+            if [ "$status" = "unhealthy" ] || [ "$status" = "missing" ]; then
+              echo "::group::docker compose ps"; docker compose ps; echo "::endgroup::"
+              echo "::group::n8n logs"; docker compose logs --no-color n8n || true; echo "::endgroup::"
+              exit 1
+            fi
+            sleep 5
+          done
+          if [ "$(docker inspect -f '{{.State.Health.Status}}' bookshop-n8n)" != "healthy" ]; then
+            echo "::group::docker compose ps"; docker compose ps; echo "::endgroup::"
+            echo "::group::n8n logs"; docker compose logs --no-color n8n || true; echo "::endgroup::"
+            exit 1
+          fi
+          docker compose ps
+
+      - name: Bootstrap n8n owner + API key
+        env:
+          N8N_URL: http://localhost:5678
+        run: ./scripts/n8n-bootstrap.sh
+
+      # Run hybrid tests: bound to HANA + talking to local n8n
+      - run: cds bind --exec -- npm run test
+
+      - name: Dump n8n logs on failure
+        if: failure()
+        working-directory: tests/bookshop
+        run: docker compose logs --no-color n8n || true
+
+      - name: Stop n8n
+        if: always()
+        working-directory: tests/bookshop
+        run: docker compose down -v || true
+
+      # Cleanup BTP services
+      - name: Delete HDI Container Key
+        if: ${{ always() }}
+        continue-on-error: true # transient failure shouldn't prevent container deletion attempt
+        run: cf delete-service-key $HANA_SERVICE $HANA_SERVICE-key -f
+
+      - name: Delete HDI Container
+        if: ${{ always() }}
+        run: | # Note: the initial delete often fails with "ongoing operation on service binding"
+          for i in {1..3}; do
+            cf delete-service $HANA_SERVICE -f && break
+            echo "HDI container delete failed, retrying ($i/3)..."
+            sleep 10
+            if [ "$i" -eq 3 ]; then
+              echo "❌ HDI container delete failed after 3 attempts."
+              exit 1
+            fi
+          done
+
+  results:
+    if: always()
+    runs-on: ubuntu-latest
+    name: Summary
+    needs: [test, integration-tests]
+    steps:
+      - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
