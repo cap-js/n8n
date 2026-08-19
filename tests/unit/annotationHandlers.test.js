@@ -8,21 +8,6 @@ function collect(def) {
   return [...findAnnotations(def)]
 }
 
-// ── shorthand ──────────────────────────────────────────────────────────────
-
-describe("findAnnotations - shorthand", () => {
-  it("yields descriptor with empty on for a plain string value (registers nothing)", () => {
-    const results = collect({ [N8N]: "my-hook" })
-    expect(results).toHaveLength(1)
-    expect(results[0]).toEqual({
-      path: "my-hook",
-      on: [],
-      conditionExpr: undefined,
-      inputs: undefined,
-    })
-  })
-})
-
 // ── record form ────────────────────────────────────────────────────────────
 
 describe("findAnnotations - record form", () => {

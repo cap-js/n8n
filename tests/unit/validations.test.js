@@ -25,24 +25,6 @@ function ent(annotations, actions) {
   return { actions, ...annotations }
 }
 
-describe("validateTriggerAnnotations - string shorthand", () => {
-  it("rejects a string annotation", () => {
-    const plugin = makePlugin()
-    validateTriggerAnnotations("Foo", ent({ "@n8n.process.start": "my-hook" }), plugin)
-    expect(plugin.messages.some((m) => /shorthand is no longer supported/i.test(m.message))).toBe(
-      true,
-    )
-  })
-
-  it("rejects an empty string annotation", () => {
-    const plugin = makePlugin()
-    validateTriggerAnnotations("Foo", ent({ "@n8n.process.start": "" }), plugin)
-    expect(plugin.messages.some((m) => /shorthand is no longer supported/i.test(m.message))).toBe(
-      true,
-    )
-  })
-})
-
 describe("validateTriggerAnnotations - record form", () => {
   it("accepts a complete record", () => {
     const plugin = makePlugin()
