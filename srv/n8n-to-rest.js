@@ -66,13 +66,13 @@ class N8nService extends cds.Service {
 
   async _trigger(req) {
     const { useTestWebhook } = await resolveN8nConnection()
-    const { path, payload } = req.data ?? {}
+    const { path, method = "POST", payload } = req.data ?? {}
     const prefix = useTestWebhook ? "/webhook-test" : "/webhook"
     const webhookPath = `${prefix}/${String(path).replace(/^\/+/, "")}`
 
     LOG.info("Triggering n8n webhook", { path: webhookPath })
     const response = await n8nRequest({
-      method: "POST",
+      method,
       path: webhookPath,
       body: payload ?? {},
     })

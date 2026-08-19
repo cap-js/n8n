@@ -6,11 +6,13 @@ service n8n {
 
   /**
    * Fires an n8n production webhook.
-   * - path : the webhook path segment (POSTed to `{baseUrl}/webhook/<path>`)
+    * - path : the webhook path segment (`{baseUrl}/webhook/<path>`)
+    * - method : the HTTP method; defaults to POST
    * - payload : arbitrary JSON body sent to the webhook
    */
   event triggerWorkflow {
     path    : String(256);
+    method  : String(16);
     payload : Map;
   }
 
