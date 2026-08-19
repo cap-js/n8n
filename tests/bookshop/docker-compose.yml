@@ -21,7 +21,11 @@ services:
       - ./.n8n-data:/home/node/.n8n
       - ./workflows:/workflows:ro
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:5678/healthz | grep -q '\"status\":\"ok\"' || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          'wget -qO- http://localhost:5678/healthz | grep -q ''"status":"ok"'' || exit 1',
+        ]
       interval: 5s
       timeout: 5s
       retries: 60
