@@ -13,6 +13,11 @@
 # 2. POST /rest/api-keys       - mint public-API JWT
 # 3. Export to $GITHUB_ENV and tests/bookshop/.env.n8n
 #
+# Each REST call is retried on non-2xx *and* on 2xx with a non-JSON body,
+# because n8n's REST layer can briefly return the plain-text placeholder
+# "n8n is starting up. Please wait" during boot / migrations even after
+# /healthz reports OK and after previous REST calls have succeeded.
+#
 # Required env vars:
 #   N8N_URL                    e.g. http://localhost:5678
 # Optional env vars:
@@ -28,29 +33,72 @@ LABEL="${API_KEY_LABEL:-cap-js-n8n-ci}"
 JAR="$(mktemp)"; trap 'rm -f "$JAR"' EXIT
 log() { printf '[n8n-bootstrap] %s\n' "$*" >&2; }
 
-# --- 1. Owner setup --------------------------------------------------------
-setup_status=$(curl -sS -o /tmp/n8n-setup.json -w '%{http_code}' -c "$JAR" \
-  -H 'Content-Type: application/json' -X POST "$N8N_URL/rest/owner/setup" \
-  --data "{\"email\":\"$EMAIL\",\"firstName\":\"CI\",\"lastName\":\"Owner\",\"password\":\"$PASS\"}")
+# is_json <file> - returns 0 if file parses as JSON
+is_json() {
+  node -e 'try { JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")); process.exit(0) } catch { process.exit(1) }' "$1" 2>/dev/null
+}
 
-if [ "$setup_status" != "200" ] && [ "$setup_status" != "201" ]; then
-  log "Owner setup failed (HTTP $setup_status):"
-  cat /tmp/n8n-setup.json >&2
-  log "If the instance is already provisioned, run 'docker compose down -v' and retry."
-  exit 1
-fi
+# retry_json <method> <path> <body> <out_file> - calls n8n until the response
+# body is valid JSON with a 2xx status, or bails after N attempts.
+#
+# Retries only on transient conditions:
+#   - Network failure (curl reports code 000)
+#   - HTTP 5xx (server-side transient)
+#   - HTTP 2xx but non-JSON body (n8n's "starting up" placeholder)
+# 4xx and 5xx-with-JSON are treated as real errors and fail fast.
+retry_json() {
+  local method="$1" path="$2" body="$3" out="$4"
+  local attempts=30 code
+  for j in $(seq 1 "$attempts"); do
+    if [ -n "$body" ]; then
+      code=$(curl -sS -o "$out" -w '%{http_code}' -b "$JAR" -c "$JAR" \
+        -H 'Content-Type: application/json' -X "$method" "$N8N_URL$path" \
+        --data "$body" || echo "000")
+    else
+      code=$(curl -sS -o "$out" -w '%{http_code}' -b "$JAR" -c "$JAR" \
+        -X "$method" "$N8N_URL$path" || echo "000")
+    fi
+
+    # Success: 2xx with a real JSON body.
+    if { [ "$code" = "200" ] || [ "$code" = "201" ]; } && is_json "$out"; then
+      return 0
+    fi
+
+    # Hard failure: server responded with an actual error (4xx, or 5xx with a
+    # JSON error body). No point retrying - surface it immediately.
+    if [ "$code" != "000" ] && [ "${code:0:1}" != "5" ] && \
+       [ "$code" != "200" ] && [ "$code" != "201" ]; then
+      log "$method $path failed with HTTP $code:"
+      head -c 500 "$out" >&2; echo >&2
+      return 1
+    fi
+    if [ "${code:0:1}" = "5" ] && is_json "$out"; then
+      log "$method $path failed with HTTP $code (JSON error body):"
+      head -c 500 "$out" >&2; echo >&2
+      return 1
+    fi
+
+    # Transient: network error, 5xx without JSON, or 2xx with placeholder body.
+    log "[$j/$attempts] $method $path -> HTTP $code (transient); retrying..."
+    sleep 2
+  done
+  log "$method $path failed after $attempts attempts. Last body:"
+  head -c 500 "$out" >&2; echo >&2
+  return 1
+}
+
+# --- 1. Owner setup --------------------------------------------------------
+retry_json POST /rest/owner/setup \
+  "{\"email\":\"$EMAIL\",\"firstName\":\"CI\",\"lastName\":\"Owner\",\"password\":\"$PASS\"}" \
+  /tmp/n8n-setup.json
 log "Owner account created ($EMAIL)"
 
 # --- 2. Mint an API key ----------------------------------------------------
 SCOPES='["workflow:create","workflow:read","workflow:update","workflow:delete","workflow:list","workflow:move","workflow:activate","workflow:deactivate","workflow:export","workflow:import","execution:read","execution:list","execution:delete","execution:retry","execution:stop","credential:create","credential:read","credential:update","credential:delete","credential:list","credential:move","tag:create","tag:read","tag:update","tag:delete","tag:list","variable:create","variable:update","variable:delete","variable:list","project:create","project:update","project:delete","project:list","user:create","user:read","user:list","user:delete","user:changeRole"]'
 
-key_status=$(curl -sS -o /tmp/n8n-key.json -w '%{http_code}' -b "$JAR" \
-  -H 'Content-Type: application/json' -X POST "$N8N_URL/rest/api-keys" \
-  --data "{\"label\":\"$LABEL\",\"expiresAt\":null,\"scopes\":$SCOPES}")
-
-if [ "$key_status" != "200" ] && [ "$key_status" != "201" ]; then
-  log "API key creation failed (HTTP $key_status):"; cat /tmp/n8n-key.json >&2; exit 1
-fi
+retry_json POST /rest/api-keys \
+  "{\"label\":\"$LABEL\",\"expiresAt\":null,\"scopes\":$SCOPES}" \
+  /tmp/n8n-key.json
 
 RAW_KEY=$(node -e '
   const b = JSON.parse(require("fs").readFileSync("/tmp/n8n-key.json","utf8"));
