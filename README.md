@@ -187,12 +187,23 @@ To use real webhooks in the development profile, override its service kind:
 Every trigger sends a JSON request to n8n:
 
 ```http
-POST {url}/webhook/<path>
+{method} {url}/webhook/<path>
 Content-Type: application/json
 X-N8N-API-KEY: <apiKey>  # when configured
 ```
 
-The annotation payload is the selected entity data. A programmatic trigger without a payload sends `{}`. Configure the n8n Webhook node to use `POST` and the same path as the annotation or programmatic call.
+The method defaults to `POST`. An annotation can override it with `method`, for example:
+
+```cds
+@n8n.process.start: {
+  path: 'book-looked-up',
+  method: 'GET',
+  on: 'READ'
+}
+entity Books as projection on my.Books;
+```
+
+The annotation payload is the selected entity data. A programmatic trigger without a payload sends `{}`. Configure the n8n Webhook node to use the same method and path as the annotation or programmatic call. Supported methods are `DELETE`, `GET`, `HEAD`, `PATCH`, `POST`, and `PUT`.
 
 ### Test webhooks
 
@@ -233,6 +244,7 @@ Use the record form and declare the event explicitly with `on`:
 ```cds
 @n8n.process.start: {
   path: 'book-changed',
+  method: 'PATCH',
   on: [ 'CREATE', 'UPDATE' ]
 }
 entity Books as projection on my.Books;
@@ -308,7 +320,7 @@ Use the array form to register independent triggers on one entity:
 entity Books as projection on my.Books;
 ```
 
-Each element supports the same fields as the record form (`path`, `on`, `if`, `inputs`).
+Each element supports the same fields as the record form (`path`, `method`, `on`, `if`, `inputs`).
 
 ## Programmatic API
 

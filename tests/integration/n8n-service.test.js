@@ -95,6 +95,22 @@ afterAll(async () => {
 })
 
 describe("triggerWorkflow", () => {
+  it("uses the configured webhook method", async () => {
+    if (!isRest) return
+    const originalFetch = globalThis.fetch
+    let request
+    globalThis.fetch = async (...args) => {
+      request = args
+      return new Response("{}", { status: 200, headers: { "content-type": "application/json" } })
+    }
+    try {
+      await n8n.send("triggerWorkflow", { path: "method-test", method: "GET", payload: {} })
+      expect(request[1].method).toBe("GET")
+    } finally {
+      globalThis.fetch = originalFetch
+    }
+  })
+
   it("rejects triggerWorkflow without path parameter", async () => {
     let err
     try {
