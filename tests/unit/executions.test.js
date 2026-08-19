@@ -1,6 +1,7 @@
 const cds = require("@sap/cds")
 const executions = require("../../srv/n8n/executions")
-const { readExecutions, deleteExecution, retryExecution, stopExecution } = executions
+const { readExecutions, deleteExecution, retryExecution, stopExecution, stopExecutions } =
+  executions
 
 describe("Execution handlers", () => {
   let originalFetch
@@ -150,6 +151,52 @@ describe("Execution handlers", () => {
         { id: "2", status: "success" },
       ])
     })
+
+    it("omits missing executions from an id batch", async () => {
+      globalThis.fetch = async (url) => {
+        const id = url.split("?")[0].split("/").at(-1)
+        if (id === "missing") {
+          return {
+            ok: false,
+            status: 404,
+            statusText: "Not Found",
+            headers: { get: () => "application/json" },
+            json: async () => ({ message: "not found" }),
+            text: async () => "",
+          }
+        }
+        return {
+          ok: true,
+          status: 200,
+          statusText: "OK",
+          headers: { get: () => "application/json" },
+          json: async () => ({ id, status: "success" }),
+          text: async () => "",
+        }
+      }
+      const req = makeReq({
+        query: {
+          SELECT: {
+            from: {
+              ref: [
+                {
+                  id: "n8n.WorkflowExecutions",
+                  where: [
+                    { ref: ["id"] },
+                    "in",
+                    { list: [{ val: "1" }, { val: "missing" }, { val: "2" }] },
+                  ],
+                },
+              ],
+            },
+          },
+        },
+      })
+      await expect(readExecutions(req)).resolves.toEqual([
+        { id: "1", status: "success" },
+        { id: "2", status: "success" },
+      ])
+    })
   })
 
   describe("deleteExecution", () => {
@@ -218,7 +265,8 @@ describe("Execution handlers", () => {
       ])
       for (const c of calls) expect(c.init.method).toBe("DELETE")
       expect(Array.isArray(res)).toBe(true)
-      expect(res).toHaveLength(2)
+      expect(res).toHaveLength(0)
+      expect(res.affected).toBe(2)
     })
   })
 
@@ -257,6 +305,41 @@ describe("Execution handlers", () => {
 
     it("rejects when id is missing", async () => {
       await expect(stopExecution(makeReq({ data: {} }))).rejects.toThrow(/id/i)
+    })
+  })
+
+  describe("stopExecutions", () => {
+    it("POSTs workflow and status filters to /executions/stop", async () => {
+      globalThis.fetch = async (url, init) => {
+        capturedInit = { url, init }
+        return {
+          ok: true,
+          status: 200,
+          statusText: "OK",
+          headers: { get: () => "application/json" },
+          json: async () => ({ stopped: 2 }),
+          text: async () => "",
+        }
+      }
+      const result = await stopExecutions(
+        makeReq({ data: { workflowId: "workflow-1", status: ["waiting", "running"] } }),
+      )
+      expect(capturedInit.url).toBe("http://x:5678/api/v1/executions/stop")
+      expect(capturedInit.init.method).toBe("POST")
+      expect(JSON.parse(capturedInit.init.body)).toEqual({
+        workflowId: "workflow-1",
+        status: ["waiting", "running"],
+      })
+      expect(result).toBe(2)
+    })
+
+    it("rejects without a workflow id or status", async () => {
+      await expect(stopExecutions(makeReq({ data: { status: ["waiting"] } }))).rejects.toThrow(
+        /workflow id/i,
+      )
+      await expect(stopExecutions(makeReq({ data: { workflowId: "workflow-1" } }))).rejects.toThrow(
+        /status/i,
+      )
     })
   })
 })

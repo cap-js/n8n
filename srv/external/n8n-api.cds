@@ -18,9 +18,9 @@ context N8nApi {
 
         // could be maybe LargeString
                   nodes        : many Map @mandatory;
-                  connections  : Map      @mandatory;
-                  settings     : Map      @mandatory;
-                  staticData   : Map;
+                  connections  : LargeString      @mandatory;
+                  settings     : LargeString      @mandatory;
+                  staticData   : LargeString;
 
     @readonly     triggerCount : Integer;
     @readonly     versionId    : UUID;
@@ -50,6 +50,6 @@ context N8nApi {
         /**
          * Full node run data as returned by `?includeData=true`.
          */
-        data           : Map;
+        data           : LargeString;
   }
 }
