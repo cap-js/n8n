@@ -120,6 +120,7 @@ describe("triggerWorkflow", () => {
     })
     expect(result).toEqual({ greeting: "hi" })
 
+    // A matching method succeeds; the same path with a different method must fail.
     await expectTriggerError(
       {
         path: workflow.webhookPath,
