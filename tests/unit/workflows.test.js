@@ -175,7 +175,7 @@ describe("Workflow handlers", () => {
       expect(row).toEqual({ id: "a", name: "wf-a" })
     })
 
-    it("rejects the batch when one requested workflow is missing", async () => {
+    it("omits missing workflows from an id batch", async () => {
       globalThis.fetch = async (url) => {
         const id = url.split("/").at(-1)
         if (id === "missing") {
@@ -215,7 +215,10 @@ describe("Workflow handlers", () => {
           },
         },
       })
-      await expect(readWorkflows(req)).rejects.toMatchObject({ status: 502 })
+      await expect(readWorkflows(req)).resolves.toEqual([
+        { id: "a", name: "wf-a" },
+        { id: "c", name: "wf-c" },
+      ])
     })
   })
 
@@ -433,9 +436,9 @@ describe("Workflow handlers", () => {
         "http://x:5678/api/v1/workflows/c",
       ])
       for (const c of calls) expect(c.init.method).toBe("DELETE")
-      // Returns an aggregated array of per-id responses.
       expect(Array.isArray(res)).toBe(true)
-      expect(res).toHaveLength(3)
+      expect(res).toHaveLength(0)
+      expect(res.affected).toBe(3)
     })
   })
 

@@ -1,5 +1,18 @@
-const { parseResponse, getProperty, extractIds } = require("../../lib/handlers/utils")
+const { parseResponse, getProperty, extractIds, writeResult } = require("../../lib/handlers/utils")
 const { n8nRequest } = require("../../lib/api/connection")
+
+function parseJsonFields(workflow) {
+  for (const field of ["connections", "settings", "staticData"]) {
+    if (typeof workflow[field] === "string") {
+      try {
+        workflow[field] = JSON.parse(workflow[field])
+      } catch {
+        // Let n8n return its validation error for malformed JSON.
+      }
+    }
+  }
+  return workflow
+}
 
 async function readWorkflows(req) {
   const ids = extractIds(req)
@@ -9,9 +22,12 @@ async function readWorkflows(req) {
         n8nRequest({ method: "GET", path: `/api/v1/workflows/${encodeURIComponent(id)}` }),
       ),
     )
-    const rows = (await Promise.all(responses.map((r) => parseResponse(req, r)))).filter(
-      (row) => row && (typeof row !== "object" || Object.keys(row).length > 0),
-    )
+    // A missing workflow is an empty CQL result, not a failed query.
+    const rows = (
+      await Promise.all(
+        responses.map((r) => (r.status === 404 ? undefined : parseResponse(req, r))),
+      )
+    ).filter((row) => row && (typeof row !== "object" || Object.keys(row).length > 0))
     if (req.query.SELECT?.one) return rows[0]
     return rows
   }
@@ -32,7 +48,9 @@ async function readWorkflows(req) {
 }
 
 async function createWorkflow(req) {
-  const body = req.data ?? {}
+  const body = { ...(req.data ?? {}) }
+  delete body.id // n8n assigns workflow IDs
+  parseJsonFields(body)
   for (const required of ["name", "nodes", "connections", "settings"]) {
     if (body[required] == null) {
       return req.reject(400, `Missing required workflow field: ${required}`)
@@ -43,7 +61,12 @@ async function createWorkflow(req) {
     path: "/api/v1/workflows",
     body,
   })
-  return parseResponse(req, response)
+  const created = await parseResponse(req, response)
+
+  if (!created || typeof created !== "object" || !created.id) {
+    return created // error path — parseResponse already logged and returned {}
+  }
+  return writeResult([{ id: created.id }], 1)
 }
 
 // n8n's PUT /workflows/{id} rejects a request missing any of `name`,
@@ -58,7 +81,12 @@ async function updateWorkflow(req) {
   if (ids.length > 1) return req.reject(400, "Batch workflow UPDATE is not supported")
   const [id] = ids
   if (!id) return req.reject(400, "Missing workflow id for UPDATE")
-  const body = req.data ?? {}
+  const body = { ...(req.data ?? {}) }
+  // These fields are computed by n8n and must not be sent back in a PUT.
+  delete body.id
+  delete body.active
+  delete body.isArchived
+  parseJsonFields(body)
 
   const missing = WORKFLOW_PUT_REQUIRED_FIELDS.filter((f) => body[f] == null)
   if (missing.length > 0) {
@@ -80,7 +108,10 @@ async function updateWorkflow(req) {
     path: `/api/v1/workflows/${encodeURIComponent(id)}`,
     body,
   })
-  return parseResponse(req, response)
+  const updated = await parseResponse(req, response)
+  // conform to CAP return shape
+  const affected = updated && typeof updated === "object" && updated.id ? 1 : 0
+  return writeResult([], affected)
 }
 
 async function deleteWorkflow(req) {
@@ -93,7 +124,12 @@ async function deleteWorkflow(req) {
     ),
   )
   const results = await Promise.all(responses.map((r) => parseResponse(req, r)))
-  return ids.length === 1 ? results[0] : results
+
+  // conform to CAP return shape
+  const affected = results.filter(
+    (r) => r && typeof r === "object" && Object.keys(r).length > 0,
+  ).length
+  return writeResult([], affected)
 }
 
 async function publishWorkflow(req) {
@@ -139,6 +175,7 @@ module.exports = {
   publishWorkflow,
   unpublishWorkflow,
   archiveWorkflow,
+  parseJsonFields,
   // Exposed for reuse and unit tests.
   WORKFLOW_PUT_REQUIRED_FIELDS,
 }

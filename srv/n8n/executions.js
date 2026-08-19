@@ -1,5 +1,5 @@
 const { n8nRequest } = require("../../lib/api/connection")
-const { parseResponse, getProperty, extractIds } = require("../../lib/handlers/utils")
+const { parseResponse, getProperty, extractIds, writeResult } = require("../../lib/handlers/utils")
 
 async function readExecutions(req) {
   const ids = extractIds(req)
@@ -12,9 +12,12 @@ async function readExecutions(req) {
         }),
       ),
     )
-    const rows = (await Promise.all(responses.map((r) => parseResponse(req, r)))).filter(
-      (row) => row && (typeof row !== "object" || Object.keys(row).length > 0),
-    )
+    // A missing execution is an empty CQL result, not a failed query.
+    const rows = (
+      await Promise.all(
+        responses.map((r) => (r.status === 404 ? undefined : parseResponse(req, r))),
+      )
+    ).filter((row) => row && (typeof row !== "object" || Object.keys(row).length > 0))
     if (req.query.SELECT?.one) return rows[0]
     return rows
   }
@@ -44,7 +47,12 @@ async function deleteExecution(req) {
     ),
   )
   const results = await Promise.all(responses.map((r) => parseResponse(req, r)))
-  return ids.length === 1 ? results[0] : results
+
+  // conform to CAP return shape
+  const affected = results.filter(
+    (r) => r && typeof r === "object" && Object.keys(r).length > 0,
+  ).length
+  return writeResult([], affected)
 }
 
 async function retryExecution(req) {
@@ -69,9 +77,25 @@ async function stopExecution(req) {
   return parseResponse(req, response)
 }
 
+async function stopExecutions(req) {
+  const { workflowId, status } = req.data ?? {}
+  if (!workflowId) return req.reject(400, "Missing workflow id for stopExecutions")
+  if (!Array.isArray(status) || status.length === 0) {
+    return req.reject(400, "At least one execution status is required for stopExecutions")
+  }
+  const response = await n8nRequest({
+    method: "POST",
+    path: "/api/v1/executions/stop",
+    body: { workflowId, status },
+  })
+  const result = await parseResponse(req, response)
+  return typeof result?.stopped === "number" ? result.stopped : 0
+}
+
 module.exports = {
   readExecutions,
   deleteExecution,
   retryExecution,
   stopExecution,
+  stopExecutions,
 }

@@ -362,6 +362,7 @@ await n8n.send("publishWorkflow", { id: "abc" })
 await n8n.send("unpublishWorkflow", { id: "abc" })
 await n8n.send("archiveWorkflow", { id: "abc" })
 await n8n.send("stopExecution", { id: "exec-42" })
+await n8n.send("stopExecutions", { workflowId: "wf-42", status: ["running", "waiting"] })
 await n8n.send("retryExecution", { id: "exec-42", loadWorkflow: true })
 ```
 

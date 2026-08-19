@@ -3,7 +3,7 @@ using {sap.capire.bookshop as my} from '../db/schema';
 service AdminService {
 
   @n8n.process.start: {
-    path: 'book-created',
+    path: 'annotation-test-book-created',
     on: 'CREATE'
   }
   entity Books   as projection on my.Books;
@@ -12,7 +12,7 @@ service AdminService {
 
   // Record form with conditional dispatch and explicit input mapping.
   @n8n.process.start: {
-    path: 'order-shipped',
+    path: 'annotation-test-order-shipped',
     on: 'UPDATE',
     if: (status = 'shipped'),
     inputs: [
@@ -22,7 +22,7 @@ service AdminService {
     ]
   }
   @n8n.process.start #deleted: {
-    path: 'order-deleted',
+    path: 'annotation-test-order-deleted',
     on: 'DELETE',
     if: (status = 'new'),
     inputs: [ $self.ID, $self.quantity, $self.status ]

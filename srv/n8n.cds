@@ -23,6 +23,10 @@ service n8n {
 
   action retryExecution(id : String @mandatory, loadWorkflow : Boolean) returns WorkflowExecutions;
   action stopExecution(id : String @mandatory) returns WorkflowExecutions;
+  action stopExecutions(
+    workflowId : String  @mandatory,
+    status : many String @mandatory
+  ) returns Integer;
 
   entity WorkflowDefinitions as projection on N8nApi.Workflows;
 
