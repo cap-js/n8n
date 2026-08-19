@@ -5,11 +5,20 @@ services:
     ports:
       - "5678:5678"
     environment:
-      # Disable auth for local dev only. Do NOT do this in any shared/staging env.
+      # Disable auth for local dev only
       - N8N_SECURE_COOKIE=false
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_VERSION_NOTIFICATIONS_ENABLED=false
+      - N8N_TEMPLATES_ENABLED=false
       - N8N_RUNNERS_ENABLED=true
       - GENERIC_TIMEZONE=UTC
     volumes:
       - ./.n8n-data:/home/node/.n8n
       - ./workflows:/workflows:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5678/healthz | grep -q '\"status\":\"ok\"' || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 15s
     restart: unless-stopped

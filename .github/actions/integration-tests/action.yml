@@ -99,9 +99,37 @@ runs:
     # Uncomment when actual BTP services should be used. The first argument of `cds bind` is only needed for CAP v8
     # - run: cds bind <your-service> -2 <your-service> -o package.json
     #   shell: bash
-    # Run tests in hybrid mode
-    - run: npm run test:hybrid
+
+    - name: Start n8n Instance
       shell: bash
+      working-directory: tests/bookshop
+      run: |
+        rm -rf ./.n8n-data
+        mkdir -p ./.n8n-data
+        docker compose up -d --wait
+        docker compose ps
+
+    - name: Bootstrap n8n owner + API key
+      shell: bash
+      env:
+        N8N_URL: http://localhost:5678
+      run: ./scripts/n8n-bootstrap.sh
+
+    - name: Run tests in hybrid mode
+      run: npm run test:hybrid
+      shell: bash
+
+    - name: Dump n8n logs on failure
+      if: failure()
+      shell: bash
+      working-directory: tests/bookshop
+      run: docker compose logs --no-color n8n || true
+
+    - name: Stop n8n
+      if: always()
+      shell: bash
+      working-directory: tests/bookshop
+      run: docker compose down -v || true
 
     # HANA Cleanup
     # Uncomment when you want to run your hybrid integration tests against HANA Cloud
