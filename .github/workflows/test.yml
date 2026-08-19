@@ -108,7 +108,24 @@ jobs:
         run: |
           rm -rf ./.n8n-data
           mkdir -p ./.n8n-data
-          docker compose up -d --wait
+          docker compose up -d
+          # Wait up to ~5 min for the healthcheck to turn healthy
+          for i in $(seq 1 60); do
+            status=$(docker inspect -f '{{.State.Health.Status}}' bookshop-n8n 2>/dev/null || echo "missing")
+            echo "[$i/60] n8n health=$status"
+            if [ "$status" = "healthy" ]; then break; fi
+            if [ "$status" = "unhealthy" ] || [ "$status" = "missing" ]; then
+              echo "::group::docker compose ps"; docker compose ps; echo "::endgroup::"
+              echo "::group::n8n logs"; docker compose logs --no-color n8n || true; echo "::endgroup::"
+              exit 1
+            fi
+            sleep 5
+          done
+          if [ "$(docker inspect -f '{{.State.Health.Status}}' bookshop-n8n)" != "healthy" ]; then
+            echo "::group::docker compose ps"; docker compose ps; echo "::endgroup::"
+            echo "::group::n8n logs"; docker compose logs --no-color n8n || true; echo "::endgroup::"
+            exit 1
+          fi
           docker compose ps
 
       - name: Bootstrap n8n owner + API key
