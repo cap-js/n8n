@@ -12,9 +12,14 @@ function collect(def) {
 
 describe("findAnnotations - record form", () => {
   it("yields descriptor with explicit on", () => {
-    const results = collect({ [`${N8N}.path`]: "wf", [`${N8N}.on`]: "CREATE" })
+    const results = collect({
+      [`${N8N}.path`]: "wf",
+      [`${N8N}.method`]: "get",
+      [`${N8N}.on`]: "CREATE",
+    })
     expect(results).toHaveLength(1)
     expect(results[0].path).toBe("wf")
+    expect(results[0].method).toBe("GET")
     expect(results[0].on).toEqual(["CREATE"])
   })
 
@@ -57,12 +62,14 @@ describe("findAnnotations - array form", () => {
     expect(results).toHaveLength(2)
     expect(results[0]).toEqual({
       path: "book-created",
+      method: "POST",
       on: ["CREATE"],
       conditionExpr: undefined,
       inputs: undefined,
     })
     expect(results[1]).toEqual({
       path: "book-deleted",
+      method: "POST",
       on: ["DELETE"],
       conditionExpr: undefined,
       inputs: undefined,
@@ -74,6 +81,19 @@ describe("findAnnotations - array form", () => {
     ["array", ["CREATE", "UPDATE"], ["CREATE", "UPDATE"]],
   ])("normalises on: %s", (_label, on, expected) => {
     expect(collect({ [N8N]: [{ path: "wf", on }] })[0].on).toEqual(expected)
+  })
+
+  it("defaults method to POST", () => {
+    expect(collect({ [N8N]: [{ path: "wf", on: "CREATE" }] })[0].method).toBe("POST")
+  })
+
+  it("does not let a method-only key suppress the array form", () => {
+    const results = collect({
+      [N8N]: [{ path: "array-hook", on: "CREATE" }],
+      [`${N8N}.method`]: "GET",
+    })
+    expect(results).toHaveLength(1)
+    expect(results[0].path).toBe("array-hook")
   })
 
   it("skips elements missing or non-string path", () => {
