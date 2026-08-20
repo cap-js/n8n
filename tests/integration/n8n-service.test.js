@@ -198,8 +198,7 @@ describe("triggerWorkflow", () => {
     const execution = await waitForExecution(
       n8n,
       WorkflowExecutions,
-      { workflowId },
-      (e) => e.workflowId === workflowId,
+      { workflowId }
     )
     expect(execution).toBeDefined
   })
