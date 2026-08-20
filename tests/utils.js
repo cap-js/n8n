@@ -48,4 +48,19 @@ function makeWorkflowBody(name, webhookPath, nodes = [], connections = {}, metho
   }
 }
 
-module.exports = { waitForExecution, makeWorkflowBody }
+// Removes any pre-existing workflows on the target n8n instance that own a webhook node at one of the given paths
+async function purgeWorkflowsByWebhookPaths(n8n, WorkflowDefinitions, paths) {
+  const targets = new Set(paths)
+  const rows = await n8n.run(SELECT.from(WorkflowDefinitions).columns("id", "nodes"))
+  const stale = (rows ?? [])
+    .filter((wf) =>
+      (Array.isArray(wf.nodes) ? wf.nodes : []).some(
+        (node) => node?.type === "n8n-nodes-base.webhook" && targets.has(node?.parameters?.path),
+      ),
+    )
+    .map((wf) => wf.id)
+  if (stale.length === 0) return
+  await n8n.run(cds.delete(WorkflowDefinitions).where({ id: stale }))
+}
+
+module.exports = { waitForExecution, makeWorkflowBody, purgeWorkflowsByWebhookPaths }
