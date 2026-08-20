@@ -1,4 +1,4 @@
-# CAP - n8n Plugin .
+# CAP - n8n Plugin
 
 [![REUSE status](https://api.reuse.software/badge/github.com/cap-js/n8n)](https://api.reuse.software/info/github.com/cap-js/n8n)
 
