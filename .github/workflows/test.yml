@@ -116,17 +116,19 @@ jobs:
       - name: Load cached n8n image
         if: steps.n8n-cache.outputs.cache-hit == 'true'
         run: |
-          # `docker save`/`docker load` preserves the image ID but strips the
-          # name+tag, so `docker compose up` would re-pull from Docker Hub.
-          # We must re-tag the loaded image with the ref used by compose.
-          #
-          # Note: `docker load` reports the image *config* ID, which differs
-          # from a registry manifest digest. Parse it from the load output and
-          # tag by that.
+          # `docker load` outputs one of:
+          #   "Loaded image: <name>:<tag>"   (tarball saved with name+tag)
+          #   "Loaded image ID: sha256:..."  (tarball saved without name+tag)
+          # In the first case the image is already usable by compose. In the
+          # second we must re-tag it so `docker compose up` doesn't re-pull.
+          # Note: the loaded "image ID" is the config ID, not a manifest digest.
           loaded=$(docker load -i /tmp/n8n-image.tar)
           echo "$loaded"
-          image_id=$(echo "$loaded" | awk -F': ' '/^Loaded image ID:/ {print $2}')
-          docker tag "$image_id" "${{ steps.n8n-image.outputs.ref }}"
+          ref="${{ steps.n8n-image.outputs.ref }}"
+          if echo "$loaded" | grep -q '^Loaded image ID:'; then
+            image_id=$(echo "$loaded" | awk -F': ' '/^Loaded image ID:/ {print $2}')
+            docker tag "$image_id" "$ref"
+          fi
 
       - name: Pull n8n image (cache miss) and save for next run
         if: steps.n8n-cache.outputs.cache-hit != 'true'
