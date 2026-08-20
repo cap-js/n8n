@@ -113,7 +113,7 @@ describe("triggerWorkflow", () => {
 
   it("uses the webhook method configured on the workflow", async () => {
     const workflow = await createPublishedWebhookWorkflow("trigger-method", "echo", "GET")
-    
+
     await n8n.send("triggerWorkflow", {
       path: workflow.webhookPath,
       method: "GET",
