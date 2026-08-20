@@ -382,11 +382,11 @@ describe("validateTriggerAnnotations - array form", () => {
       ent({
         "@n8n.process.start": [
           { path: "wf-ok" },
-          { on: "CREATE" }, // missing path — index 1
+          { on: "CREATE" }, // missing path — element #2
         ],
       }),
       plugin,
     )
-    expect(plugin.messages.some((m) => /\[1\]/.test(m.message))).toBe(true)
+    expect(plugin.messages.some((m) => /element #2/.test(m.message))).toBe(true)
   })
 })
