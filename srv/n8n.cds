@@ -51,4 +51,3 @@ service n8n {
   action unpublishWorkflow(id : String @mandatory) returns WorkflowDefinitions;
   action archiveWorkflow(id : String @mandatory) returns WorkflowDefinitions;
 }
-
