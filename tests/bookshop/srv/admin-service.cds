@@ -31,7 +31,8 @@ service AdminService {
   @n8n.process.start: [
     { path: 'annotation-test-shelf-created', on: 'CREATE' },
     { path: 'annotation-test-shelf-deleted', on: 'DELETE' },
-    { path: 'annotation-test-shelf-no-on' }
+    { path: 'annotation-test-shelf-no-on' },
+    { path: 'annotation-test-shelf-bad-if', on: 'CREATE', if: 'test > 5' }
   ]
   entity Shelves as projection on my.Shelves;
 }

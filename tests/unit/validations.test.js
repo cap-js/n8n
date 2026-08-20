@@ -173,7 +173,7 @@ describe("validateTriggerAnnotations - record form", () => {
       plugin,
     )
     expect(
-      plugin.messages.some((m) => m.severity === "Warning" && /unknown sub-key/i.test(m.message)),
+      plugin.messages.some((m) => m.severity === "Warning" && /unknown key/i.test(m.message)),
     ).toBe(true)
   })
 
