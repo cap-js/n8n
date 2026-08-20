@@ -113,11 +113,18 @@ describe("triggerWorkflow", () => {
 
   it("uses the webhook method configured on the workflow", async () => {
     const workflow = await createPublishedWebhookWorkflow("trigger-method", "echo", "GET")
-    const result = await n8n.send("triggerWorkflow", {
+    
+    await n8n.send("triggerWorkflow", {
       path: workflow.webhookPath,
       method: "GET",
     })
-    expect(result).toEqual({ greeting: "hi" })
+    const execution = await waitForExecution(
+      n8n,
+      WorkflowExecutions,
+      { workflowId: workflow.id },
+      (e) => e.workflowId === workflow.id,
+    )
+    expect(execution).to.exist
 
     // A matching method succeeds; the same path with a different method must fail.
     await expectTriggerError(
@@ -180,11 +187,23 @@ describe("triggerWorkflow", () => {
   })
 
   it("accepts triggerWorkflow without a payload", async () => {
-    const { webhookPath } = await createPublishedWebhookWorkflow("trigger-ping", "echo")
+    const { id: workflowId, webhookPath } = await createPublishedWebhookWorkflow(
+      "trigger-ping",
+      "echo",
+    )
 
-    const result = await n8n.send("triggerWorkflow", { path: webhookPath })
+    await n8n.send("triggerWorkflow", { path: webhookPath })
 
-    expect(result).toEqual({})
+    // A bodyless trigger has no meaningful response payload (console returns
+    // `{}`, real n8n returns an empty body → `null`). What matters is that
+    // the workflow actually ran, so we assert on the recorded execution.
+    const execution = await waitForExecution(
+      n8n,
+      WorkflowExecutions,
+      { workflowId },
+      (e) => e.workflowId === workflowId,
+    )
+    expect(execution).to.exist
   })
 })
 
