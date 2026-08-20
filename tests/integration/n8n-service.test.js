@@ -115,7 +115,7 @@ describe("triggerWorkflow", () => {
     const workflow = await createPublishedWebhookWorkflow("trigger-method", "echo", "GET")
     const result = await n8n.send("triggerWorkflow", {
       path: workflow.webhookPath,
-      method: "GET"
+      method: "GET",
     })
     expect(result).toEqual({ greeting: "hi" })
 
