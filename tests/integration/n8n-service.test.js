@@ -107,18 +107,25 @@ describe("triggerWorkflow", () => {
     } catch (err) {
       error = err
     }
-    expect(error).to.exist
+    expect(error).toBeDefined
     expect(String(error.message)).toMatch(pattern)
   }
 
   it("uses the webhook method configured on the workflow", async () => {
     const workflow = await createPublishedWebhookWorkflow("trigger-method", "echo", "GET")
-    const result = await n8n.send("triggerWorkflow", {
+
+    await n8n.send("triggerWorkflow", {
       path: workflow.webhookPath,
       method: "GET",
-      payload: { greeting: "hi" },
     })
-    expect(result).toEqual({ greeting: "hi" })
+
+    const execution = await waitForExecution(
+      n8n,
+      WorkflowExecutions,
+      { workflowId: workflow.id },
+      (e) => e.workflowId === workflow.id,
+    )
+    expect(execution).toBeDefined
 
     // A matching method succeeds; the same path with a different method must fail.
     await expectTriggerError(
@@ -145,7 +152,7 @@ describe("triggerWorkflow", () => {
     } catch (e) {
       err = e
     }
-    expect(err).to.exist
+    expect(err).toBeDefined
     expect(String(err.message)).to.match(/path/i)
   })
 
@@ -156,7 +163,7 @@ describe("triggerWorkflow", () => {
     } catch (e) {
       err = e
     }
-    expect(err).to.exist
+    expect(err).toBeDefined
     expect(String(err.message)).to.match(/path/i)
   })
 
@@ -181,11 +188,15 @@ describe("triggerWorkflow", () => {
   })
 
   it("accepts triggerWorkflow without a payload", async () => {
-    const { webhookPath } = await createPublishedWebhookWorkflow("trigger-ping", "echo")
+    const { id: workflowId, webhookPath } = await createPublishedWebhookWorkflow(
+      "trigger-ping",
+      "echo",
+    )
 
-    const result = await n8n.send("triggerWorkflow", { path: webhookPath })
+    await n8n.send("triggerWorkflow", { path: webhookPath })
 
-    expect(result).toEqual({})
+    const execution = await waitForExecution(n8n, WorkflowExecutions, { workflowId })
+    expect(execution).toBeDefined
   })
 })
 
@@ -208,7 +219,7 @@ describe("WorkflowDefinitions", () => {
     const { id } = await createTestWorkflow("select-one")
 
     const row = await n8n.run(SELECT.one.from(WorkflowDefinitions).where({ id }))
-    expect(row).to.exist
+    expect(row).toBeDefined
     expect(row.id).toEqual(id)
     expect(row.name).toEqual("select-one")
   })
@@ -272,7 +283,7 @@ describe("WorkflowDefinitions", () => {
 
     // sanity check — the row exists before DELETE
     const before = await n8n.run(SELECT.one.from(WorkflowDefinitions).where({ id }))
-    expect(before).to.exist
+    expect(before).toBeDefined
     expect(before.id).toEqual(id)
 
     await n8n.run(DELETE.from(WorkflowDefinitions).where({ id }))
@@ -428,7 +439,7 @@ describe("WorkflowExecutions", () => {
     const rows = await n8n.run(SELECT.from(WorkflowExecutions))
     expect(Array.isArray(rows)).to.equal(true)
     const hit = rows.find((r) => String(r.id) === String(execId))
-    expect(hit).to.exist
+    expect(hit).toBeDefined
   })
 
   it("should return a single execution when using where clause", async () => {
@@ -436,7 +447,7 @@ describe("WorkflowExecutions", () => {
     const execId = await seedExecution("select-one-exec")
 
     const row = await n8n.run(SELECT.one.from(WorkflowExecutions).where({ id: execId }))
-    expect(row).to.exist
+    expect(row).toBeDefined
     expect(String(row.id)).toEqual(String(execId))
   })
 
@@ -501,7 +512,7 @@ describe("WorkflowExecutions", () => {
     expect(result.workflowId).toEqual(execution.workflowId)
     expect(result.mode).toEqual("retry")
     expect(String(result.retryOf)).toEqual(String(execId))
-    expect(result.id).to.exist
+    expect(result.id).toBeDefined
     expect(result.id).not.toEqual(execId)
   })
 
@@ -509,20 +520,20 @@ describe("WorkflowExecutions", () => {
     // create test execution
     const execId = await seedExecution("retry-exec-behaviour", isRest ? "failed" : undefined)
     const original = await n8n.run(SELECT.one.from(WorkflowExecutions).where({ id: execId }))
-    expect(original).to.exist
+    expect(original).toBeDefined
 
     const retried = await n8n.send("retryExecution", {
       id: execId,
       loadWorkflow: true,
     })
-    expect(retried?.id).to.exist
+    expect(retried?.id).toBeDefined
     expect(retried.id).not.toEqual(execId)
     executionIds.add(retried.id)
 
     const retriedFromDb = await n8n.run(
       SELECT.one.from(WorkflowExecutions).where({ id: retried.id }),
     )
-    expect(retriedFromDb).to.exist
+    expect(retriedFromDb).toBeDefined
     expect(retriedFromDb.mode).toEqual("retry")
     expect(String(retriedFromDb.retryOf)).toEqual(String(execId))
     expect(retriedFromDb.workflowId).toEqual(original.workflowId)

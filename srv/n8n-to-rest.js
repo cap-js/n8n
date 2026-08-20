@@ -81,10 +81,11 @@ class N8nService extends cds.Service {
     const webhookPath = `${prefix}/${String(path).replace(/^\/+/, "")}`
 
     LOG.info("Triggering n8n webhook", { path: webhookPath })
+    const bodyless = method === "GET" || method === "HEAD"
     const response = await n8nRequest({
       method,
       path: webhookPath,
-      body: payload ?? {},
+      ...(bodyless || payload === undefined ? {} : { body: payload }),
     })
     return parseResponse(req, response)
   }
