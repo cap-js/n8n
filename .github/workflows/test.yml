@@ -92,20 +92,18 @@ jobs:
       # Start local n8n instance (hybrid tests exercise CAP -> n8n workflow triggers)
       #
       # The n8n image is ~300MB and pulling it from Docker Hub takes ~60s. We
-      # cache the image tarball keyed by the pinned digest, so:
-      #   - The cache invalidates automatically when Dependabot bumps the pin.
+      # cache the image tarball keyed by the pinned tag, so:
+      #   - The cache invalidates automatically when Dependabot bumps the tag.
       #   - Cache hit: `docker load` restores the image in ~5-15s.
       #   - Cache miss (first run after a bump): pull + save for next time.
       - name: Resolve n8n image reference
         id: n8n-image
         working-directory: tests/bookshop
         run: |
-          # Extract the image ref (name:tag@sha256:...) from docker-compose.yml
-          # Single source of truth: Dependabot bumps only docker-compose.yml
+          # Extract the image ref (name:tag) from docker-compose.yml.
+          # Single source of truth: Dependabot bumps only docker-compose.yml.
           ref=$(grep -Eo 'n8nio/n8n:[^[:space:]]+' docker-compose.yml | head -n1)
-          digest=${ref##*@sha256:}
-          echo "ref=$ref"       >> "$GITHUB_OUTPUT"
-          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
           echo "Resolved image: $ref"
 
       - name: Restore n8n image from cache
@@ -113,23 +111,22 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /tmp/n8n-image.tar
-          key: n8n-image-sha256-${{ steps.n8n-image.outputs.digest }}
+          key: n8n-image-${{ steps.n8n-image.outputs.ref }}
 
       - name: Load cached n8n image
         if: steps.n8n-cache.outputs.cache-hit == 'true'
         run: |
-          docker load -i /tmp/n8n-image.tar
           # `docker save`/`docker load` preserves the image ID but strips the
           # name+tag, so `docker compose up` would re-pull from Docker Hub.
-          # Re-tag the loaded image with the ref used by compose. The digest
-          # part of the ref is what docker compose actually resolves against;
-          # the tag is a convenience alias, and `docker tag` accepts either.
-          ref="${{ steps.n8n-image.outputs.ref }}"
-          # Strip the digest suffix for `docker tag` (it wants name:tag form).
-          tag_ref="${ref%@*}"
-          docker tag \
-            "sha256:${{ steps.n8n-image.outputs.digest }}" \
-            "$tag_ref"
+          # We must re-tag the loaded image with the ref used by compose.
+          #
+          # Note: `docker load` reports the image *config* ID, which differs
+          # from a registry manifest digest. Parse it from the load output and
+          # tag by that.
+          loaded=$(docker load -i /tmp/n8n-image.tar)
+          echo "$loaded"
+          image_id=$(echo "$loaded" | awk -F': ' '/^Loaded image ID:/ {print $2}')
+          docker tag "$image_id" "${{ steps.n8n-image.outputs.ref }}"
 
       - name: Pull n8n image (cache miss) and save for next run
         if: steps.n8n-cache.outputs.cache-hit != 'true'
