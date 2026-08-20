@@ -67,6 +67,7 @@ describe("@n8n.process.start - annotation-driven flow", () => {
   it('fires the "book-created" webhook exactly once for the active CREATE', async () => {
     // Draft creation is separate from active CREATE; only the latter triggers.
     const bookId = Math.floor(Math.random() * 1_000_000_000)
+    const beforeDraft = await executionsFor("annotation-test-book-created")
     const { status: draftStatus, data: draft } = await POST("/odata/v4/admin/Books", {
       ID: bookId,
       title: "Moby Dick",
@@ -75,9 +76,8 @@ describe("@n8n.process.start - annotation-driven flow", () => {
       price: 10.5,
     })
     expect(draftStatus).to.equal(201)
-    // No trigger yet - the row is still a draft.
-    let created = await executionsFor("annotation-test-book-created")
-    const createdBeforeActivation = created.length
+    const afterDraft = await executionsFor("annotation-test-book-created")
+    expect(afterDraft.length - beforeDraft.length).to.equal(0)
 
     const activateUrl = `/odata/v4/admin/Books(ID=${draft.ID},IsActiveEntity=false)/AdminService.draftActivate`
     const { status: actStatus } = await POST(activateUrl)
@@ -87,13 +87,11 @@ describe("@n8n.process.start - annotation-driven flow", () => {
       n8n,
       WorkflowExecutions,
       { workflowId: workflowIds.get("annotation-test-book-created") },
-      (row) => !created.some((previous) => String(previous.id) === String(row.id)),
+      (row) => !afterDraft.some((previous) => String(previous.id) === String(row.id)),
       true,
     )
-    expect(createdBeforeActivation).to.equal(0)
-    // Activation must produce one execution, not one per lifecycle step.
-    const createdAfterActivation = await executionsFor("annotation-test-book-created")
-    expect(createdAfterActivation).to.have.length(1)
+    const afterActivation = await executionsFor("annotation-test-book-created")
+    expect(afterActivation.length - afterDraft.length).to.equal(1)
     expect(executionPayload(execution)).to.include({ title: "Moby Dick", author_ID: 101 })
   })
 

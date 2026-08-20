@@ -43,10 +43,12 @@ function makeTestWorkflowBody(name, webhookPath, executionKind, method = "POST")
     connections.Webhook = { main: [[{ node: "Respond", type: "main", index: 0 }]] }
   }
   const body = makeWorkflowBody(name, webhookPath, nodes, connections, method)
-  if (executionKind === "echo" && (method === "GET" || method === "HEAD")) {
-    body.nodes[1].parameters.responseBody = "={​{ $json.query }}"
+  if (executionKind === "echo") {
+    body.nodes[0].parameters.responseMode = "responseNode"
+    if (method === "GET" || method === "HEAD") {
+      body.nodes[1].parameters.responseBody = "={{ $json.query }}"
+    }
   }
-  if (executionKind === "echo") body.nodes[0].parameters.responseMode = "responseNode"
   return body
 }
 
