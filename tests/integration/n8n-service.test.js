@@ -118,6 +118,7 @@ describe("triggerWorkflow", () => {
       path: workflow.webhookPath,
       method: "GET",
     })
+
     const execution = await waitForExecution(
       n8n,
       WorkflowExecutions,
@@ -194,9 +195,6 @@ describe("triggerWorkflow", () => {
 
     await n8n.send("triggerWorkflow", { path: webhookPath })
 
-    // A bodyless trigger has no meaningful response payload (console returns
-    // `{}`, real n8n returns an empty body → `null`). What matters is that
-    // the workflow actually ran, so we assert on the recorded execution.
     const execution = await waitForExecution(
       n8n,
       WorkflowExecutions,
