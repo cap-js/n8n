@@ -64,10 +64,8 @@ describe("@n8n.process.start - annotation-driven flow", () => {
       await n8n.run(cds.delete(WorkflowExecutions).where({ id: rows.map((row) => row.id) }))
   })
 
-  it('fires the "book-created" webhook on CREATE', async () => {
-    // AdminService.Books is @odata.draft.enabled via the Fiori app, so
-    // creation is a two-step flow: POST creates a draft, then draftActivate
-    // creates the active row (which is what triggers the CREATE handler).
+  it('fires the "book-created" webhook exactly once for the active CREATE', async () => {
+    // Draft creation is separate from active CREATE; only the latter triggers.
     const bookId = Math.floor(Math.random() * 1_000_000_000)
     const { status: draftStatus, data: draft } = await POST("/odata/v4/admin/Books", {
       ID: bookId,
@@ -93,6 +91,9 @@ describe("@n8n.process.start - annotation-driven flow", () => {
       true,
     )
     expect(createdBeforeActivation).to.equal(0)
+    // Activation must produce one execution, not one per lifecycle step.
+    const createdAfterActivation = await executionsFor("annotation-test-book-created")
+    expect(createdAfterActivation).to.have.length(1)
     expect(executionPayload(execution)).to.include({ title: "Moby Dick", author_ID: 101 })
   })
 
