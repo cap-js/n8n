@@ -195,11 +195,7 @@ describe("triggerWorkflow", () => {
 
     await n8n.send("triggerWorkflow", { path: webhookPath })
 
-    const execution = await waitForExecution(
-      n8n,
-      WorkflowExecutions,
-      { workflowId }
-    )
+    const execution = await waitForExecution(n8n, WorkflowExecutions, { workflowId })
     expect(execution).toBeDefined
   })
 })
