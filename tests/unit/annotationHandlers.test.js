@@ -47,6 +47,23 @@ describe("findAnnotations - record form", () => {
     expect(results[0].conditionExpr).toBe(xpr)
     expect(results[0].inputs).toBe(inputs)
   })
+
+  it("drops conditionExpr when if.xpr is empty or not an array", () => {
+    const results = collect({
+      [`${N8N}.path`]: "wf",
+      [`${N8N}.on`]: "CREATE",
+      [`${N8N}.if`]: { xpr: [] },
+    })
+    expect(results[0].conditionExpr).toBeUndefined()
+  })
+
+  it("recognises record form when only .method is set alongside .on", () => {
+    // Regression: earlier detection ignored `.method`, so a record with just
+    // `.method` and `.on` (no `.path`) never surfaced as a trigger to validate.
+    const results = collect({ [`${N8N}.method`]: "PUT", [`${N8N}.on`]: "CREATE" })
+    expect(results).toHaveLength(1)
+    expect(results[0].method).toBe("PUT")
+  })
 })
 
 // ── array form ─────────────────────────────────────────────────────────────

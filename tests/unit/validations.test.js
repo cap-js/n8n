@@ -177,6 +177,62 @@ describe("validateTriggerAnnotations - record form", () => {
     ).toBe(true)
   })
 
+  it("warns on a deeper dotted path even if the first segment is allowed", () => {
+    // Regression: previous code split the suffix on '.' and only took the
+    // first segment, so `.on.foo` was silently swallowed as "on".
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "Orders",
+      ent({
+        "@n8n.process.start.path": "wf",
+        "@n8n.process.start.on": "CREATE",
+        "@n8n.process.start.on.foo": "bar",
+      }),
+      plugin,
+    )
+    expect(
+      plugin.messages.some(
+        (m) => m.severity === "Warning" && /unknown key.*on\.foo/i.test(m.message),
+      ),
+    ).toBe(true)
+  })
+
+  it("warns when .if is an object without a valid xpr array", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "Orders",
+      ent({
+        "@n8n.process.start.path": "wf",
+        "@n8n.process.start.on": "CREATE",
+        "@n8n.process.start.if": { xpr: "not-an-array" },
+      }),
+      plugin,
+    )
+    expect(
+      plugin.messages.some(
+        (m) => m.severity === "Warning" && /must be a CDS expression/i.test(m.message),
+      ),
+    ).toBe(true)
+  })
+
+  it("warns when .if.xpr is an empty array", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "Orders",
+      ent({
+        "@n8n.process.start.path": "wf",
+        "@n8n.process.start.on": "CREATE",
+        "@n8n.process.start.if": { xpr: [] },
+      }),
+      plugin,
+    )
+    expect(
+      plugin.messages.some(
+        (m) => m.severity === "Warning" && /must be a CDS expression/i.test(m.message),
+      ),
+    ).toBe(true)
+  })
+
   it("rejects inputs that is not an array", () => {
     const plugin = makePlugin()
     validateTriggerAnnotations(
@@ -339,6 +395,20 @@ describe("validateTriggerAnnotations - array form", () => {
       plugin,
     )
     expect(plugin.messages.some((m) => /must be a CDS expression/i.test(m.message))).toBe(true)
+  })
+
+  it("rejects an element whose if has xpr of the wrong type", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "Books",
+      ent({ "@n8n.process.start": [{ path: "wf", on: "CREATE", if: { xpr: null } }] }),
+      plugin,
+    )
+    expect(
+      plugin.messages.some(
+        (m) => m.severity === "Warning" && /must be a CDS expression/i.test(m.message),
+      ),
+    ).toBe(true)
   })
 
   it("rejects an element with non-array inputs", () => {
