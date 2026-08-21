@@ -138,7 +138,6 @@ describe("triggerWorkflow", () => {
     )
   })
 
-
   it("records an execution when triggering a workflow with a webhook node at that path", async () => {
     const { webhookPath } = await createPublishedWebhookWorkflow("trigger-record", "echo")
 
