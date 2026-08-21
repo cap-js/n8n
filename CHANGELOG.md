@@ -32,7 +32,7 @@
   - Multiple triggers per entity via the array form.
   - DELETE prefetch that stashes the row in a before-handler so payloads
     carry the full record.
-- Programmatic `n8n` with `triggerWorkflow` (outboxed event)
+- Programmatic `n8n` with `triggerWorkflow` (outboxed action)
 - Two service kinds:
   - `n8n-to-rest` - real HTTP client with configurable timeouts,
     retry classification, `X-N8N-API-KEY` header,

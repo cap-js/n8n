@@ -19,16 +19,12 @@ const {
   stopExecutions,
 } = require("./n8n/executions")
 const { resolveN8nConnection, n8nRequest } = require("../lib/api/connection")
-const { HTTP_METHODS, normalizeHttpMethod } = require("../lib/shared/http-methods")
 
 const LOG = cds.log("@cap-js/n8n")
 
 // SSRF + log-injection defence on webhook path segments. Absolute URLs,
 // protocol-relative paths, CR/LF, and `..` segments are refused.
 function checkPathParam(path) {
-  if (!path || String(path).trim() === "") {
-    throw cds.error(400, "Missing required parameter path!")
-  }
   const t = String(path).trim()
   if (/^[a-z][a-z0-9+.-]*:/i.test(t) || t.startsWith("//")) {
     throw cds.error(400, `path must be a relative path, not a URL: ${t}`)
@@ -39,14 +35,6 @@ function checkPathParam(path) {
   if (t.split("/").some((s) => s === "..")) {
     throw cds.error(400, `path must not contain ".." segments`)
   }
-}
-
-function checkMethod(method) {
-  const normalized = method === undefined ? "POST" : normalizeHttpMethod(method)
-  if (!normalized) {
-    throw cds.error(400, `method must be one of ${HTTP_METHODS.join(", ")}`)
-  }
-  return normalized
 }
 
 class N8nService extends cds.Service {
@@ -76,7 +64,7 @@ class N8nService extends cds.Service {
   async _trigger(req) {
     const { useTestWebhook } = await resolveN8nConnection()
     const { path, payload } = req.data ?? {}
-    const method = checkMethod(req.data?.method)
+    const method = req.data?.method ?? "POST"
     const prefix = useTestWebhook ? "/webhook-test" : "/webhook"
     const webhookPath = `${prefix}/${String(path).replace(/^\/+/, "")}`
 

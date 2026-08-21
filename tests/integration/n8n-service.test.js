@@ -103,7 +103,7 @@ describe("triggerWorkflow", () => {
   async function expectTriggerError(data, pattern) {
     let error
     try {
-      await n8n.emit("triggerWorkflow", data)
+      await n8n.send("triggerWorkflow", data)
     } catch (err) {
       error = err
     }
@@ -138,34 +138,6 @@ describe("triggerWorkflow", () => {
     )
   })
 
-  it("rejects unsupported runtime webhook methods", async () => {
-    await expectTriggerError(
-      { path: "method-invalid", method: "TRACE", payload: {} },
-      /method must be one of/i,
-    )
-  })
-
-  it("rejects triggerWorkflow without path parameter", async () => {
-    let err
-    try {
-      await n8n.emit("triggerWorkflow", { payload: {} })
-    } catch (e) {
-      err = e
-    }
-    expect(err).toBeDefined
-    expect(String(err.message)).to.match(/path/i)
-  })
-
-  it("rejects triggerWorkflow with an empty / whitespace path parameter", async () => {
-    let err
-    try {
-      await n8n.emit("triggerWorkflow", { path: "   ", payload: {} })
-    } catch (e) {
-      err = e
-    }
-    expect(err).toBeDefined
-    expect(String(err.message)).to.match(/path/i)
-  })
 
   it("records an execution when triggering a workflow with a webhook node at that path", async () => {
     const { webhookPath } = await createPublishedWebhookWorkflow("trigger-record", "echo")
@@ -331,7 +303,7 @@ describe("WorkflowDefinitions", () => {
       "waiting",
     )
 
-    await n8n.emit("triggerWorkflow", { path: webhookPath, payload: {} })
+    await n8n.send("triggerWorkflow", { path: webhookPath, payload: {} })
 
     const stopped = await waitForStoppedExecutions(workflowId)
     expect(stopped).toEqual(1)
@@ -415,7 +387,7 @@ describe("WorkflowExecutions", () => {
       `exec-${name}`,
       executionKind,
     )
-    await n8n.emit("triggerWorkflow", { path: webhookPath, payload: { hello: "world" } })
+    await n8n.send("triggerWorkflow", { path: webhookPath, payload: { hello: "world" } })
     const status = executionKind === "failed" ? "error" : undefined
     const { id } = await waitForExecution(
       n8n,

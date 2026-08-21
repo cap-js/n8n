@@ -333,7 +333,7 @@ const cds = require("@sap/cds")
 
 const n8n = await cds.connect.to("n8n")
 
-await n8n.emit("triggerWorkflow", {
+await n8n.send("triggerWorkflow", {
   path: "book-created",
   payload: { title: "Moby Dick", quantity: 3 },
 })
@@ -344,7 +344,7 @@ await n8n.emit("triggerWorkflow", {
 
 Await the call to detect validation or queueing failures. Never use its resolved value as the workflow result.
 
-When commit or rollback coupling is required, call `emit` from a CAP request or transaction context.
+When commit or rollback coupling is required, call `send` from a CAP request or transaction context.
 
 ### Manage workflows and executions
 

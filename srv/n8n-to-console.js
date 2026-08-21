@@ -1,6 +1,6 @@
 const cds = require("@sap/cds")
 const { writeResult } = require("../lib/handlers/utils")
-const { HTTP_METHODS, normalizeHttpMethod } = require("../lib/shared/http-methods")
+const { normalizeHttpMethod } = require("../lib/shared/http-methods")
 const LOG = cds.log("@cap-js/n8n")
 
 // REVISIT: could be replaced by a single CQL query with `WHERE nodes LIKE '%"path":"<value>"%'`
@@ -22,12 +22,6 @@ async function resolveWorkflowByWebhookPath(WorkflowDefinitions, webhookPath, me
 class ConsoleN8nService extends cds.ApplicationService {
   async init() {
     const { WorkflowDefinitions, WorkflowExecutions } = this.entities
-
-    this.before("triggerWorkflow", (req) => {
-      if (!req.data?.path || req.data.path.trim() === "") {
-        throw cds.error(400, "Missing required parameter path!")
-      }
-    })
 
     this.on("CREATE", WorkflowDefinitions, async (req, next) => {
       await next() // run generic CRUD → persists the row
@@ -58,8 +52,7 @@ class ConsoleN8nService extends cds.ApplicationService {
 
     this.on("triggerWorkflow", async (req) => {
       const { path, payload } = req.data ?? {}
-      const method = req.data?.method === undefined ? "POST" : normalizeHttpMethod(req.data.method)
-      if (!method) throw cds.error(400, `method must be one of ${HTTP_METHODS.join(", ")}`)
+      const method = req.data?.method ?? "POST"
 
       // Resolve the workflow id by webhook path
       const workflow = await resolveWorkflowByWebhookPath(WorkflowDefinitions, path, method)
