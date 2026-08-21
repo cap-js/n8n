@@ -2,6 +2,11 @@
 
 const { validateTriggerAnnotations } = require("../../lib/shared/validations")
 
+// ANSI escape stripper — the validator colorizes messages via cds.utils.colors
+// eslint-disable-next-line no-control-regex
+const ANSI_RE = /\x1b\[[0-9;]*m/g
+const stripAnsi = (s) => (typeof s === "string" ? s.replace(ANSI_RE, "") : s)
+
 // Minimal plugin double: implements the canonical cds.build.Plugin surface -
 // static severity constants + a `pushMessage(msg, severity)` sink.
 class PluginStub {
@@ -13,7 +18,7 @@ class PluginStub {
   pushMessage(message, severity) {
     // Retain both the raw message and a synthetic { severity, message: <bare> }
     // shape so the existing assertions on `.message` regex-match still work.
-    this.messages.push({ severity, message })
+    this.messages.push({ severity, message: stripAnsi(message) })
   }
 }
 
