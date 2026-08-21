@@ -4,6 +4,10 @@ const { findAnnotations } = require("../../lib/handlers/annotationHandlers")
 
 const N8N = "@n8n.process.start"
 
+// NOTE: `findAnnotations` assumes annotations have already been validated by
+// `validateTriggerAnnotations` (see registerAnnotationHandlers). These tests
+// exercise only the yielding shape/normalization; structural rejection of
+// malformed annotations lives in tests/unit/validations.test.js.
 function collect(def) {
   return [...findAnnotations(def)]
 }
@@ -25,10 +29,6 @@ describe("findAnnotations - record form", () => {
 
   it("skips when on is absent (on is required)", () => {
     expect(collect({ [`${N8N}.path`]: "wf" })).toHaveLength(0)
-  })
-
-  it("skips when path is missing", () => {
-    expect(collect({ [`${N8N}.on`]: "CREATE" })).toHaveLength(0)
   })
 
   it("skips when on is an explicit empty array", () => {
@@ -96,23 +96,8 @@ describe("findAnnotations - array form", () => {
     expect(results[0].path).toBe("array-hook")
   })
 
-  it("skips elements missing or non-string path", () => {
-    const results = collect({
-      [N8N]: [{ on: "CREATE" }, { path: 42 }, { path: "wf", on: "DELETE" }],
-    })
-    expect(results).toHaveLength(1)
-    expect(results[0].path).toBe("wf")
-  })
-
   it("skips elements with explicit on: []", () => {
     expect(collect({ [N8N]: [{ path: "wf", on: [] }] })).toHaveLength(0)
-  })
-
-  it("skips non-object elements (null, primitives, nested arrays)", () => {
-    const results = collect({
-      [N8N]: [null, "string", 42, ["nested"], { path: "wf", on: "DELETE" }],
-    })
-    expect(results).toHaveLength(1)
   })
 
   it("forwards conditionExpr and inputs from element", () => {

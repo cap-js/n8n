@@ -1,6 +1,6 @@
 "use strict"
 
-const { validateTriggerAnnotations } = require("../../lib/build/validations")
+const { validateTriggerAnnotations } = require("../../lib/shared/validations")
 
 // Minimal plugin double: implements the canonical cds.build.Plugin surface -
 // static severity constants + a `pushMessage(msg, severity)` sink.
