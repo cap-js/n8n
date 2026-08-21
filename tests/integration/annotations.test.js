@@ -1,5 +1,5 @@
 const cds = require("@sap/cds")
-const { waitForExecution, makeWorkflowBody } = require("../utils")
+const { waitForExecution, makeWorkflowBody, purgeWorkflowsByWebhookPaths } = require("../utils")
 
 const path = require("path")
 const app = path.join(__dirname, "../bookshop")
@@ -33,12 +33,13 @@ describe("@n8n.process.start - annotation-driven flow", () => {
       "annotation-test-order-shipped",
       "annotation-test-order-deleted",
     ]
+    await purgeWorkflowsByWebhookPaths(n8n, WorkflowDefinitions, paths)
     const workflows = await Promise.all(
       paths.map(async (path) => {
         const [{ id }] = await n8n.run(
           INSERT.into(WorkflowDefinitions).entries(makeWorkflowBody(`annotation-${path}`, path)),
         )
-        if (isRest) await n8n.send("publishWorkflow", { id })
+        await n8n.send("publishWorkflow", { id })
         return { path, id }
       }),
     )
@@ -194,12 +195,13 @@ describe("@n8n.process.start - array form", () => {
       "annotation-test-shelf-deleted",
       "annotation-test-shelf-bad-if",
     ]
+    await purgeWorkflowsByWebhookPaths(n8n, WorkflowDefinitions, paths)
     const workflows = await Promise.all(
       paths.map(async (path) => {
         const [{ id }] = await n8n.run(
           INSERT.into(WorkflowDefinitions).entries(makeWorkflowBody(`annotation-${path}`, path)),
         )
-        if (isRest) await n8n.send("publishWorkflow", { id })
+        await n8n.send("publishWorkflow", { id })
         return { path, id }
       }),
     )
