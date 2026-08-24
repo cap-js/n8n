@@ -24,34 +24,6 @@ async function resolveWorkflowByWebhookPath(WorkflowDefinitions, webhookPath, me
   return synthetic
 }
 
-async function createSyntheticWorkflow(WorkflowDefinitions, path, method) {
-  const workflow = {
-    id: cds.utils.uuid(),
-    name: `${SYNTHETIC_WORKFLOW_PREFIX}:${method}:${path}`,
-    nodes: [
-      {
-        id: cds.utils.uuid(),
-        name: "Webhook",
-        type: "n8n-nodes-base.webhook",
-        typeVersion: 1,
-        position: [250, 300],
-        parameters: {
-          httpMethod: method,
-          path,
-          responseMode: "onReceived",
-          options: {},
-        },
-        webhookId: path,
-      },
-    ],
-    connections: "{}",
-    settings: "{}",
-  }
-  await INSERT.into(WorkflowDefinitions).entries(workflow)
-  LOG.info("Created console n8n webhook", { method, path, workflowId: workflow.id })
-  return workflow
-}
-
 class ConsoleN8nService extends cds.ApplicationService {
   async init() {
     const { WorkflowDefinitions, WorkflowExecutions } = this.entities
@@ -95,9 +67,32 @@ class ConsoleN8nService extends cds.ApplicationService {
       if (!method) throw cds.error(400, `method must be one of ${HTTP_METHODS.join(", ")}`)
 
       // The console adapter has no external n8n instance, so create a no-op workflow definition when a webhook has not been registered yet.
-      const workflow =
-        (await resolveWorkflowByWebhookPath(WorkflowDefinitions, path, method)) ??
-        (await createSyntheticWorkflow(WorkflowDefinitions, path, method))
+      let workflow = await resolveWorkflowByWebhookPath(WorkflowDefinitions, path, method)
+      if (!workflow) {
+        workflow = {
+          id: cds.utils.uuid(),
+          name: `${SYNTHETIC_WORKFLOW_PREFIX}:${method}:${path}`,
+          nodes: [
+            {
+              id: cds.utils.uuid(),
+              name: "Webhook",
+              type: "n8n-nodes-base.webhook",
+              typeVersion: 1,
+              position: [250, 300],
+              parameters: {
+                httpMethod: method,
+                path,
+                responseMode: "onReceived",
+                options: {},
+              },
+              webhookId: path,
+            },
+          ],
+          connections: "{}",
+          settings: "{}",
+        }
+        await INSERT.into(WorkflowDefinitions).entries(workflow)
+      }
       const workflowId = workflow?.id ?? path
       const waiting = workflow?.nodes?.some((node) => node?.type === "n8n-nodes-base.wait")
 
