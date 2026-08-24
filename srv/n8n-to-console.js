@@ -50,7 +50,7 @@ class ConsoleN8nService extends cds.ApplicationService {
     this.on("UPDATE", WorkflowExecutions, _runOnDb)
     this.on("DELETE", WorkflowExecutions, _runOnDb)
 
-    this.on("triggerWorkflow", async (req) => {
+    this.on("trigger", async (req) => {
       const { path, payload, method = "POST" } = req.data ?? {}
 
       // Resolve the workflow id by webhook path

@@ -70,7 +70,7 @@ async function createTestWorkflow(
 
 async function createPublishedWebhookWorkflow(name, executionKind, method = "POST") {
   const workflow = await createTestWorkflow(name, cds.utils.uuid(), executionKind, method)
-  await n8n.send("publishWorkflow", { id: workflow.id })
+  await n8n.publishWorkflow({ id: workflow.id })
   return workflow
 }
 
@@ -78,7 +78,7 @@ async function waitForStoppedExecutions(workflowId) {
   for (let attempt = 0; attempt < 20; attempt++) {
     // Retrying is intentional until n8n has made the execution stoppable.
     // eslint-disable-next-line no-await-in-loop
-    const stopped = await n8n.send("stopExecutions", {
+    const stopped = await n8n.stopExecutions({
       workflowId,
       status: ["waiting", "running"],
     })
@@ -99,11 +99,11 @@ afterAll(async () => {
   await n8n.run(DELETE.from(WorkflowDefinitions).where({ id: [...createdWorkflowIds] }))
 })
 
-describe("triggerWorkflow", () => {
+describe("trigger", () => {
   async function expectTriggerError(data, pattern) {
     let error
     try {
-      await n8n.send("triggerWorkflow", data)
+      await n8n.trigger(data)
     } catch (err) {
       error = err
     }
@@ -114,7 +114,7 @@ describe("triggerWorkflow", () => {
   it("uses the webhook method configured on the workflow", async () => {
     const workflow = await createPublishedWebhookWorkflow("trigger-method", "echo", "GET")
 
-    await n8n.send("triggerWorkflow", {
+    await n8n.trigger({
       path: workflow.webhookPath,
       method: "GET",
     })
@@ -141,7 +141,7 @@ describe("triggerWorkflow", () => {
   it("records an execution when triggering a workflow with a webhook node at that path", async () => {
     const { webhookPath } = await createPublishedWebhookWorkflow("trigger-record", "echo")
 
-    const result = await n8n.send("triggerWorkflow", {
+    const result = await n8n.trigger({
       path: webhookPath,
       payload: { greeting: "hi" },
     })
@@ -153,18 +153,18 @@ describe("triggerWorkflow", () => {
     const { webhookPath } = await createPublishedWebhookWorkflow("trigger-payload", "echo")
     const payload = { title: "Moby Dick", quantity: 3 }
 
-    const result = await n8n.send("triggerWorkflow", { path: webhookPath, payload })
+    const result = await n8n.trigger({ path: webhookPath, payload })
 
     expect(result).toEqual(payload)
   })
 
-  it("accepts triggerWorkflow without a payload", async () => {
+  it("accepts trigger without a payload", async () => {
     const { id: workflowId, webhookPath } = await createPublishedWebhookWorkflow(
       "trigger-ping",
       "echo",
     )
 
-    await n8n.send("triggerWorkflow", { path: webhookPath })
+    await n8n.trigger({ path: webhookPath })
 
     const execution = await waitForExecution(n8n, WorkflowExecutions, { workflowId })
     expect(execution).toBeDefined
@@ -302,7 +302,7 @@ describe("WorkflowDefinitions", () => {
       "waiting",
     )
 
-    await n8n.send("triggerWorkflow", { path: webhookPath, payload: {} })
+    await n8n.trigger({ path: webhookPath, payload: {} })
 
     const stopped = await waitForStoppedExecutions(workflowId)
     expect(stopped).toEqual(1)
@@ -312,7 +312,7 @@ describe("WorkflowDefinitions", () => {
     // create test workflow
     const { id } = await createTestWorkflow("publish")
     const workflow = await n8n.run(SELECT.one.from(WorkflowDefinitions).where({ id }))
-    const result = await n8n.send("publishWorkflow", { id })
+    const result = await n8n.publishWorkflow({ id })
 
     expect(result.id).toEqual(workflow.id)
     expect(result.active).toEqual(true)
@@ -322,7 +322,7 @@ describe("WorkflowDefinitions", () => {
     // create test workflow
     const { id } = await createTestWorkflow("publish")
 
-    const result = await n8n.send("publishWorkflow", { id })
+    const result = await n8n.publishWorkflow({ id })
 
     expect(result.id).toEqual(id)
     expect(result.active).toEqual(true)
@@ -332,7 +332,7 @@ describe("WorkflowDefinitions", () => {
     // create test workflow
     const { id } = await createTestWorkflow("unpublish")
     const workflow = await n8n.run(SELECT.one.from(WorkflowDefinitions).where({ id }))
-    const result = await n8n.send("unpublishWorkflow", { id })
+    const result = await n8n.unpublishWorkflow({ id })
 
     expect(result.id).toEqual(workflow.id)
     expect(result.active).toEqual(false)
@@ -342,8 +342,8 @@ describe("WorkflowDefinitions", () => {
     // create test workflow
     const { id } = await createTestWorkflow("unpublish")
 
-    await n8n.send("publishWorkflow", { id })
-    await n8n.send("unpublishWorkflow", { id })
+    await n8n.publishWorkflow({ id })
+    await n8n.unpublishWorkflow({ id })
 
     const after = await n8n.run(SELECT.one.from(WorkflowDefinitions).where({ id }))
     expect(after.id).toEqual(id)
@@ -354,7 +354,7 @@ describe("WorkflowDefinitions", () => {
     // create test workflow
     const { id } = await createTestWorkflow("archive")
     const workflow = await n8n.run(SELECT.one.from(WorkflowDefinitions).where({ id }))
-    const result = await n8n.send("archiveWorkflow", { id })
+    const result = await n8n.archiveWorkflow({ id })
 
     expect(result.id).toEqual(workflow.id)
     expect(result.isArchived).toEqual(true)
@@ -364,7 +364,7 @@ describe("WorkflowDefinitions", () => {
     // create test workflow
     const { id } = await createTestWorkflow("archive")
 
-    await n8n.send("archiveWorkflow", { id })
+    await n8n.archiveWorkflow({ id })
 
     const after = await n8n.run(SELECT.one.from(WorkflowDefinitions).where({ id }))
     expect(after.id).toEqual(id)
@@ -380,13 +380,13 @@ describe("WorkflowExecutions", () => {
   // resulting execution's id (or null under backends that don't surface
   // the row synchronously). Under the console mock the workflow is not
   // consulted, but creating it mirrors production usage — same pattern
-  // as `triggerWorkflow` tests above.
+  // as `trigger` tests above.
   async function seedExecution(name, executionKind) {
     const { id: workflowId, webhookPath } = await createPublishedWebhookWorkflow(
       `exec-${name}`,
       executionKind,
     )
-    await n8n.send("triggerWorkflow", { path: webhookPath, payload: { hello: "world" } })
+    await n8n.trigger({ path: webhookPath, payload: { hello: "world" } })
     const status = executionKind === "failed" ? "error" : undefined
     const { id } = await waitForExecution(
       n8n,
@@ -475,7 +475,7 @@ describe("WorkflowExecutions", () => {
     // create test execution
     const execId = await seedExecution("retry-exec-return", isRest ? "failed" : undefined)
     const execution = await n8n.run(SELECT.one.from(WorkflowExecutions).where({ id: execId }))
-    const result = await n8n.send("retryExecution", {
+    const result = await n8n.retryExecution({
       id: execId,
       loadWorkflow: true,
     })
@@ -493,7 +493,7 @@ describe("WorkflowExecutions", () => {
     const original = await n8n.run(SELECT.one.from(WorkflowExecutions).where({ id: execId }))
     expect(original).toBeDefined
 
-    const retried = await n8n.send("retryExecution", {
+    const retried = await n8n.retryExecution({
       id: execId,
       loadWorkflow: true,
     })

@@ -13,7 +13,7 @@ service n8n {
     PUT;
   };
 
-  action triggerWorkflow(
+  action trigger(
     path    : String(256)   @mandatory,
     method  : WebhookMethod @assert.range default 'POST',
     payload : Map

@@ -39,7 +39,7 @@ describe("@n8n.process.start - annotation-driven flow", () => {
         const [{ id }] = await n8n.run(
           INSERT.into(WorkflowDefinitions).entries(makeWorkflowBody(`annotation-${path}`, path)),
         )
-        await n8n.send("publishWorkflow", { id })
+        await n8n.publishWorkflow({ id })
         return { path, id }
       }),
     )
@@ -201,7 +201,7 @@ describe("@n8n.process.start - array form", () => {
         const [{ id }] = await n8n.run(
           INSERT.into(WorkflowDefinitions).entries(makeWorkflowBody(`annotation-${path}`, path)),
         )
-        await n8n.send("publishWorkflow", { id })
+        await n8n.publishWorkflow({ id })
         return { path, id }
       }),
     )
