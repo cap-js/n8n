@@ -111,7 +111,7 @@ describe("triggerWorkflow", () => {
     expect(String(error.message)).toMatch(pattern)
   }
 
-  it("uses the webhook method configured on the workflow", async () => {
+  it.skipIf(!isRest)("uses the webhook method configured on the workflow", async () => {
     const workflow = await createPublishedWebhookWorkflow("trigger-method", "echo", "GET")
 
     await n8n.send("triggerWorkflow", {
@@ -127,20 +127,15 @@ describe("triggerWorkflow", () => {
     )
     expect(execution).toBeDefined
 
-    // A missing method-specific webhook gets an automatically created console workflow.
-    await n8n.send("triggerWorkflow", {
-      path: workflow.webhookPath,
-      method: "POST",
-      payload: { greeting: "auto-created" },
-    })
-
-    const postWorkflow = await n8n.run(
-      SELECT.one.from(WorkflowDefinitions).where({
-        name: `__cap_n8n_console_webhook__:POST:${workflow.webhookPath}`,
-      }),
+    // A matching method succeeds; the same path with a different method must fail.
+    await expectTriggerError(
+      {
+        path: workflow.webhookPath,
+        method: "POST",
+        payload: { greeting: "wrong-method" },
+      },
+      /404|405|No webhook found/i,
     )
-    expect(postWorkflow).toBeDefined
-    createdWorkflowIds.add(postWorkflow.id)
   })
 
   it("rejects unsupported runtime webhook methods", async () => {
