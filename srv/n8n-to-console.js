@@ -12,7 +12,7 @@ async function resolveWorkflowByWebhookPath(WorkflowDefinitions, webhookPath, me
       (n) =>
         n?.type === "n8n-nodes-base.webhook" &&
         n?.parameters?.path === webhookPath &&
-        (normalizeHttpMethod(n?.parameters?.httpMethod) ?? "POST") === method,
+        normalizeHttpMethod(n?.parameters?.httpMethod) === method,
     )
     if (hit) return wf
   }
@@ -51,8 +51,7 @@ class ConsoleN8nService extends cds.ApplicationService {
     this.on("DELETE", WorkflowExecutions, _runOnDb)
 
     this.on("triggerWorkflow", async (req) => {
-      const { path, payload } = req.data ?? {}
-      const method = req.data?.method ?? "POST"
+      const { path, payload, method = "POST" } = req.data ?? {}
 
       // Resolve the workflow id by webhook path
       const workflow = await resolveWorkflowByWebhookPath(WorkflowDefinitions, path, method)

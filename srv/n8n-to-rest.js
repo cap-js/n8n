@@ -22,21 +22,6 @@ const { resolveN8nConnection, n8nRequest } = require("../lib/api/connection")
 
 const LOG = cds.log("@cap-js/n8n")
 
-// SSRF + log-injection defence on webhook path segments. Absolute URLs,
-// protocol-relative paths, CR/LF, and `..` segments are refused.
-function checkPathParam(path) {
-  const t = String(path).trim()
-  if (/^[a-z][a-z0-9+.-]*:/i.test(t) || t.startsWith("//")) {
-    throw cds.error(400, `path must be a relative path, not a URL: ${t}`)
-  }
-  if (/[\r\n]/.test(t)) {
-    throw cds.error(400, "path must not contain newline characters")
-  }
-  if (t.split("/").some((s) => s === "..")) {
-    throw cds.error(400, `path must not contain ".." segments`)
-  }
-}
-
 class N8nService extends cds.Service {
   async init() {
     const { WorkflowExecutions, WorkflowDefinitions } = this.entities
@@ -61,10 +46,22 @@ class N8nService extends cds.Service {
     return super.init()
   }
 
+  checkPathParam(path) {
+    const t = String(path).trim()
+    if (/^[a-z][a-z0-9+.-]*:/i.test(t) || t.startsWith("//")) {
+      throw cds.error(400, `path must be a relative path, not a URL: ${t}`)
+    }
+    if (/[\r\n]/.test(t)) {
+      throw cds.error(400, "path must not contain newline characters")
+    }
+    if (t.split("/").some((s) => s === "..")) {
+      throw cds.error(400, `path must not contain ".." segments`)
+    }
+  }
+
   async _trigger(req) {
     const { useTestWebhook } = await resolveN8nConnection()
-    const { path, payload } = req.data ?? {}
-    const method = req.data?.method ?? "POST"
+    const { path, payload, method = "POST" } = req.data ?? {}
     const prefix = useTestWebhook ? "/webhook-test" : "/webhook"
     const webhookPath = `${prefix}/${String(path).replace(/^\/+/, "")}`
 
