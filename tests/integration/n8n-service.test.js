@@ -111,7 +111,7 @@ describe("triggerWorkflow", () => {
     expect(String(error.message)).toMatch(pattern)
   }
 
-  it("uses the webhook method configured on the workflow", async () => {
+  it.skipIf(!isRest)("uses the webhook method configured on the workflow", async () => {
     const workflow = await createPublishedWebhookWorkflow("trigger-method", "echo", "GET")
 
     await n8n.send("triggerWorkflow", {
