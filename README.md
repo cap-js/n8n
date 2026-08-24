@@ -1,4 +1,4 @@
-# CAP - n8n Plugin
+# SAP Cloud Application Programming Model, n8n plugin for Node.js
 
 [![REUSE status](https://api.reuse.software/badge/github.com/cap-js/n8n)](https://api.reuse.software/info/github.com/cap-js/n8n)
 
@@ -408,4 +408,4 @@ We as members, contributors, and leaders pledge to make participation in our com
 
 ## Licensing
 
-Copyright 2026 SAP SE or an SAP affiliate company and n8n contributors. Please see our [LICENSE](./LICENSES/Apache-2.0.txt) for copyright and license information. Detailed information including third-party components and their licensing/copyright information is available [via the REUSE tool](https://api.reuse.software/info/github.com/cap-js/n8n).
+Copyright 2026 SAP SE or an SAP affiliate company and cap-js/n8n contributors. Please see our [LICENSE](./LICENSES/Apache-2.0.txt) for copyright and license information. Detailed information including third-party components and their licensing/copyright information is available [via the REUSE tool](https://api.reuse.software/info/github.com/cap-js/n8n).
