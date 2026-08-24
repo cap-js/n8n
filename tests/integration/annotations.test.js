@@ -190,7 +190,11 @@ describe("@n8n.process.start - array form", () => {
   beforeAll(async () => {
     n8n = await cds.connect.to("n8n")
     ;({ WorkflowDefinitions, WorkflowExecutions } = n8n.entities)
-    const paths = ["annotation-test-shelf-created", "annotation-test-shelf-deleted"]
+    const paths = [
+      "annotation-test-shelf-created",
+      "annotation-test-shelf-deleted",
+      "annotation-test-shelf-bad-if",
+    ]
     await purgeWorkflowsByWebhookPaths(n8n, WorkflowDefinitions, paths)
     const workflows = await Promise.all(
       paths.map(async (path) => {
@@ -264,5 +268,23 @@ describe("@n8n.process.start - array form", () => {
 
     const executions = await executionsFor("annotation-test-shelf-no-on")
     expect(executions).to.have.length(before.length)
+  })
+
+  it("fires unconditionally when .if is malformed (condition is ignored)", async () => {
+    const before = await executionsFor("annotation-test-shelf-bad-if")
+    const { status, data: shelf } = await POST("/odata/v4/admin/Shelves", {
+      label: "Bad-if",
+    })
+    expect(status).to.equal(201)
+
+    const execution = await waitForExecution(
+      n8n,
+      WorkflowExecutions,
+      { workflowId: workflowIds.get("annotation-test-shelf-bad-if") },
+      (row) => !before.some((previous) => String(previous.id) === String(row.id)),
+      true,
+    )
+    executionIds.add(execution.id)
+    expect(executionPayload(execution)).to.include({ ID: shelf.ID, label: "Bad-if" })
   })
 })

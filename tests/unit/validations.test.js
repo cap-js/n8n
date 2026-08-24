@@ -1,6 +1,11 @@
 "use strict"
 
-const { validateTriggerAnnotations } = require("../../lib/build/validations")
+const { validateTriggerAnnotations } = require("../../lib/shared/validations")
+
+// ANSI escape stripper — the validator colorizes messages via cds.utils.colors
+// eslint-disable-next-line no-control-regex
+const ANSI_RE = /\x1b\[[0-9;]*m/g
+const stripAnsi = (s) => (typeof s === "string" ? s.replace(ANSI_RE, "") : s)
 
 // Minimal plugin double: implements the canonical cds.build.Plugin surface -
 // static severity constants + a `pushMessage(msg, severity)` sink.
@@ -13,7 +18,7 @@ class PluginStub {
   pushMessage(message, severity) {
     // Retain both the raw message and a synthetic { severity, message: <bare> }
     // shape so the existing assertions on `.message` regex-match still work.
-    this.messages.push({ severity, message })
+    this.messages.push({ severity, message: stripAnsi(message) })
   }
 }
 
@@ -173,7 +178,63 @@ describe("validateTriggerAnnotations - record form", () => {
       plugin,
     )
     expect(
-      plugin.messages.some((m) => m.severity === "Warning" && /unknown sub-key/i.test(m.message)),
+      plugin.messages.some((m) => m.severity === "Warning" && /unknown key/i.test(m.message)),
+    ).toBe(true)
+  })
+
+  it("warns on a deeper dotted path even if the first segment is allowed", () => {
+    // Regression: previous code split the suffix on '.' and only took the
+    // first segment, so `.on.foo` was silently swallowed as "on".
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "Orders",
+      ent({
+        "@n8n.process.start.path": "wf",
+        "@n8n.process.start.on": "CREATE",
+        "@n8n.process.start.on.foo": "bar",
+      }),
+      plugin,
+    )
+    expect(
+      plugin.messages.some(
+        (m) => m.severity === "Warning" && /unknown key.*on\.foo/i.test(m.message),
+      ),
+    ).toBe(true)
+  })
+
+  it("warns when .if is an object without a valid xpr array", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "Orders",
+      ent({
+        "@n8n.process.start.path": "wf",
+        "@n8n.process.start.on": "CREATE",
+        "@n8n.process.start.if": { xpr: "not-an-array" },
+      }),
+      plugin,
+    )
+    expect(
+      plugin.messages.some(
+        (m) => m.severity === "Warning" && /must be a CDS expression/i.test(m.message),
+      ),
+    ).toBe(true)
+  })
+
+  it("warns when .if.xpr is an empty array", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "Orders",
+      ent({
+        "@n8n.process.start.path": "wf",
+        "@n8n.process.start.on": "CREATE",
+        "@n8n.process.start.if": { xpr: [] },
+      }),
+      plugin,
+    )
+    expect(
+      plugin.messages.some(
+        (m) => m.severity === "Warning" && /must be a CDS expression/i.test(m.message),
+      ),
     ).toBe(true)
   })
 
@@ -341,6 +402,20 @@ describe("validateTriggerAnnotations - array form", () => {
     expect(plugin.messages.some((m) => /must be a CDS expression/i.test(m.message))).toBe(true)
   })
 
+  it("rejects an element whose if has xpr of the wrong type", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "Books",
+      ent({ "@n8n.process.start": [{ path: "wf", on: "CREATE", if: { xpr: null } }] }),
+      plugin,
+    )
+    expect(
+      plugin.messages.some(
+        (m) => m.severity === "Warning" && /must be a CDS expression/i.test(m.message),
+      ),
+    ).toBe(true)
+  })
+
   it("rejects an element with non-array inputs", () => {
     const plugin = makePlugin()
     validateTriggerAnnotations(
@@ -382,11 +457,168 @@ describe("validateTriggerAnnotations - array form", () => {
       ent({
         "@n8n.process.start": [
           { path: "wf-ok" },
-          { on: "CREATE" }, // missing path — index 1
+          { on: "CREATE" }, // missing path — element #2
         ],
       }),
       plugin,
     )
-    expect(plugin.messages.some((m) => /\[1\]/.test(m.message))).toBe(true)
+    expect(plugin.messages.some((m) => /element #2/.test(m.message))).toBe(true)
+  })
+})
+
+describe("validateTriggerAnnotations - input path semantics", () => {
+  // Load the actual bookshop model once and compile to runtime CSN — the same
+  // shape plugin.js hands the validator in production. This lets us exercise
+  // real element resolution (scalars, associations, managed-FK expansion)
+  // without fabricating a fake CSN.
+  let runtimeCSN
+  let baseDef
+
+  beforeAll(async () => {
+    const cds = require("@sap/cds")
+    const path = require("path")
+    const bookshop = path.join(__dirname, "../bookshop")
+    const raw = await cds.load(path.join(bookshop, "*"))
+    runtimeCSN = cds.compile.for.nodejs(structuredClone(raw))
+    // AdminService.Orders is a good fixture: scalar (quantity), managed
+    // association (book → AdminService.Books) and its FK expansion (book_ID).
+    baseDef = runtimeCSN.definitions["AdminService.Orders"]
+  })
+
+  // Returns a shallow clone of the base def with the `@n8n.process.start`
+  // annotation set to a single array-form entry that carries `inputs`.
+  function withInputs(inputs) {
+    return {
+      ...baseDef,
+      "@n8n.process.start": [{ path: "wf", on: "CREATE", inputs }],
+    }
+  }
+
+  it("accepts $self alone", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "AdminService.Orders",
+      withInputs([{ "=": "$self" }]),
+      plugin,
+      runtimeCSN,
+    )
+    expect(plugin.messages.filter((m) => m.severity === "Error")).toEqual([])
+  })
+
+  it("accepts a scalar element path", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "AdminService.Orders",
+      withInputs([{ "=": "$self.quantity" }]),
+      plugin,
+      runtimeCSN,
+    )
+    expect(plugin.messages.filter((m) => m.severity === "Error")).toEqual([])
+  })
+
+  it("accepts an association leaf (expand-all)", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "AdminService.Orders",
+      withInputs([{ "=": "$self.book" }]),
+      plugin,
+      runtimeCSN,
+    )
+    expect(plugin.messages.filter((m) => m.severity === "Error")).toEqual([])
+  })
+
+  it("accepts a nested path through an association", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "AdminService.Orders",
+      withInputs([{ "=": "$self.book.title" }]),
+      plugin,
+      runtimeCSN,
+    )
+    expect(plugin.messages.filter((m) => m.severity === "Error")).toEqual([])
+  })
+
+  it("accepts a managed-association foreign key (book_ID)", () => {
+    // In runtime CSN, managed-association FKs appear as first-class scalars
+    // on `.elements` — the validator just looks them up, no FK-naming logic.
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "AdminService.Orders",
+      withInputs([{ "=": "$self.book_ID" }]),
+      plugin,
+      runtimeCSN,
+    )
+    expect(plugin.messages.filter((m) => m.severity === "Error")).toEqual([])
+  })
+
+  it("rejects an unknown top-level element", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "AdminService.Orders",
+      withInputs([{ "=": "$self.nope" }]),
+      plugin,
+      runtimeCSN,
+    )
+    expect(
+      plugin.messages.some(
+        (m) => m.severity === "Error" && /unknown element 'nope'/.test(m.message),
+      ),
+    ).toBe(true)
+  })
+
+  it("rejects traversal through a scalar", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "AdminService.Orders",
+      withInputs([{ "=": "$self.quantity.something" }]),
+      plugin,
+      runtimeCSN,
+    )
+    expect(
+      plugin.messages.some(
+        (m) => m.severity === "Error" && /not an association\/composition/.test(m.message),
+      ),
+    ).toBe(true)
+  })
+
+  it("rejects an unknown nested element after a valid association", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "AdminService.Orders",
+      withInputs([{ "=": "$self.book.bogus" }]),
+      plugin,
+      runtimeCSN,
+    )
+    expect(
+      plugin.messages.some(
+        (m) => m.severity === "Error" && /unknown element 'bogus'/.test(m.message),
+      ),
+    ).toBe(true)
+  })
+
+  it("rejects paths that don't start with $self", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "AdminService.Orders",
+      withInputs([{ "=": "quantity" }]),
+      plugin,
+      runtimeCSN,
+    )
+    expect(
+      plugin.messages.some(
+        (m) => m.severity === "Error" && /must start with '\$self\.'/.test(m.message),
+      ),
+    ).toBe(true)
+  })
+
+  it("skips semantic checks when the model is not provided (test-double compatibility)", () => {
+    const plugin = makePlugin()
+    validateTriggerAnnotations(
+      "AdminService.Orders",
+      withInputs([{ "=": "$self.definitely-nonexistent" }]),
+      plugin,
+      // no `model` arg — validator must be lenient here
+    )
+    expect(plugin.messages.filter((m) => m.severity === "Error")).toEqual([])
   })
 })

@@ -3,6 +3,7 @@ const { registerAnnotationHandlers } = require("./lib/handlers/annotationHandler
 const { N8nValidationPlugin } = require("./lib/build/plugin")
 
 const LOG = cds.log("@cap-js/n8n")
+LOG.info(`Registered @cap-js/n8n plugin with kind '${cds.env.requires?.n8n?.kind}'`)
 
 // Register build plugin (no-op at runtime, active during `cds build`).
 cds.build?.register?.("n8n-validation", N8nValidationPlugin)
@@ -13,9 +14,4 @@ cds.on("served", (services) => {
     if (!(srv instanceof cds.ApplicationService) || srv.name === "n8n") continue
     registerAnnotationHandlers(srv)
   }
-})
-
-cds.once("served", () => {
-  const cfg = cds.env.requires?.["n8n"]
-  if (cfg) LOG.info(`Using kind: ${cfg.kind}`)
 })
