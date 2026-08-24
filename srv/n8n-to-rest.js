@@ -22,7 +22,7 @@ const { resolveN8nConnection, n8nRequest } = require("../lib/api/connection")
 
 const LOG = cds.log("@cap-js/n8n")
 
-class N8nService extends cds.Service {
+class N8nService extends cds.ApplicationService {
   async init() {
     const { WorkflowExecutions, WorkflowDefinitions } = this.entities
 
