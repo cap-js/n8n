@@ -3,7 +3,7 @@ const { registerAnnotationHandlers } = require("./lib/handlers/annotationHandler
 const { N8nValidationPlugin } = require("./lib/build/plugin")
 
 const LOG = cds.log("@cap-js/n8n")
-LOG.info(`Registered @cap-js/n8n plugin with kind '${cds.env.requires.n8n.kind}'`)
+LOG.info(`Registered @cap-js/n8n plugin with kind '${cds.env.requires?.n8n?.kind}'`)
 
 // Register build plugin (no-op at runtime, active during `cds build`).
 cds.build?.register?.("n8n-validation", N8nValidationPlugin)
