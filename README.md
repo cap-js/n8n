@@ -350,7 +350,6 @@ When commit or rollback coupling is required, call `trigger` from a CAP request 
 
 ```js
 const cds = require("@sap/cds")
-const { SELECT, UPDATE } = cds.ql
 
 const n8n = await cds.connect.to("n8n")
 const { WorkflowDefinitions, WorkflowExecutions } = n8n.entities
@@ -380,11 +379,10 @@ The REST profile supports this subset:
 | READ              | Yes                                                       | Yes                                                  |
 | List filters      | `id`, `id in [...]`, `active`, `name`, `limit`            | `id`, `id in [...]`, `workflowId`, `status`, `limit` |
 | Column projection | No                                                        | No                                                   |
-| CREATE            | Yes; requires `name`, `nodes`, `connections`, `settings`  | No                                                   |
+| CREATE            | Yes (requires `name`, `nodes`, `connections`, `settings`) | No                                                   |
 | UPDATE            | Yes; one `id`, partial updates supported                  | No                                                   |
 | UPSERT            | No                                                        | No                                                   |
 | DELETE            | `id` or `id in [...]`                                     | `id` or `id in [...]`                                |
-| Unbound actions   | `publishWorkflow`, `unpublishWorkflow`, `archiveWorkflow` | `retryExecution`, `stopExecution`                    |
 
 Only the listed filters are forwarded to n8n. Additional predicates, ordering, offsets, and column projections are not applied by the REST profile. Apply any additional processing to the returned rows in application code.
 
