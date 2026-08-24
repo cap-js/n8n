@@ -26,7 +26,7 @@ class N8nService extends cds.Service {
   async init() {
     const { WorkflowExecutions, WorkflowDefinitions } = this.entities
 
-    this.before("triggerWorkflow", (req) => checkPathParam(req.data?.path))
+    this.before("triggerWorkflow", (req) => this.checkPathParam(req.data?.path))
     this.on("triggerWorkflow", this._trigger)
 
     this.on("READ", WorkflowExecutions, readExecutions)
