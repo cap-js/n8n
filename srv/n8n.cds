@@ -13,17 +13,11 @@ service n8n {
     PUT;
   };
 
-  /**
-   * Fires an n8n production webhook.
-   * - path : the webhook path segment (`{baseUrl}/webhook/<path>`)
-   * - method : the HTTP method; defaults to POST
-   * - payload : arbitrary JSON body sent to the webhook
-   */
-  event triggerWorkflow {
-    path    : String(256);
-    method  : WebhookMethod;
-    payload : Map;
-  }
+  action trigger(
+    path    : String(256)   @mandatory,
+    method  : WebhookMethod @assert.range default 'POST',
+    payload : Map
+  ) returns Map;
 
   @Capabilities: {
     InsertRestrictions.Insertable: false,

@@ -1,6 +1,6 @@
 const cds = require("@sap/cds")
 const { writeResult } = require("../lib/handlers/utils")
-const { HTTP_METHODS, normalizeHttpMethod } = require("../lib/shared/http-methods")
+const { normalizeHttpMethod } = require("../lib/shared/http-methods")
 const LOG = cds.log("@cap-js/n8n")
 const SYNTHETIC_WORKFLOW_PREFIX = "__cap_n8n_console_webhook__"
 
@@ -14,7 +14,7 @@ async function resolveWorkflowByWebhookPath(WorkflowDefinitions, webhookPath, me
       (n) =>
         n?.type === "n8n-nodes-base.webhook" &&
         n?.parameters?.path === webhookPath &&
-        (normalizeHttpMethod(n?.parameters?.httpMethod) ?? "POST") === method,
+        normalizeHttpMethod(n?.parameters?.httpMethod) === method,
     )
     if (hit) {
       if (wf.name?.startsWith(`${SYNTHETIC_WORKFLOW_PREFIX}:`)) synthetic ??= wf
@@ -27,12 +27,6 @@ async function resolveWorkflowByWebhookPath(WorkflowDefinitions, webhookPath, me
 class ConsoleN8nService extends cds.ApplicationService {
   async init() {
     const { WorkflowDefinitions, WorkflowExecutions } = this.entities
-
-    this.before("triggerWorkflow", (req) => {
-      if (!req.data?.path || req.data.path.trim() === "") {
-        throw cds.error(400, "Missing required parameter path!")
-      }
-    })
 
     this.on("CREATE", WorkflowDefinitions, async (req, next) => {
       await next() // run generic CRUD → persists the row
@@ -61,10 +55,8 @@ class ConsoleN8nService extends cds.ApplicationService {
     this.on("UPDATE", WorkflowExecutions, _runOnDb)
     this.on("DELETE", WorkflowExecutions, _runOnDb)
 
-    this.on("triggerWorkflow", async (req) => {
-      const { path, payload } = req.data ?? {}
-      const method = req.data?.method === undefined ? "POST" : normalizeHttpMethod(req.data.method)
-      if (!method) throw cds.error(400, `method must be one of ${HTTP_METHODS.join(", ")}`)
+    this.on("trigger", async (req) => {
+      const { path, payload, method = "POST" } = req.data ?? {}
 
       // The console adapter has no external n8n instance, so create a no-op workflow definition when a webhook has not been registered yet.
       let workflow = await resolveWorkflowByWebhookPath(WorkflowDefinitions, path, method)

@@ -333,7 +333,7 @@ const cds = require("@sap/cds")
 
 const n8n = await cds.connect.to("n8n")
 
-await n8n.emit("triggerWorkflow", {
+await n8n.trigger({
   path: "book-created",
   payload: { title: "Moby Dick", quantity: 3 },
 })
@@ -344,13 +344,12 @@ await n8n.emit("triggerWorkflow", {
 
 Await the call to detect validation or queueing failures. Never use its resolved value as the workflow result.
 
-When commit or rollback coupling is required, call `emit` from a CAP request or transaction context.
+When commit or rollback coupling is required, call `trigger` from a CAP request or transaction context.
 
 ### Manage workflows and executions
 
 ```js
 const cds = require("@sap/cds")
-const { SELECT, UPDATE } = cds.ql
 
 const n8n = await cds.connect.to("n8n")
 const { WorkflowDefinitions, WorkflowExecutions } = n8n.entities
@@ -361,12 +360,12 @@ const execution = await n8n.run(SELECT.one.from(WorkflowExecutions).where({ id: 
 
 await n8n.run(UPDATE(WorkflowDefinitions, "abc").with({ name: "Renamed" }))
 
-await n8n.send("publishWorkflow", { id: "abc" })
-await n8n.send("unpublishWorkflow", { id: "abc" })
-await n8n.send("archiveWorkflow", { id: "abc" })
-await n8n.send("stopExecution", { id: "exec-42" })
-await n8n.send("stopExecutions", { workflowId: "wf-42", status: ["running", "waiting"] })
-await n8n.send("retryExecution", { id: "exec-42", loadWorkflow: true })
+await n8n.publishWorkflow({ id: "abc" })
+await n8n.unpublishWorkflow({ id: "abc" })
+await n8n.archiveWorkflow({ id: "abc" })
+await n8n.stopExecution({ id: "exec-42" })
+await n8n.stopExecutions({ workflowId: "wf-42", status: ["running", "waiting"] })
+await n8n.retryExecution({ id: "exec-42", loadWorkflow: true })
 ```
 
 These operations use n8n's `/api/v1` API and normally require a valid API key.
@@ -380,11 +379,10 @@ The REST profile supports this subset:
 | READ              | Yes                                                       | Yes                                                  |
 | List filters      | `id`, `id in [...]`, `active`, `name`, `limit`            | `id`, `id in [...]`, `workflowId`, `status`, `limit` |
 | Column projection | No                                                        | No                                                   |
-| CREATE            | Yes; requires `name`, `nodes`, `connections`, `settings`  | No                                                   |
+| CREATE            | Yes (requires `name`, `nodes`, `connections`, `settings`) | No                                                   |
 | UPDATE            | Yes; one `id`, partial updates supported                  | No                                                   |
 | UPSERT            | No                                                        | No                                                   |
 | DELETE            | `id` or `id in [...]`                                     | `id` or `id in [...]`                                |
-| Unbound actions   | `publishWorkflow`, `unpublishWorkflow`, `archiveWorkflow` | `retryExecution`, `stopExecution`                    |
 
 Only the listed filters are forwarded to n8n. Additional predicates, ordering, offsets, and column projections are not applied by the REST profile. Apply any additional processing to the returned rows in application code.
 
