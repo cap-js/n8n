@@ -6,7 +6,7 @@ const app = path.join(__dirname, "../bookshop")
 const { expect } = cds.test(app)
 const isRest = cds.env.requires?.n8n?.kind === "n8n-to-rest"
 
-function makeTestWorkflowBody(name, webhookPath, executionKind) {
+function makeTestWorkflowBody(name, webhookPath, executionKind, method = "POST") {
   const nodes = []
   const connections = {}
   if (executionKind === "waiting") {
@@ -42,7 +42,7 @@ function makeTestWorkflowBody(name, webhookPath, executionKind) {
     })
     connections.Webhook = { main: [[{ node: "Respond", type: "main", index: 0 }]] }
   }
-  const body = makeWorkflowBody(name, webhookPath, nodes, connections)
+  const body = makeWorkflowBody(name, webhookPath, nodes, connections, method)
   if (executionKind === "echo") body.nodes[0].parameters.responseMode = "responseNode"
   return body
 }
@@ -56,16 +56,21 @@ const createdWorkflowIds = new Set()
 // Creates a real workflow definition with a webhook trigger node. The
 // webhook path defaults to a fresh UUID so parallel and repeated runs
 // don't collide against a persistent n8n instance under REST mode.
-async function createTestWorkflow(name, webhookPath = cds.utils.uuid(), executionKind) {
-  const body = makeTestWorkflowBody(name, webhookPath, executionKind)
+async function createTestWorkflow(
+  name,
+  webhookPath = cds.utils.uuid(),
+  executionKind,
+  method = "POST",
+) {
+  const body = makeTestWorkflowBody(name, webhookPath, executionKind, method)
   const [{ id }] = await n8n.run(INSERT.into(WorkflowDefinitions).entries(body))
   createdWorkflowIds.add(id)
   return { id, name, webhookPath, body }
 }
 
-async function createPublishedWebhookWorkflow(name, executionKind) {
-  const workflow = await createTestWorkflow(name, cds.utils.uuid(), executionKind)
-  if (isRest) await n8n.send("publishWorkflow", { id: workflow.id })
+async function createPublishedWebhookWorkflow(name, executionKind, method = "POST") {
+  const workflow = await createTestWorkflow(name, cds.utils.uuid(), executionKind, method)
+  await n8n.send("publishWorkflow", { id: workflow.id })
   return workflow
 }
 
@@ -95,6 +100,51 @@ afterAll(async () => {
 })
 
 describe("triggerWorkflow", () => {
+  async function expectTriggerError(data, pattern) {
+    let error
+    try {
+      await n8n.emit("triggerWorkflow", data)
+    } catch (err) {
+      error = err
+    }
+    expect(error).toBeDefined
+    expect(String(error.message)).toMatch(pattern)
+  }
+
+  it("uses the webhook method configured on the workflow", async () => {
+    const workflow = await createPublishedWebhookWorkflow("trigger-method", "echo", "GET")
+
+    await n8n.send("triggerWorkflow", {
+      path: workflow.webhookPath,
+      method: "GET",
+    })
+
+    const execution = await waitForExecution(
+      n8n,
+      WorkflowExecutions,
+      { workflowId: workflow.id },
+      (e) => e.workflowId === workflow.id,
+    )
+    expect(execution).toBeDefined
+
+    // A matching method succeeds; the same path with a different method must fail.
+    await expectTriggerError(
+      {
+        path: workflow.webhookPath,
+        method: "POST",
+        payload: { greeting: "wrong-method" },
+      },
+      /404|405|No webhook found/i,
+    )
+  })
+
+  it("rejects unsupported runtime webhook methods", async () => {
+    await expectTriggerError(
+      { path: "method-invalid", method: "TRACE", payload: {} },
+      /method must be one of/i,
+    )
+  })
+
   it("rejects triggerWorkflow without path parameter", async () => {
     let err
     try {
@@ -102,7 +152,7 @@ describe("triggerWorkflow", () => {
     } catch (e) {
       err = e
     }
-    expect(err).to.exist
+    expect(err).toBeDefined
     expect(String(err.message)).to.match(/path/i)
   })
 
@@ -113,7 +163,7 @@ describe("triggerWorkflow", () => {
     } catch (e) {
       err = e
     }
-    expect(err).to.exist
+    expect(err).toBeDefined
     expect(String(err.message)).to.match(/path/i)
   })
 
@@ -138,11 +188,15 @@ describe("triggerWorkflow", () => {
   })
 
   it("accepts triggerWorkflow without a payload", async () => {
-    const { webhookPath } = await createPublishedWebhookWorkflow("trigger-ping", "echo")
+    const { id: workflowId, webhookPath } = await createPublishedWebhookWorkflow(
+      "trigger-ping",
+      "echo",
+    )
 
-    const result = await n8n.send("triggerWorkflow", { path: webhookPath })
+    await n8n.send("triggerWorkflow", { path: webhookPath })
 
-    expect(result).toEqual({})
+    const execution = await waitForExecution(n8n, WorkflowExecutions, { workflowId })
+    expect(execution).toBeDefined
   })
 })
 
@@ -165,7 +219,7 @@ describe("WorkflowDefinitions", () => {
     const { id } = await createTestWorkflow("select-one")
 
     const row = await n8n.run(SELECT.one.from(WorkflowDefinitions).where({ id }))
-    expect(row).to.exist
+    expect(row).toBeDefined
     expect(row.id).toEqual(id)
     expect(row.name).toEqual("select-one")
   })
@@ -229,7 +283,7 @@ describe("WorkflowDefinitions", () => {
 
     // sanity check — the row exists before DELETE
     const before = await n8n.run(SELECT.one.from(WorkflowDefinitions).where({ id }))
-    expect(before).to.exist
+    expect(before).toBeDefined
     expect(before.id).toEqual(id)
 
     await n8n.run(DELETE.from(WorkflowDefinitions).where({ id }))
@@ -385,7 +439,7 @@ describe("WorkflowExecutions", () => {
     const rows = await n8n.run(SELECT.from(WorkflowExecutions))
     expect(Array.isArray(rows)).to.equal(true)
     const hit = rows.find((r) => String(r.id) === String(execId))
-    expect(hit).to.exist
+    expect(hit).toBeDefined
   })
 
   it("should return a single execution when using where clause", async () => {
@@ -393,7 +447,7 @@ describe("WorkflowExecutions", () => {
     const execId = await seedExecution("select-one-exec")
 
     const row = await n8n.run(SELECT.one.from(WorkflowExecutions).where({ id: execId }))
-    expect(row).to.exist
+    expect(row).toBeDefined
     expect(String(row.id)).toEqual(String(execId))
   })
 
@@ -458,7 +512,7 @@ describe("WorkflowExecutions", () => {
     expect(result.workflowId).toEqual(execution.workflowId)
     expect(result.mode).toEqual("retry")
     expect(String(result.retryOf)).toEqual(String(execId))
-    expect(result.id).to.exist
+    expect(result.id).toBeDefined
     expect(result.id).not.toEqual(execId)
   })
 
@@ -466,20 +520,20 @@ describe("WorkflowExecutions", () => {
     // create test execution
     const execId = await seedExecution("retry-exec-behaviour", isRest ? "failed" : undefined)
     const original = await n8n.run(SELECT.one.from(WorkflowExecutions).where({ id: execId }))
-    expect(original).to.exist
+    expect(original).toBeDefined
 
     const retried = await n8n.send("retryExecution", {
       id: execId,
       loadWorkflow: true,
     })
-    expect(retried?.id).to.exist
+    expect(retried?.id).toBeDefined
     expect(retried.id).not.toEqual(execId)
     executionIds.add(retried.id)
 
     const retriedFromDb = await n8n.run(
       SELECT.one.from(WorkflowExecutions).where({ id: retried.id }),
     )
-    expect(retriedFromDb).to.exist
+    expect(retriedFromDb).toBeDefined
     expect(retriedFromDb.mode).toEqual("retry")
     expect(String(retriedFromDb.retryOf)).toEqual(String(execId))
     expect(retriedFromDb.workflowId).toEqual(original.workflowId)
