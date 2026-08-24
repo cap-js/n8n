@@ -2,10 +2,12 @@ const cds = require("@sap/cds")
 const { writeResult } = require("../lib/handlers/utils")
 const { HTTP_METHODS, normalizeHttpMethod } = require("../lib/shared/http-methods")
 const LOG = cds.log("@cap-js/n8n")
+const SYNTHETIC_WORKFLOW_PREFIX = "__cap_n8n_console_webhook__"
 
 // REVISIT: could be replaced by a single CQL query with `WHERE nodes LIKE '%"path":"<value>"%'`
 async function resolveWorkflowByWebhookPath(WorkflowDefinitions, webhookPath, method) {
-  const workflows = await SELECT.from(WorkflowDefinitions).columns("id", "nodes")
+  const workflows = await SELECT.from(WorkflowDefinitions).columns("id", "name", "nodes")
+  let synthetic
   for (const wf of workflows ?? []) {
     const nodes = Array.isArray(wf.nodes) ? wf.nodes : []
     const hit = nodes.some(
@@ -14,9 +16,40 @@ async function resolveWorkflowByWebhookPath(WorkflowDefinitions, webhookPath, me
         n?.parameters?.path === webhookPath &&
         (normalizeHttpMethod(n?.parameters?.httpMethod) ?? "POST") === method,
     )
-    if (hit) return wf
+    if (hit) {
+      if (wf.name?.startsWith(`${SYNTHETIC_WORKFLOW_PREFIX}:`)) synthetic ??= wf
+      else return wf
+    }
   }
-  return undefined
+  return synthetic
+}
+
+async function createSyntheticWorkflow(WorkflowDefinitions, path, method) {
+  const workflow = {
+    id: cds.utils.uuid(),
+    name: `${SYNTHETIC_WORKFLOW_PREFIX}:${method}:${path}`,
+    nodes: [
+      {
+        id: cds.utils.uuid(),
+        name: "Webhook",
+        type: "n8n-nodes-base.webhook",
+        typeVersion: 1,
+        position: [250, 300],
+        parameters: {
+          httpMethod: method,
+          path,
+          responseMode: "onReceived",
+          options: {},
+        },
+        webhookId: path,
+      },
+    ],
+    connections: "{}",
+    settings: "{}",
+  }
+  await INSERT.into(WorkflowDefinitions).entries(workflow)
+  LOG.info("Created console n8n webhook", { method, path, workflowId: workflow.id })
+  return workflow
 }
 
 class ConsoleN8nService extends cds.ApplicationService {
@@ -61,9 +94,10 @@ class ConsoleN8nService extends cds.ApplicationService {
       const method = req.data?.method === undefined ? "POST" : normalizeHttpMethod(req.data.method)
       if (!method) throw cds.error(400, `method must be one of ${HTTP_METHODS.join(", ")}`)
 
-      // Resolve the workflow id by webhook path
-      const workflow = await resolveWorkflowByWebhookPath(WorkflowDefinitions, path, method)
-      if (!workflow) throw cds.error(404, `No webhook found for ${method} ${path}`)
+      // The console adapter has no external n8n instance, so create a no-op workflow definition when a webhook has not been registered yet.
+      const workflow =
+        (await resolveWorkflowByWebhookPath(WorkflowDefinitions, path, method)) ??
+        (await createSyntheticWorkflow(WorkflowDefinitions, path, method))
       const workflowId = workflow?.id ?? path
       const waiting = workflow?.nodes?.some((node) => node?.type === "n8n-nodes-base.wait")
 
