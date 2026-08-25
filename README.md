@@ -74,7 +74,7 @@ curl -X POST http://localhost:4004/admin/Authors \
   }'
 ```
 
-During local development, the plugin simply logs the webhook path and payload instead of sending actual requests to to n8n:
+During local development, the plugin simply logs the webhook path and payload instead of sending actual requests to n8n:
 
 ```sh
 [odata] - POST /admin/Authors

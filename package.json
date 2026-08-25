@@ -70,7 +70,6 @@
     }
   },
   "workspaces": [
-    "tests/bookshop/",
-    "tests/test2/bookshop/"
+    "tests/bookshop/"
   ]
 }
