@@ -3,7 +3,7 @@ const { waitForExecution, makeWorkflowBody, purgeWorkflowsByWebhookPaths } = req
 
 const path = require("path")
 const app = path.join(__dirname, "../bookshop")
-const { POST, PATCH, DELETE, expect } = cds.test(app)
+const { POST, GET, PATCH, DELETE, expect } = cds.test(app)
 const isRest = cds.env.requires?.n8n?.kind === "n8n-to-rest"
 
 function executionPayload(execution) {
@@ -32,6 +32,7 @@ describe("@n8n.process.start - annotation-driven flow", () => {
       "annotation-test-book-created",
       "annotation-test-order-shipped",
       "annotation-test-order-deleted",
+      "annotation-test-author-read",
     ]
     await purgeWorkflowsByWebhookPaths(n8n, WorkflowDefinitions, paths)
     const workflows = await Promise.all(
@@ -170,6 +171,34 @@ describe("@n8n.process.start - annotation-driven flow", () => {
 
     const deleted = await executionsFor("annotation-test-order-deleted")
     expect(deleted).to.have.length(before.length)
+  })
+
+  it("fires on READ, applies .if, and projects inputs without recursing", async () => {
+    const before = await executionsFor("annotation-test-author-read")
+
+    // Matching author (ID=101, from bookshop sample data) triggers the webhook.
+    const { status } = await GET("/odata/v4/admin/Authors(101)")
+    expect(status).to.equal(200)
+
+    const execution = await waitForExecution(
+      n8n,
+      WorkflowExecutions,
+      { workflowId: workflowIds.get("annotation-test-author-read") },
+      (row) => !before.some((previous) => String(previous.id) === String(row.id)),
+      true,
+    )
+    // Payload carries only the columns listed in `inputs`.
+    const payload = executionPayload(execution)
+    expect(payload).to.have.property("ID", 101)
+    expect(payload).to.have.property("name")
+    expect(payload).to.not.have.property("dateOfBirth")
+
+    // Non-matching author must not fire (ID != 101).
+    const afterMatching = await executionsFor("annotation-test-author-read")
+    const { status: status2 } = await GET("/odata/v4/admin/Authors(107)")
+    expect(status2).to.equal(200)
+    const afterNonMatching = await executionsFor("annotation-test-author-read")
+    expect(afterNonMatching).to.have.length(afterMatching.length)
   })
 })
 
