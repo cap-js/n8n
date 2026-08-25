@@ -233,7 +233,7 @@ Enable test webhooks in the credentials for the relevant profile:
 }
 ```
 
-`useTestWebhook` is resolved from the destination property `URL.useTestWebhook`, credentials, or `N8N_USE_TEST_WEBHOOK`, in that order. It only changes webhook URLs; workflow and execution operations continue to use`/api/v1`.
+`useTestWebhook` is resolved from `credentials.useTestWebhook` or the `N8N_USE_TEST_WEBHOOK` environment variable, in that order. It only changes webhook URLs; workflow and execution operations continue to use `/api/v1`.
 
 ## Annotations
 

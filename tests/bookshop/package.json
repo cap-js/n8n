@@ -31,6 +31,12 @@
             "useTestWebhook": false
           }
         },
+        "[production]": {
+          "kind": "n8n-to-rest",
+          "credentials": {
+            "destination": "n8n"
+          }
+        },
         "[test]": {
           "outboxed": false
         }

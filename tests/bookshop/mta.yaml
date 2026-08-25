@@ -29,6 +29,7 @@ modules:
       - name: bookshop-n8n-auth
       - name: bookshop-n8n-db
       - name: bookshop-n8n-webhook
+      - name: bookshop-n8n-destination
 
   - name: bookshop-n8n-db-deployer
     type: hdb
@@ -59,3 +60,8 @@ resources:
       service-plan: hdi-shared
   - name: bookshop-n8n-webhook
     type: org.cloudfoundry.existing-service
+  - name: bookshop-n8n-destination
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: destination
+      service-plan: lite
