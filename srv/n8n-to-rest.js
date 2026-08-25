@@ -18,7 +18,7 @@ const {
   stopExecution,
   stopExecutions,
 } = require("./n8n/executions")
-const { resolveN8nConnection, n8nRequest } = require("../lib/api/connection")
+const { resolveN8nConnection, n8nRequest, n8nWebhookRequest } = require("../lib/api/connection")
 
 const LOG = cds.log("@cap-js/n8n")
 
@@ -60,6 +60,7 @@ class N8nService extends cds.ApplicationService {
   }
 
   async _trigger(req) {
+    // REVISIT: resolveN8nConnection is called twice, here and via n8nWebhookRequest
     const { useTestWebhook } = await resolveN8nConnection()
     const { path, payload, method = "POST" } = req.data ?? {}
     const prefix = useTestWebhook ? "/webhook-test" : "/webhook"
@@ -67,7 +68,7 @@ class N8nService extends cds.ApplicationService {
 
     LOG.info("Triggering n8n webhook", { path: webhookPath })
     const bodyless = method === "GET" || method === "HEAD"
-    const response = await n8nRequest({
+    const response = await n8nWebhookRequest({
       method,
       path: webhookPath,
       ...(bodyless || payload === undefined ? {} : { body: payload }),
