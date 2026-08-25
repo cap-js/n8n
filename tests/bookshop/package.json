@@ -26,9 +26,9 @@
       "n8n": {
         "[hybrid]": {
           "kind": "n8n-to-rest",
+          "useTestWebhook": false,
           "credentials": {
-            "url": "http://localhost:5678",
-            "useTestWebhook": false
+            "url": "http://localhost:5678"
           }
         },
         "[production]": {

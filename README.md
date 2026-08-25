@@ -214,7 +214,7 @@ n8n provides two webhook modes:
 | `/webhook`      | Published workflows; this is the default                        |
 | `/webhook-test` | One test event after selecting **Listen for Test Event** in n8n |
 
-Enable test webhooks in the credentials for the relevant profile:
+Enable test webhooks in the profile-specific plugin config:
 
 ```jsonc
 {
@@ -222,9 +222,9 @@ Enable test webhooks in the credentials for the relevant profile:
     "requires": {
       "n8n": {
         "[hybrid]": {
+          "useTestWebhook": true,
           "credentials": {
             "url": "http://localhost:5678",
-            "useTestWebhook": true,
           },
         },
       },
@@ -233,7 +233,7 @@ Enable test webhooks in the credentials for the relevant profile:
 }
 ```
 
-`useTestWebhook` is read from `credentials.useTestWebhook`. It only changes webhook URLs; workflow and execution operations continue to use `/api/v1`.
+The feature flag `cds.requires.n8n.useTestWebhook` only specifies on which URL the webhook should be triggered. The queries for workflow and execution operations continue to use `/api/v1`.
 
 ## Annotations
 

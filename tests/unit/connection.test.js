@@ -29,7 +29,6 @@ describe("resolveN8nConnection", () => {
     expect(c.apiKey).toBe("top-secret")
     expect(c.authHeaders).toEqual({})
     expect(c.webhookAuthHeaders).toEqual({})
-    expect(c.useTestWebhook).toBe(false)
   })
 
   it("carries webhookAuth headers through inline credentials", async () => {
@@ -47,22 +46,6 @@ describe("resolveN8nConnection", () => {
   it("throws when no configuration resolves", async () => {
     cds.env.requires["n8n"] = {}
     await expect(resolveN8nConnection()).rejects.toThrow(/no connection configured/i)
-  })
-
-  it("defaults useTestWebhook to false", async () => {
-    cds.env.requires["n8n"] = {
-      credentials: { url: "https://n8n.example.com" },
-    }
-    const c = await resolveN8nConnection()
-    expect(c.useTestWebhook).toBe(false)
-  })
-
-  it("honours credentials.useTestWebhook when explicitly set", async () => {
-    cds.env.requires["n8n"] = {
-      credentials: { url: "https://n8n.example.com", useTestWebhook: true },
-    }
-    const c = await resolveN8nConnection()
-    expect(c.useTestWebhook).toBe(true)
   })
 
   it("uses the destination even when a leftover url is present in credentials", async () => {
