@@ -49,13 +49,13 @@ class N8nService extends cds.ApplicationService {
   checkPathParam(path) {
     const t = String(path).trim()
     if (/^[a-z][a-z0-9+.-]*:/i.test(t) || t.startsWith("//")) {
-      throw cds.error(400, `path must be a relative path, not a URL: ${t}`)
+      cds.error(400, `'path' must be a relative, not absolute: ${t}`)
     }
     if (/[\r\n]/.test(t)) {
-      throw cds.error(400, "path must not contain newline characters")
+      cds.error(400, "'path' must not contain newline characters")
     }
     if (t.split("/").some((s) => s === "..")) {
-      throw cds.error(400, `path must not contain ".." segments`)
+      cds.error(400, `'path' must not contain '..' segments`)
     }
   }
 
