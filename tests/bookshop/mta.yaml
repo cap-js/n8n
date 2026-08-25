@@ -1,0 +1,61 @@
+_schema-version: 3.3.0
+ID: bookshop-n8n
+version: 1.0.0
+description: "Bookshop sample demonstrating @cap-js&#x2F;n8n annotation-driven and programmatic workflow triggering."
+parameters:
+  enable-parallel-deployments: true
+build-parameters:
+  before-all:
+    - builder: custom
+      commands:
+        - npm ci
+        - npx cds build --production
+        - npm pack ../../ --pack-destination gen/srv
+        - find gen/srv -maxdepth 1 -name 'cap-js-n8n-*.tgz' -exec npm i {} --prefix gen/srv \;
+modules:
+  - name: bookshop-n8n-srv
+    type: nodejs
+    path: gen/srv
+    parameters:
+      instances: 1
+      buildpack: nodejs_buildpack
+    build-parameters:
+      builder: npm-ci
+    provides:
+      - name: srv-api # required by consumers of CAP services (e.g. approuter)
+        properties:
+          srv-url: ${default-url}
+    requires:
+      - name: bookshop-n8n-auth
+      - name: bookshop-n8n-db
+      - name: bookshop-n8n-webhook
+
+  - name: bookshop-n8n-db-deployer
+    type: hdb
+    path: gen/db
+    parameters:
+      buildpack: nodejs_buildpack
+    requires:
+      - name: bookshop-n8n-db
+
+resources:
+  - name: bookshop-n8n-auth
+    type: org.cloudfoundry.managed-service
+    parameters:
+      service: xsuaa
+      service-plan: application
+      path: ./xs-security.json
+      config:
+        xsappname: bookshop-n8n-${org}-${space}
+        tenant-mode: dedicated
+        oauth2-configuration:
+          credential-types:
+            - "binding-secret"
+            - "x509"
+  - name: bookshop-n8n-db
+    type: com.sap.xs.hdi-container
+    parameters:
+      service: hana
+      service-plan: hdi-shared
+  - name: bookshop-n8n-webhook
+    type: org.cloudfoundry.existing-service
