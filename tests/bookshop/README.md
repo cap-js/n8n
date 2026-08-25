@@ -109,8 +109,10 @@ docker compose up -d
 #      - workflows/order-shipped.json
 #      - workflows/order-deleted.json
 
-# 3) Generate an n8n API key (Settings → n8n API → Create API Key) and
-#    put it in tests/bookshop/.env as N8N_API_KEY=<key>, or export it.
+# 3) Generate an n8n API key (Settings → n8n API → Create API Key) and put
+#    it in tests/bookshop/.env as
+#      cds.requires.n8n.credentials.apiKey = <key>
+#    or add it under `[hybrid]` in package.json (see below).
 #    The key is required for the REST API examples below.
 
 # 4) Run CAP with the hybrid profile, FROM THE BOOKSHOP DIRECTORY so the
@@ -154,13 +156,8 @@ That means n8n rejected the read (typically 401 for a missing/wrong API key).
 The plugin reports an upstream rejection as `502 Bad Gateway`. If the request
 still fails:
 
-- Verify `N8N_API_KEY` is actually in `process.env`. `.env` files are only
-  loaded when `cds watch` runs from the directory containing the `.env`, so
-  `cd tests/bookshop && cds watch --profile hybrid` is correct;
-  `cds watch tests/bookshop` from the repo root will not pick up
-  `tests/bookshop/.env`.
-- Alternatively add `apiKey` to the `[hybrid]` credentials in `package.json`
-  (see below).
+- Verify the API key is actually reaching CAP. Check `cds env get requires.n8n.credentials.apiKey`. `.env` files are only loaded when `cds watch` runs from the directory containing the `.env`, so `cd tests/bookshop && cds watch --profile hybrid` is correct; `cds watch tests/bookshop` from the repo root will not pick up `tests/bookshop/.env`.
+- Alternatively add `apiKey` to the `[hybrid]` credentials in `package.json` (see below).
 
 If your n8n instance enforces auth, add an `apiKey` next to `url` under the
 `[hybrid]` block in `package.json`:
