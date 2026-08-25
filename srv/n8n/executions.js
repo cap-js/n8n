@@ -1,4 +1,4 @@
-const { n8nRequest } = require("../../lib/api/connection")
+const { n8nAPIRequest } = require("../../lib/api/connection")
 const { parseResponse, getProperty, extractIds, writeResult } = require("../../lib/handlers/utils")
 
 async function readExecutions(req) {
@@ -6,7 +6,7 @@ async function readExecutions(req) {
   if (ids) {
     const responses = await Promise.all(
       ids.map((id) =>
-        n8nRequest({
+        n8nAPIRequest({
           method: "GET",
           path: `/api/v1/executions/${encodeURIComponent(id)}?includeData=true`,
         }),
@@ -33,7 +33,7 @@ async function readExecutions(req) {
   const qs = params.toString()
   const path = qs ? `/api/v1/executions?${qs}` : "/api/v1/executions"
 
-  const response = await n8nRequest({ method: "GET", path })
+  const response = await n8nAPIRequest({ method: "GET", path })
   return parseResponse(req, response)
 }
 
@@ -43,7 +43,7 @@ async function deleteExecution(req) {
 
   const responses = await Promise.all(
     ids.map((id) =>
-      n8nRequest({ method: "DELETE", path: `/api/v1/executions/${encodeURIComponent(id)}` }),
+      n8nAPIRequest({ method: "DELETE", path: `/api/v1/executions/${encodeURIComponent(id)}` }),
     ),
   )
   const results = await Promise.all(responses.map((r) => parseResponse(req, r)))
@@ -59,7 +59,7 @@ async function retryExecution(req) {
   const { id, loadWorkflow } = req.data ?? {}
   if (!id) return req.reject(400, "Missing execution id for retryExecution")
   const body = loadWorkflow != null ? { loadWorkflow: !!loadWorkflow } : undefined
-  const response = await n8nRequest({
+  const response = await n8nAPIRequest({
     method: "POST",
     path: `/api/v1/executions/${encodeURIComponent(id)}/retry`,
     body,
@@ -70,7 +70,7 @@ async function retryExecution(req) {
 async function stopExecution(req) {
   const { id } = req.data ?? {}
   if (!id) return req.reject(400, "Missing execution id for stopExecution")
-  const response = await n8nRequest({
+  const response = await n8nAPIRequest({
     method: "POST",
     path: `/api/v1/executions/${encodeURIComponent(id)}/stop`,
   })
@@ -83,7 +83,7 @@ async function stopExecutions(req) {
   if (!Array.isArray(status) || status.length === 0) {
     return req.reject(400, "At least one execution status is required for stopExecutions")
   }
-  const response = await n8nRequest({
+  const response = await n8nAPIRequest({
     method: "POST",
     path: "/api/v1/executions/stop",
     body: { workflowId, status },

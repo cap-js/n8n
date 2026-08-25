@@ -11,9 +11,11 @@
 #
 # 1. POST /rest/owner/setup    - create owner
 # 2. POST /rest/api-keys       - mint public-API JWT
-# 3. Export to $GITHUB_ENV and tests/bookshop/.env (merged: only the
-#    N8N_API_KEY line is replaced; other keys such as N8N_USE_TEST_WEBHOOK
-#    are preserved).
+# 3. Export the freshly minted key so downstream steps and tests can use it:
+#      - GITHUB_ENV: as `cds_requires_n8n_credentials_apiKey`
+#      - tests/bookshop/.env: as `cds.requires.n8n.credentials.apiKey`
+#    Existing `.env` entries (other keys, comments, blank lines) are
+#    preserved; only the managed apiKey line is replaced.
 #
 # Each REST call is retried on non-2xx *and* on 2xx with a non-JSON body,
 # because n8n's REST layer can briefly return the plain-text placeholder
@@ -115,22 +117,26 @@ log "API key '$LABEL' minted"
 printf '%s\n' "$RAW_KEY"
 
 if [ -n "${GITHUB_ENV:-}" ]; then
-  { echo "N8N_API_KEY=$RAW_KEY"; echo "N8N_URL=$N8N_URL"; } >> "$GITHUB_ENV"
-  log "Exported N8N_API_KEY to \$GITHUB_ENV"
+  {
+    echo "cds_requires_n8n_credentials_apiKey=$RAW_KEY"
+    echo "cds_requires_n8n_credentials_url=$N8N_URL"
+  } >> "$GITHUB_ENV"
+  log "Exported cds_requires_n8n_credentials_* to \$GITHUB_ENV"
 fi
 
 target_env="$(cd "$(dirname "$0")/.." && pwd)/tests/bookshop/.env"
 
-# Merge: preserve any existing keys the developer set (e.g. N8N_USE_TEST_WEBHOOK)
-# and only replace the managed N8N_API_KEY line. Comments/blank lines survive.
+# Merge: preserve any existing keys the developer set and only replace the
+# managed apiKey line. Comments/blank lines survive.
+managed_key="cds.requires.n8n.credentials.apiKey"
 tmp_env="$(mktemp)"
 if [ -f "$target_env" ]; then
-  # Drop any prior N8N_API_KEY assignment (with or without leading whitespace).
-  grep -Ev '^[[:space:]]*N8N_API_KEY=' "$target_env" > "$tmp_env" || true
+  # Drop any prior managed-key assignment (with or without leading whitespace).
+  grep -Ev "^[[:space:]]*${managed_key}[[:space:]]*=" "$target_env" > "$tmp_env" || true
 fi
 # Append the fresh key (with a trailing newline in case the preserved content
 # didn't end with one).
 [ -s "$tmp_env" ] && [ "$(tail -c1 "$tmp_env" | wc -l)" -eq 0 ] && printf '\n' >> "$tmp_env"
-printf 'N8N_API_KEY=%s\n' "$RAW_KEY" >> "$tmp_env"
+printf '%s=%s\n' "$managed_key" "$RAW_KEY" >> "$tmp_env"
 mv "$tmp_env" "$target_env"
-log "Updated N8N_API_KEY in $target_env"
+log "Updated $managed_key in $target_env"

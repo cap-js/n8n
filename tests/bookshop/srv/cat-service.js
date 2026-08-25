@@ -13,7 +13,9 @@ module.exports = class CatalogService extends cds.ApplicationService {
     // Reduce stock of ordered books if available stock suffices
     this.on("submitOrder", async (req) => {
       let { book: id, quantity } = req.data
-      let book = await SELECT.one.from(Books, id, (b) => b.stock)
+      let book = await SELECT.one.from(Books, id, (b) => {
+        ;(b.stock, b.price)
+      })
 
       // Validate input data
       if (!book) return req.error(404, `Book #${id} doesn't exist`)
@@ -22,14 +24,30 @@ module.exports = class CatalogService extends cds.ApplicationService {
         return req.error(409, `${quantity} exceeds stock for book #${id}`)
 
       // Reduce stock in database and return updated stock value
-      await UPDATE(Books, id).with({ stock: (book.stock -= quantity) })
-      return book
+      const new_stock = book.stock - quantity
+      const order_amount = quantity * book.price
+      await UPDATE(Books, id).with({ stock: new_stock })
+
+      // Stash computed values for the after-handler
+      req.context._orderInfo = { order_amount, new_stock }
+      return { stock: new_stock }
     })
 
     // Emit event when an order has been submitted
     this.after("submitOrder", async (_, req) => {
       let { book, quantity } = req.data
       await this.emit("OrderedBook", { book, quantity, buyer: req.user.id })
+    })
+
+    // Trigger n8n workflow after order submission
+    this.after("submitOrder", async (_, req) => {
+      const { book, quantity } = req.data
+      const { order_amount, new_stock } = req.context._orderInfo ?? {}
+      const n8n = await cds.connect.to("n8n")
+      await n8n.trigger({
+        path: "book-order",
+        payload: { book, quantity, buyer: req.user.id, order_amount, new_stock },
+      })
     })
 
     // Delegate requests to the underlying generic service

@@ -103,25 +103,26 @@ An API key is optional for webhook delivery if the target webhook accepts the re
 Start n8n locally with `npx n8n`, Docker, or the [bookshop sample](tests/bookshop), then run CAP with the hybrid profile:
 
 ```bash
-export N8N_API_KEY=eyJ...
 cds watch --profile hybrid
 ```
 
-The hybrid profile already supplies `http://localhost:5678` as the URL. Omit `N8N_API_KEY` if your webhook does not require it and you do not use the n8n workflow or execution APIs.
+The hybrid profile already supplies `http://localhost:5678` as the URL. If you also want to use the `/api/v1` workflow or execution APIs, add an `apiKey` to the `[hybrid]` credentials in `package.json` or `.cdsrc-private.json`.
 
-### Environment variables
+### Configuration
 
-Provide both values when connecting to a remote n8n directly:
+All connection settings live under `cds.requires.n8n.credentials`. CAP populates them from `package.json`, `.cdsrc-private.json`, bound services (`VCAP_SERVICES`), or `cds_requires_n8n_credentials_*` environment variables.
+
+For a remote n8n via env vars:
 
 ```bash
-export N8N_BASE_URL=https://your.n8n.cloud
-export N8N_API_KEY=eyJ...
+export cds_requires_n8n_credentials_url=https://your.n8n.cloud
+export cds_requires_n8n_credentials_apiKey=eyJ...
 cds watch --profile production
 ```
 
 ### Cloud Foundry binding
 
-Create and bind a user-provided service for hybrid development:
+Create and bind a user-provided service:
 
 ```bash
 cf create-user-provided-service n8n \
@@ -155,13 +156,12 @@ Authentication headers resolved from the destination are sent alongside an `X-N8
 
 ### Credential resolution
 
-Connections are resolved in this order:
+Within `credentials`, the plugin resolves in this order:
 
-1. A BTP destination named by `credentials.destination` or `destination`
-2. Bound or inline `credentials.{url, apiKey}`
-3. `N8N_BASE_URL` and `N8N_API_KEY`
+1. `credentials.destination` — a BTP destination wins outright.
+2. `credentials.{url, apiKey}` — inline connection details.
 
-If inline credentials provide only `url`, `N8N_API_KEY` can still supply the API key. An operation fails when none of these sources provides a URL.
+An operation fails when neither is set.
 
 To use real webhooks in the development profile, override its service kind:
 
@@ -214,7 +214,7 @@ n8n provides two webhook modes:
 | `/webhook`      | Published workflows; this is the default                        |
 | `/webhook-test` | One test event after selecting **Listen for Test Event** in n8n |
 
-Enable test webhooks in the credentials for the relevant profile:
+Enable test webhooks in the profile-specific plugin config:
 
 ```jsonc
 {
@@ -222,9 +222,9 @@ Enable test webhooks in the credentials for the relevant profile:
     "requires": {
       "n8n": {
         "[hybrid]": {
+          "useTestWebhook": true,
           "credentials": {
             "url": "http://localhost:5678",
-            "useTestWebhook": true,
           },
         },
       },
@@ -233,7 +233,7 @@ Enable test webhooks in the credentials for the relevant profile:
 }
 ```
 
-`useTestWebhook` is resolved from the destination property `URL.useTestWebhook`, credentials, or `N8N_USE_TEST_WEBHOOK`, in that order. It only changes webhook URLs; workflow and execution operations continue to use`/api/v1`.
+The feature flag `cds.requires.n8n.useTestWebhook` only specifies on which URL the webhook should be triggered. The queries for workflow and execution operations continue to use `/api/v1`.
 
 ## Annotations
 

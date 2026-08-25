@@ -4,11 +4,13 @@
   "description": "Bookshop sample demonstrating @cap-js/n8n annotation-driven and programmatic workflow triggering.",
   "private": true,
   "dependencies": {
+    "@cap-js/hana": "^3",
     "@cap-js/n8n": "file:../../.",
-    "@cap-js/hana": ">=2"
+    "@sap/xssec": "^4"
   },
   "devDependencies": {
-    "@cap-js/sqlite": ">=2"
+    "@cap-js/sqlite": ">=2",
+    "@sap/cds-dk": "^10"
   },
   "scripts": {
     "start": "cds-serve",
@@ -24,14 +26,23 @@
       "n8n": {
         "[hybrid]": {
           "kind": "n8n-to-rest",
+          "useTestWebhook": false,
           "credentials": {
-            "url": "http://localhost:5678",
-            "useTestWebhook": false
+            "url": "http://localhost:5678"
+          }
+        },
+        "[production]": {
+          "kind": "n8n-to-rest",
+          "credentials": {
+            "destination": "n8n"
           }
         },
         "[test]": {
           "outboxed": false
         }
+      },
+      "[production]": {
+        "auth": "xsuaa"
       }
     }
   }

@@ -18,7 +18,7 @@ const {
   stopExecution,
   stopExecutions,
 } = require("./n8n/executions")
-const { resolveN8nConnection, n8nRequest } = require("../lib/api/connection")
+const { n8nWebhookRequest } = require("../lib/api/connection")
 
 const LOG = cds.log("@cap-js/n8n")
 
@@ -49,25 +49,25 @@ class N8nService extends cds.ApplicationService {
   checkPathParam(path) {
     const t = String(path).trim()
     if (/^[a-z][a-z0-9+.-]*:/i.test(t) || t.startsWith("//")) {
-      throw cds.error(400, `path must be a relative path, not a URL: ${t}`)
+      cds.error(400, `'path' must be a relative, not absolute: ${t}`)
     }
     if (/[\r\n]/.test(t)) {
-      throw cds.error(400, "path must not contain newline characters")
+      cds.error(400, "'path' must not contain newline characters")
     }
     if (t.split("/").some((s) => s === "..")) {
-      throw cds.error(400, `path must not contain ".." segments`)
+      cds.error(400, `'path' must not contain '..' segments`)
     }
   }
 
   async _trigger(req) {
-    const { useTestWebhook } = await resolveN8nConnection()
+    const useTestWebhook = Boolean(cds.env.requires?.n8n?.useTestWebhook)
     const { path, payload, method = "POST" } = req.data ?? {}
     const prefix = useTestWebhook ? "/webhook-test" : "/webhook"
     const webhookPath = `${prefix}/${String(path).replace(/^\/+/, "")}`
 
     LOG.info("Triggering n8n webhook", { path: webhookPath })
     const bodyless = method === "GET" || method === "HEAD"
-    const response = await n8nRequest({
+    const response = await n8nWebhookRequest({
       method,
       path: webhookPath,
       ...(bodyless || payload === undefined ? {} : { body: payload }),
