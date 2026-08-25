@@ -74,7 +74,6 @@ describe("resolveWebhookAuthHeaders", () => {
   let originalCreds
 
   beforeAll(() => {
-    cds.env.requires ??= {}
     originalCreds = cds.env.requires.n8n.credentials
   })
 
