@@ -1,7 +1,7 @@
 const cds = require("@sap/cds")
 const { writeResult } = require("../lib/handlers/utils")
 const { normalizeHttpMethod } = require("../lib/shared/http-methods")
-const LOG = cds.log("@cap-js/n8n")
+const LOG = cds.log("n8n")
 const SYNTHETIC_WORKFLOW_PREFIX = "__cap_n8n_console_webhook__"
 
 // REVISIT: could be replaced by a single CQL query with `WHERE nodes LIKE '%"path":"<value>"%'`

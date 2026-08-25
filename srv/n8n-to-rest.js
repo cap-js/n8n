@@ -20,7 +20,7 @@ const {
 } = require("./n8n/executions")
 const { n8nWebhookRequest } = require("../lib/api/connection")
 
-const LOG = cds.log("@cap-js/n8n")
+const LOG = cds.log("n8n")
 
 class N8nService extends cds.ApplicationService {
   async init() {
