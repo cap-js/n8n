@@ -37,49 +37,61 @@ Trigger [n8n](https://n8n.io/) workflows from CAP applications with `@n8n.proces
 
 ## Quick start
 
-Install the plugin:
+We use the [@capire/bookshop](https://github.com/capire/bookshop) as a running sample hereinafter. Clone it and open it in VSCode as follows:
+
+```bash
+git clone https://github.com/capire/bookshop
+code bookshop
+```
+
+Within your project root run this to add the plugin:
 
 ```bash
 npm add @cap-js/n8n
 ```
 
-Add a trigger to an entity exposed by a CAP service:
+Annotate `AdminService.Authors` with `@n8n.process.start`:
 
 ```cds
-service CatalogService {
-  @n8n.process.start: {
-    path: 'book-created',
-    on: 'CREATE'
-  }
-  entity Books as projection on my.Books;
-}
+// srv/admin-service.cds
+annotate AdminService.Authors with @n8n.process.start: {
+  path: 'author-created',
+  on: 'CREATE'
+};
 ```
 
-Start the application as usual:
+Start your application with `cds watch` and create a new Author to trigger a workflow:
 
 ```bash
-cds watch
+curl -X POST http://localhost:4004/admin/Authors \
+  -H "Content-Type: application/json" \
+  -u alice: \
+  -d '{
+    "ID": 999,
+    "name": "Jane Doe",
+    "dateOfBirth": "1970-01-15",
+    "placeOfBirth": "London"
+  }'
 ```
 
-During local development, the plugin simply logs the webhook path and payload instead of sending actual requests to to n8n
+During local development, the plugin simply logs the webhook path and payload instead of sending actual requests to to n8n:
 
 ```sh
-[@cap-js/n8n] - Triggering n8n workflow {
+[odata] - POST /admin/Authors
+[n8n] - Triggering n8n workflow {
   method: 'POST',
-  webhookUrl: '/webhook/book-created',
+  webhookUrl: '/webhook/author-created',
   payload: {
-    createdAt: '2026-08-17T11:12:25.050Z',
-    createdBy: 'anonymous',
-    modifiedAt: '2026-08-17T11:12:25.050Z',
-    modifiedBy: 'anonymous',
-    ID: 273,
-    title: 'Moby Dick',
-    descr: null,
-    author_ID: 101,
-    genre_ID: null,
-    stock: 5,
-    price: '12.5',
-    currency_code: null
+    createdAt: '2026-08-25T13:46:45.768Z',
+    createdBy: 'alice',
+    modifiedAt: '2026-08-25T13:46:45.768Z',
+    modifiedBy: 'alice',
+    ID: 999,
+    name: 'Jane Doe',
+    dateOfBirth: '1970-01-15',
+    dateOfDeath: null,
+    placeOfBirth: 'London',
+    placeOfDeath: null
   }
 }
 ```
