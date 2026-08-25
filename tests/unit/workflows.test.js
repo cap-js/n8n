@@ -12,17 +12,12 @@ const {
 
 describe("Workflow handlers", () => {
   let originalFetch
-  let savedEnv
   let savedRequires
   let capturedInit
 
   beforeEach(() => {
     capturedInit = null
     originalFetch = globalThis.fetch
-    savedEnv = {
-      url: process.env.N8N_BASE_URL,
-      key: process.env.N8N_API_KEY,
-    }
     savedRequires = cds.env.requires
     cds.env.requires = {
       n8n: {
@@ -44,10 +39,6 @@ describe("Workflow handlers", () => {
   afterEach(() => {
     globalThis.fetch = originalFetch
     cds.env.requires = savedRequires
-    if (savedEnv.url === undefined) delete process.env.N8N_BASE_URL
-    else process.env.N8N_BASE_URL = savedEnv.url
-    if (savedEnv.key === undefined) delete process.env.N8N_API_KEY
-    else process.env.N8N_API_KEY = savedEnv.key
   })
 
   function makeReq(overrides = {}) {
