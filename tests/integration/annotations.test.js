@@ -29,22 +29,16 @@ describe("@n8n.process.start - annotation-driven flow", () => {
     n8n = await cds.connect.to("n8n")
     ;({ WorkflowDefinitions, WorkflowExecutions } = n8n.entities)
     const paths = [
-      { path: "annotation-test-book-created", method: "POST" },
-      { path: "annotation-test-order-shipped", method: "POST" },
-      { path: "annotation-test-order-deleted", method: "POST" },
-      { path: "annotation-test-author-read", method: "GET" },
+      "annotation-test-book-created",
+      "annotation-test-order-shipped",
+      "annotation-test-order-deleted",
+      "annotation-test-author-read",
     ]
-    await purgeWorkflowsByWebhookPaths(
-      n8n,
-      WorkflowDefinitions,
-      paths.map((p) => p.path),
-    )
+    await purgeWorkflowsByWebhookPaths(n8n, WorkflowDefinitions, paths)
     const workflows = await Promise.all(
-      paths.map(async ({ path, method }) => {
+      paths.map(async (path) => {
         const [{ id }] = await n8n.run(
-          INSERT.into(WorkflowDefinitions).entries(
-            makeWorkflowBody(`annotation-${path}`, path, [], {}, method),
-          ),
+          INSERT.into(WorkflowDefinitions).entries(makeWorkflowBody(`annotation-${path}`, path)),
         )
         await n8n.publishWorkflow({ id })
         return { path, id }

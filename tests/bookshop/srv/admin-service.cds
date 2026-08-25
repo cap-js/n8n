@@ -10,7 +10,6 @@ service AdminService {
 
   @n8n.process.start: {
     path: 'annotation-test-author-read',
-    method: 'GET',
     on: 'READ',
     if: (ID = 101),
     inputs: [ $self.ID, $self.name ]
