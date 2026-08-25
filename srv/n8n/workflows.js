@@ -1,5 +1,5 @@
 const { parseResponse, getProperty, extractIds, writeResult } = require("../../lib/handlers/utils")
-const { n8nRequest } = require("../../lib/api/connection")
+const { n8nAPIRequest } = require("../../lib/api/connection")
 
 function parseJsonFields(workflow) {
   for (const field of ["connections", "settings", "staticData"]) {
@@ -19,7 +19,7 @@ async function readWorkflows(req) {
   if (ids) {
     const responses = await Promise.all(
       ids.map((id) =>
-        n8nRequest({ method: "GET", path: `/api/v1/workflows/${encodeURIComponent(id)}` }),
+        n8nAPIRequest({ method: "GET", path: `/api/v1/workflows/${encodeURIComponent(id)}` }),
       ),
     )
     // A missing workflow is an empty CQL result, not a failed query.
@@ -43,7 +43,7 @@ async function readWorkflows(req) {
   const qs = params.toString()
   const path = qs ? `/api/v1/workflows?${qs}` : "/api/v1/workflows"
 
-  const response = await n8nRequest({ method: "GET", path })
+  const response = await n8nAPIRequest({ method: "GET", path })
   return parseResponse(req, response)
 }
 
@@ -56,7 +56,7 @@ async function createWorkflow(req) {
       return req.reject(400, `Missing required workflow field: ${required}`)
     }
   }
-  const response = await n8nRequest({
+  const response = await n8nAPIRequest({
     method: "POST",
     path: "/api/v1/workflows",
     body,
@@ -90,7 +90,7 @@ async function updateWorkflow(req) {
 
   const missing = WORKFLOW_PUT_REQUIRED_FIELDS.filter((f) => body[f] == null)
   if (missing.length > 0) {
-    const currentResponse = await n8nRequest({
+    const currentResponse = await n8nAPIRequest({
       method: "GET",
       path: `/api/v1/workflows/${encodeURIComponent(id)}`,
     })
@@ -103,7 +103,7 @@ async function updateWorkflow(req) {
     }
   }
 
-  const response = await n8nRequest({
+  const response = await n8nAPIRequest({
     method: "PUT",
     path: `/api/v1/workflows/${encodeURIComponent(id)}`,
     body,
@@ -120,7 +120,7 @@ async function deleteWorkflow(req) {
 
   const responses = await Promise.all(
     ids.map((id) =>
-      n8nRequest({ method: "DELETE", path: `/api/v1/workflows/${encodeURIComponent(id)}` }),
+      n8nAPIRequest({ method: "DELETE", path: `/api/v1/workflows/${encodeURIComponent(id)}` }),
     ),
   )
   const results = await Promise.all(responses.map((r) => parseResponse(req, r)))
@@ -139,7 +139,7 @@ async function publishWorkflow(req) {
   if (versionId) body.versionId = versionId
   if (name) body.name = name
   if (description) body.description = description
-  const response = await n8nRequest({
+  const response = await n8nAPIRequest({
     method: "POST",
     path: `/api/v1/workflows/${encodeURIComponent(id)}/publish`,
     body: Object.keys(body).length > 0 ? body : undefined,
@@ -150,7 +150,7 @@ async function publishWorkflow(req) {
 async function unpublishWorkflow(req) {
   const { id } = req.data ?? {}
   if (!id) return req.reject(400, "Missing workflow id for unpublishWorkflow")
-  const response = await n8nRequest({
+  const response = await n8nAPIRequest({
     method: "POST",
     path: `/api/v1/workflows/${encodeURIComponent(id)}/unpublish`,
   })
@@ -160,7 +160,7 @@ async function unpublishWorkflow(req) {
 async function archiveWorkflow(req) {
   const { id } = req.data ?? {}
   if (!id) return req.reject(400, "Missing workflow id for archiveWorkflow")
-  const response = await n8nRequest({
+  const response = await n8nAPIRequest({
     method: "POST",
     path: `/api/v1/workflows/${encodeURIComponent(id)}/archive`,
   })

@@ -1,9 +1,6 @@
 const cds = require("@sap/cds")
 const destination = require("../../lib/auth/destination")
-const {
-  resolveN8nConnection,
-  resolveWebhookAuthHeaders,
-} = require("../../lib/api/connection")
+const { resolveN8nConnection, resolveWebhookAuthHeaders } = require("../../lib/api/connection")
 
 describe("resolveN8nConnection", () => {
   let originalRequires
@@ -74,61 +71,65 @@ describe("resolveN8nConnection", () => {
 })
 
 describe("resolveWebhookAuthHeaders", () => {
+  let originalCreds
+
+  beforeAll(() => {
+    cds.env.requires ??= {}
+    originalCreds = cds.env.requires.n8n.credentials
+  })
+
+  afterAll(() => {
+    cds.env.requires.n8n.credentials = originalCreds
+  })
+
+  const setWebhookAuth = (webhookAuth) => {
+    cds.env.requires.n8n.credentials = webhookAuth ? { webhookAuth } : {}
+  }
+
   it("returns an empty object when webhookAuth is unset", () => {
-    expect(resolveWebhookAuthHeaders({})).toEqual({})
-    expect(resolveWebhookAuthHeaders({ credentials: {} })).toEqual({})
+    setWebhookAuth(undefined)
+    expect(resolveWebhookAuthHeaders()).toEqual({})
   })
 
   it("builds a Basic Authorization header", () => {
-    const headers = resolveWebhookAuthHeaders({
-      credentials: { webhookAuth: { type: "basic", username: "alice", password: "s3cret" } },
-    })
+    setWebhookAuth({ type: "basic", username: "alice", password: "s3cret" })
+    const headers = resolveWebhookAuthHeaders()
     const expected = Buffer.from("alice:s3cret").toString("base64")
     expect(headers).toEqual({ Authorization: `Basic ${expected}` })
   })
 
   it("builds a Bearer Authorization header", () => {
-    const headers = resolveWebhookAuthHeaders({
-      credentials: { webhookAuth: { type: "bearer", token: "abc.def.ghi" } },
-    })
-    expect(headers).toEqual({ Authorization: "Bearer abc.def.ghi" })
+    setWebhookAuth({ type: "bearer", token: "abc.def.ghi" })
+    expect(resolveWebhookAuthHeaders()).toEqual({ Authorization: "Bearer abc.def.ghi" })
   })
 
   it("builds a custom Header Auth entry", () => {
-    const headers = resolveWebhookAuthHeaders({
-      credentials: { webhookAuth: { type: "header", name: "X-Webhook-Token", value: "42" } },
-    })
-    expect(headers).toEqual({ "X-Webhook-Token": "42" })
+    setWebhookAuth({ type: "header", name: "X-Webhook-Token", value: "42" })
+    expect(resolveWebhookAuthHeaders()).toEqual({ "X-Webhook-Token": "42" })
   })
 
   it("accepts mixed-case type values", () => {
-    const headers = resolveWebhookAuthHeaders({
-      credentials: { webhookAuth: { type: "Basic", username: "u", password: "p" } },
-    })
-    expect(headers.Authorization).toMatch(/^Basic /)
+    setWebhookAuth({ type: "Basic", username: "u", password: "p" })
+    expect(resolveWebhookAuthHeaders().Authorization).toMatch(/^Basic /)
   })
 
   it("rejects unknown types with a helpful error", () => {
-    expect(() =>
-      resolveWebhookAuthHeaders({ credentials: { webhookAuth: { type: "oauth2" } } }),
-    ).toThrow(/unsupported webhookAuth type 'oauth2'/)
+    setWebhookAuth({ type: "oauth2" })
+    expect(() => resolveWebhookAuthHeaders()).toThrow(/unsupported webhookAuth type 'oauth2'/)
   })
 
   it("rejects basic without username or password", () => {
-    expect(() =>
-      resolveWebhookAuthHeaders({ credentials: { webhookAuth: { type: "basic", username: "u" } } }),
-    ).toThrow(/requires username and password/)
+    setWebhookAuth({ type: "basic", username: "u" })
+    expect(() => resolveWebhookAuthHeaders()).toThrow(/requires username and password/)
   })
 
   it("rejects header without name or value", () => {
-    expect(() =>
-      resolveWebhookAuthHeaders({ credentials: { webhookAuth: { type: "header", name: "X" } } }),
-    ).toThrow(/requires name and value/)
+    setWebhookAuth({ type: "header", name: "X" })
+    expect(() => resolveWebhookAuthHeaders()).toThrow(/requires name and value/)
   })
 
   it("rejects bearer without token", () => {
-    expect(() =>
-      resolveWebhookAuthHeaders({ credentials: { webhookAuth: { type: "bearer" } } }),
-    ).toThrow(/requires token/)
+    setWebhookAuth({ type: "bearer" })
+    expect(() => resolveWebhookAuthHeaders()).toThrow(/requires token/)
   })
 })

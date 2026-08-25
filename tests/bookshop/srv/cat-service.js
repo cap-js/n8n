@@ -13,7 +13,9 @@ module.exports = class CatalogService extends cds.ApplicationService {
     // Reduce stock of ordered books if available stock suffices
     this.on("submitOrder", async (req) => {
       let { book: id, quantity } = req.data
-      let book = await SELECT.one.from(Books, id, (b) => { b.stock, b.price })
+      let book = await SELECT.one.from(Books, id, (b) => {
+        ;(b.stock, b.price)
+      })
 
       // Validate input data
       if (!book) return req.error(404, `Book #${id} doesn't exist`)
