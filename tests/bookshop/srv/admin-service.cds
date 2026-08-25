@@ -8,6 +8,13 @@ service AdminService {
   }
   entity Books   as projection on my.Books;
 
+  @n8n.process.start: {
+    path: 'annotation-test-author-read',
+    method: 'GET',
+    on: 'READ',
+    if: (ID = 101),
+    inputs: [ $self.ID, $self.name ]
+  }
   entity Authors as projection on my.Authors;
 
   // Record form with conditional dispatch and explicit input mapping.

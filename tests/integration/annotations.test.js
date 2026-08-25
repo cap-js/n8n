@@ -3,7 +3,7 @@ const { waitForExecution, makeWorkflowBody, purgeWorkflowsByWebhookPaths } = req
 
 const path = require("path")
 const app = path.join(__dirname, "../bookshop")
-const { POST, PATCH, DELETE, expect } = cds.test(app)
+const { POST, GET, PATCH, DELETE, expect } = cds.test(app)
 const isRest = cds.env.requires?.n8n?.kind === "n8n-to-rest"
 
 function executionPayload(execution) {
@@ -29,15 +29,22 @@ describe("@n8n.process.start - annotation-driven flow", () => {
     n8n = await cds.connect.to("n8n")
     ;({ WorkflowDefinitions, WorkflowExecutions } = n8n.entities)
     const paths = [
-      "annotation-test-book-created",
-      "annotation-test-order-shipped",
-      "annotation-test-order-deleted",
+      { path: "annotation-test-book-created", method: "POST" },
+      { path: "annotation-test-order-shipped", method: "POST" },
+      { path: "annotation-test-order-deleted", method: "POST" },
+      { path: "annotation-test-author-read", method: "GET" },
     ]
-    await purgeWorkflowsByWebhookPaths(n8n, WorkflowDefinitions, paths)
+    await purgeWorkflowsByWebhookPaths(
+      n8n,
+      WorkflowDefinitions,
+      paths.map((p) => p.path),
+    )
     const workflows = await Promise.all(
-      paths.map(async (path) => {
+      paths.map(async ({ path, method }) => {
         const [{ id }] = await n8n.run(
-          INSERT.into(WorkflowDefinitions).entries(makeWorkflowBody(`annotation-${path}`, path)),
+          INSERT.into(WorkflowDefinitions).entries(
+            makeWorkflowBody(`annotation-${path}`, path, [], {}, method),
+          ),
         )
         await n8n.publishWorkflow({ id })
         return { path, id }
@@ -170,6 +177,34 @@ describe("@n8n.process.start - annotation-driven flow", () => {
 
     const deleted = await executionsFor("annotation-test-order-deleted")
     expect(deleted).to.have.length(before.length)
+  })
+
+  it("fires on READ, applies .if, and projects inputs without recursing", async () => {
+    const before = await executionsFor("annotation-test-author-read")
+
+    // Matching author (ID=101, from bookshop sample data) triggers the webhook.
+    const { status } = await GET("/odata/v4/admin/Authors(101)")
+    expect(status).to.equal(200)
+
+    const execution = await waitForExecution(
+      n8n,
+      WorkflowExecutions,
+      { workflowId: workflowIds.get("annotation-test-author-read") },
+      (row) => !before.some((previous) => String(previous.id) === String(row.id)),
+      true,
+    )
+    // Payload carries only the columns listed in `inputs`.
+    const payload = executionPayload(execution)
+    expect(payload).to.have.property("ID", 101)
+    expect(payload).to.have.property("name")
+    expect(payload).to.not.have.property("dateOfBirth")
+
+    // Non-matching author must not fire (ID != 101).
+    const afterMatching = await executionsFor("annotation-test-author-read")
+    const { status: status2 } = await GET("/odata/v4/admin/Authors(107)")
+    expect(status2).to.equal(200)
+    const afterNonMatching = await executionsFor("annotation-test-author-read")
+    expect(afterNonMatching).to.have.length(afterMatching.length)
   })
 })
 
