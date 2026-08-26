@@ -1,6 +1,6 @@
 {
   "name": "@cap-js/n8n",
-  "version": "0.1.0",
+  "version": "0.0.1",
   "description": "CAP Plugin to trigger n8n workflows",
   "author": "SAP SE (https://www.sap.com)",
   "license": "Apache-2.0",
