@@ -1,5 +1,5 @@
 const cds = require("@sap/cds")
-const destination = require("../../lib/auth/destination")
+const destination = require("../../lib/api/destination")
 const { resolveN8nConnection, resolveWebhookAuthHeaders } = require("../../lib/api/connection")
 
 describe("resolveN8nConnection", () => {

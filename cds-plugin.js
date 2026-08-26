@@ -1,6 +1,6 @@
 const cds = require("@sap/cds")
 const { registerAnnotationHandlers } = require("./lib/handlers/annotationHandlers")
-const { N8nValidationPlugin } = require("./lib/build/plugin")
+const { N8nValidationPlugin } = require("./lib/build-plugin")
 
 const LOG = cds.log("n8n")
 LOG.info(`Registered @cap-js/n8n plugin with kind '${cds.env.requires?.n8n?.kind}'`)
