@@ -1,6 +1,5 @@
 const cds = require("@sap/cds")
 const { writeResult } = require("../lib/handlers/utils")
-const { normalizeHttpMethod } = require("../lib/shared/http-methods")
 const LOG = cds.log("n8n")
 const SYNTHETIC_WORKFLOW_PREFIX = "__cap_n8n_console_webhook__"
 
@@ -14,7 +13,7 @@ async function resolveWorkflowByWebhookPath(WorkflowDefinitions, webhookPath, me
       (n) =>
         n?.type === "n8n-nodes-base.webhook" &&
         n?.parameters?.path === webhookPath &&
-        normalizeHttpMethod(n?.parameters?.httpMethod) === method,
+        n?.parameters?.httpMethod?.toUpperCase() === method,
     )
     if (hit) {
       if (wf.name?.startsWith(`${SYNTHETIC_WORKFLOW_PREFIX}:`)) synthetic ??= wf
