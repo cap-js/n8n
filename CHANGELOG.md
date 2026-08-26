@@ -13,6 +13,6 @@
 - Webhook authentication via Basic, Bearer, or custom header (`credentials.webhookAuth`).
 - Query and manage n8n workflow definitions and executions through the `/api/v1` API using CQL (`cds.ql`) and CAP actions (publish, unpublish, archive, retry, stop).
 - Connection resolution from `cds.requires.n8n.credentials`, including BTP destination support with destination precedence over inline credentials.
-- Two service kinds: `n8n-to-rest` (real HTTP client) and `n8n-to-console` (log-only, in-memory store for tests and offline development).
+- Two service kinds: `n8n-to-rest` (real HTTP client) and `n8n-to-console` (log-only, in-memory store for local development).
 - `useTestWebhook` flag to target n8n's test-webhook path prefix.
 - Annotation validation at both build time (`cds build`) and runtime.
