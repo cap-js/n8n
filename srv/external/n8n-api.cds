@@ -15,8 +15,6 @@ context N8nApi {
                   description  : String;
     @readonly     active       : Boolean default false;
     @readonly     isArchived   : Boolean default false;
-
-        // could be maybe LargeString
                   nodes        : many Map @mandatory;
                   connections  : LargeString      @mandatory;
                   settings     : LargeString      @mandatory;
@@ -38,12 +36,30 @@ context N8nApi {
     key id             : String;
         workflowId     : String;
         finished       : Boolean;
-        /** 'cli' | 'error' | 'integrated' | 'internal' | 'manual' | 'retry' | 'trigger' | 'webhook' | 'evaluation' | 'chat' */
-        mode           : String;
+        mode           : String enum {
+          cli;
+          error;
+          integrated;
+          internal;
+          manual;
+          retry;
+          trigger;
+          webhook;
+          evaluation;
+          chat;
+        };
         retryOf        : Integer;
         retrySuccessId : Integer;
-        /** 'new' | 'running' | 'success' | 'error' | 'waiting' | 'canceled' | 'crashed' | 'unknow' */
-        status         : String;
+        status         : String enum {
+          new;
+          running;
+          success;
+          error;
+          waiting;
+          canceled;
+          crashed;
+          unknown;
+        };
         startedAt      : Timestamp @cds.on.insert: $now;
         stoppedAt      : Timestamp;
         waitTill       : Timestamp;
