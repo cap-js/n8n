@@ -19,7 +19,6 @@
   ```
   Each element supports the same fields as the record form (`path`, `on`, `if`, `inputs`). Build-time validation covers all array elements including unknown-key warnings and per-element error references (e.g. `[1]`).
 - `@n8n.process.start` annotations to declaratively trigger n8n workflows for explicitly selected CRUD, Fiori, and bound-action events. Record and array forms support conditional triggering with `if` and payload selection with `inputs`.
-- `READ` event triggers with condition evaluation and input projection.
 - A programmatic trigger API exposed as `n8n.trigger()`.
 - CAP actions for managing workflows and executions, including publishing, unpublishing, archiving, retrying, and stopping.
 - Webhook authentication using Basic authentication, Bearer tokens, or a custom header via `credentials.webhookAuth`.
