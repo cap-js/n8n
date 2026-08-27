@@ -8,11 +8,12 @@ Trigger [n8n](https://n8n.io/) workflows from CAP applications with `@n8n.proces
 - [Quick start](#quick-start)
 - [Connect to n8n](#connect-to-n8n)
   - [Local n8n](#local-n8n)
-  - [Environment variables](#environment-variables)
+  - [Configuration](#configuration)
   - [Cloud Foundry binding](#cloud-foundry-binding)
   - [BTP destination](#btp-destination)
   - [Credential resolution](#credential-resolution)
 - [Webhook requests](#webhook-requests)
+  - [Webhook authentication](#webhook-authentication)
   - [Test webhooks](#test-webhooks)
 - [Annotations](#annotations)
   - [Events](#events)
@@ -96,7 +97,7 @@ During local development, the plugin simply logs the webhook path and payload in
 }
 ```
 
-This allows you develop and test without running an n8n instance. To connect to an actual n8n instance, check [Connect to n8n](#connect-to-n8n).
+This allows you to develop and test without running an n8n instance. To connect to an actual n8n instance, check [Connect to n8n](#connect-to-n8n).
 
 ## Connect to n8n
 
@@ -108,11 +109,11 @@ The plugin uses these profiles by default:
 | `hybrid`      | Sends requests to a local n8n at `http://localhost:5678` |
 | `production`  | Sends requests using the configured connection           |
 
-An API key is optional for webhook delivery if the target webhook accepts the request without it. n8n's `/api/v1` workflow and execution APIs normally require an API key. When configured, the plugin sends it as `X-N8N-API-KEY`.
+An API key is optional for webhook delivery if the target webhook accepts the request without it. n8n's `/api/v1` workflow and execution APIs normally require an API key. When configured, the plugin sends it as `X-N8N-API-KEY` on `/api/v1` requests only. Webhook nodes are authenticated separately (see [Webhook authentication](#webhook-authentication)).
 
 ### Local n8n
 
-Start n8n locally with `npx n8n`, Docker, or the [bookshop sample](tests/bookshop), then run CAP with the hybrid profile:
+Start n8n locally with `npx n8n`, Docker, or the [bookshop sample](tests/bookshop/README.md), then run CAP with the hybrid profile:
 
 ```bash
 cds watch --profile hybrid
@@ -148,6 +149,7 @@ cds watch --profile hybrid
 
 Select a destination explicitly in the profile where it is used:
 
+<!-- prettier-ignore -->
 ```jsonc
 {
   "cds": {
@@ -155,28 +157,29 @@ Select a destination explicitly in the profile where it is used:
       "n8n": {
         "[production]": {
           "credentials": {
-            "destination": "n8n",
-          },
-        },
-      },
-    },
-  },
+            "destination": "n8n"
+          }
+        }
+      }
+    }
+  }
 }
 ```
 
-Authentication headers resolved from the destination are sent alongside an `X-N8N-API-KEY` when an API key is also configured. This supports destinations that authenticate an outer proxy in front of n8n.
+Authentication headers resolved from the destination are sent on every request. On `/api/v1` requests they are combined with `X-N8N-API-KEY` when an API key is configured. On webhook requests they are combined with any [`webhookAuth`](#webhook-authentication). This supports destinations that authenticate an outer proxy in front of n8n.
 
 ### Credential resolution
 
-Within `credentials`, the plugin resolves in this order:
+Within `credentials`, the plugin resolves the connection target in this order:
 
 1. `credentials.destination` — a BTP destination wins outright.
 2. `credentials.{url, apiKey}` — inline connection details.
 
-An operation fails when neither is set.
+An operation fails when neither is set. `credentials.webhookAuth` (see [Webhook authentication](#webhook-authentication)) is independent of this resolution and is applied to webhook requests regardless of which connection target is used.
 
 To use real webhooks in the development profile, override its service kind:
 
+<!-- prettier-ignore -->
 ```jsonc
 {
   "cds": {
@@ -185,12 +188,12 @@ To use real webhooks in the development profile, override its service kind:
         "[development]": {
           "kind": "n8n-to-rest",
           "credentials": {
-            "url": "http://localhost:5678",
-          },
-        },
-      },
-    },
-  },
+            "url": "http://localhost:5678"
+          }
+        }
+      }
+    }
+  }
 }
 ```
 
@@ -201,7 +204,6 @@ Every trigger sends a JSON request to n8n:
 ```http
 {method} {url}/webhook/<path>
 Content-Type: application/json
-X-N8N-API-KEY: <apiKey>  # when configured
 ```
 
 The method defaults to `POST`. An annotation can override it with `method`, for example:
@@ -217,6 +219,43 @@ entity Books as projection on my.Books;
 
 The annotation payload is the selected entity data. A programmatic trigger without a payload sends `{}`. Configure the n8n Webhook node to use the same method and path as the annotation or programmatic call. Supported methods are `DELETE`, `GET`, `HEAD`, `PATCH`, `POST`, and `PUT`.
 
+### Webhook authentication
+
+The n8n Webhook node supports several authentication options (see [Supported Authentication Methods](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook#supported-authentication-methods)). Configure the matching credential under `cds.requires.n8n.credentials.webhookAuth`:
+
+| Webhook node auth | `webhookAuth` config                                    | Header sent                          |
+| ----------------- | ------------------------------------------------------- | ------------------------------------ |
+| None              | omit `webhookAuth`                                      | —                                    |
+| Basic Auth        | `{ "type": "basic", "username": "u", "password": "p" }` | `Authorization: Basic <base64(u:p)>` |
+| Header Auth       | `{ "type": "header", "name": "X-Token", "value": "…" }` | `X-Token: …`                         |
+| JWT Auth          | `{ "type": "bearer", "token": "<jwt>" }`                | `Authorization: Bearer <jwt>`        |
+
+Example:
+
+<!-- prettier-ignore -->
+```jsonc
+{
+  "cds": {
+    "requires": {
+      "n8n": {
+        "[production]": {
+          "credentials": {
+            "url": "https://your.n8n.cloud",
+            "webhookAuth": {
+              "type": "basic",
+              "username": "u",
+              "password": "p"
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+`webhookAuth` only applies to webhook requests (`/webhook/*` and `/webhook-test/*`). The `apiKey` credential is sent as `X-N8N-API-KEY` on `/api/v1` requests only and is never attached to webhook triggers. Both can be configured side by side.
+
 ### Test webhooks
 
 n8n provides two webhook modes:
@@ -228,6 +267,7 @@ n8n provides two webhook modes:
 
 Enable test webhooks in the profile-specific plugin config:
 
+<!-- prettier-ignore -->
 ```jsonc
 {
   "cds": {
@@ -236,12 +276,12 @@ Enable test webhooks in the profile-specific plugin config:
         "[hybrid]": {
           "useTestWebhook": true,
           "credentials": {
-            "url": "http://localhost:5678",
-          },
-        },
-      },
-    },
-  },
+            "url": "http://localhost:5678"
+          }
+        }
+      }
+    }
+  }
 }
 ```
 
