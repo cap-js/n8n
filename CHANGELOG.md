@@ -6,6 +6,8 @@
 
 ## [Unreleased]
 
+## 0.0.1 - 27.09.2026
+
 ### Added
 
 - Trigger n8n workflows declaratively via the `@n8n.process.start` annotation and programmatically via `n8n.trigger()`.
