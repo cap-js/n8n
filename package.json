@@ -28,7 +28,8 @@
     "sap"
   ],
   "dependencies": {
-    "@sap-cloud-sdk/connectivity": "^4.5.1"
+    "@sap-cloud-sdk/connectivity": "^4.5.1",
+    "@sap/xssec": "^4"
   },
   "devDependencies": {
     "@cap-js/cds-test": "^1"
@@ -65,6 +66,11 @@
           "vcap": {
             "tag": "n8n"
           }
+        },
+        "n8n-to-gateway": {
+          "model": "@cap-js/n8n/srv/n8n-to-gateway",
+          "impl": "@cap-js/n8n/srv/n8n-to-gateway",
+          "outboxed": true
         }
       }
     }
