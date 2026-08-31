@@ -66,11 +66,6 @@
           "vcap": {
             "tag": "n8n"
           }
-        },
-        "n8n-to-gateway": {
-          "model": "@cap-js/n8n/srv/n8n-to-gateway",
-          "impl": "@cap-js/n8n/srv/n8n-to-gateway",
-          "outboxed": true
         }
       }
     }

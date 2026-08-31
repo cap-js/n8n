@@ -19,6 +19,11 @@ const {
   stopExecutions,
 } = require("./n8n/executions")
 const { n8nWebhookRequest } = require("../lib/api/connection")
+const { exchangeUserToken, USER_ASSERTION_HEADER } = require("../lib/auth/token-exchange")
+const {
+  resolveAgentGatewayCredentials,
+  hasAgentGatewayCredentials,
+} = require("../lib/auth/agent-gateway-credentials")
 
 const LOG = cds.log("n8n")
 
@@ -60,6 +65,16 @@ class N8nService extends cds.ApplicationService {
   }
 
   async _trigger(req) {
+    // SAP-managed n8n: when the Agent Gateway business connector is configured,
+    // every invocation is gated behind the gateway. Branch to the IAS assertion
+    // path instead of calling the n8n webhook directly.
+    if (hasAgentGatewayCredentials()) {
+      return this._triggerViaGateway(req)
+    }
+    return this._triggerViaWebhook(req)
+  }
+
+  async _triggerViaWebhook(req) {
     const useTestWebhook = Boolean(cds.env.requires?.n8n?.useTestWebhook)
     const { path, payload, method = "POST" } = req.data ?? {}
     const prefix = useTestWebhook ? "/webhook-test" : "/webhook"
@@ -74,6 +89,37 @@ class N8nService extends cds.ApplicationService {
     })
     return parseResponse(req, response)
   }
+
+  /**
+   * SAP-managed n8n adapter path. Every workflow invocation is gated behind the
+   * SAP Agent Gateway. This implements the first gate — the IAS JWT-bearer
+   * assertion; the Agent Gateway invocation itself is still a stub.
+   */
+  async _triggerViaGateway(req) {
+    const { path, payload, method = "POST" } = req.data ?? {}
+
+    const userJwt = readAssertionHeader(req)
+    const { token, expiresIn } = await exchangeUserToken(userJwt)
+    LOG.info("Agent Gateway assertion succeeded", { path, method, expiresIn })
+
+    // TODO: invoke the workflow behind the gateway with the exchanged token:
+    //   POST {gatewayUrl}/v1/mcp/{ordId}/{globalTenantId}, Authorization: Bearer <token>
+    const { gatewayUrl, ordId, globalTenantId } = resolveAgentGatewayCredentials()
+    LOG.warn(
+      "Agent Gateway invocation is not yet implemented; the assertion token was obtained but not used.",
+      { gatewayUrl, ordId, globalTenantId },
+    )
+
+    return { asserted: true, assertedToken: Boolean(token), payload: payload ?? {} }
+  }
+}
+
+// Header casing may be normalised depending on the transport.
+function readAssertionHeader(req) {
+  const headers = req.headers ?? {}
+  if (headers[USER_ASSERTION_HEADER]) return headers[USER_ASSERTION_HEADER]
+  const match = Object.keys(headers).find((k) => k.toLowerCase() === USER_ASSERTION_HEADER)
+  return match ? headers[match] : undefined
 }
 
 module.exports = N8nService
