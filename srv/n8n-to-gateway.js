@@ -6,35 +6,21 @@ const { resolveAgentGatewayCredentials } = require("../lib/auth/agent-gateway-cr
 const LOG = cds.log("n8n")
 
 /**
- * SAP-managed n8n adapter. Unlike the REST adapter it never talks to n8n
- * directly: every workflow invocation is gated behind the SAP Agent Gateway.
- *
- * Reaching the gateway is a multi-step, gated flow. This adapter currently
- * implements the FIRST gate — the IAS JWT-bearer assertion ("Exchange Access
- * Token"): the authenticated user's JWT is exchanged (via mTLS) for a token
- * scoped for the Agent Gateway. The subsequent Agent Gateway invocation is left
- * as a clearly marked stub.
- *
- * Workflow/execution management (`/api/v1`) is inherited from the REST adapter
- * for now and is out of scope for the gateway routing.
+ * SAP-managed n8n adapter. Every workflow invocation is gated behind the SAP
+ * Agent Gateway. This adapter implements the first gate — the IAS JWT-bearer
+ * assertion; the Agent Gateway invocation itself is still a stub. Workflow/
+ * execution management is inherited from the REST adapter.
  */
 class N8nGatewayService extends N8nRestService {
   async _trigger(req) {
     const { path, payload, method = "POST" } = req.data ?? {}
 
-    // --- Gate 1: IAS assertion (implemented) ---
-    // The user JWT was captured synchronously in the originating request and
-    // forwarded as a header so it survives the (async) outbox delivery.
     const userJwt = readAssertionHeader(req)
     const { token, expiresIn } = await exchangeUserToken(userJwt)
     LOG.info("Agent Gateway assertion succeeded", { path, method, expiresIn })
 
-    // --- Gate 2+: call the Agent Gateway (NOT YET IMPLEMENTED) ---
-    // TODO: Use the exchanged token to invoke the workflow behind the gateway, e.g.
-    //   POST {gatewayUrl}/v1/mcp/{ordId}/{globalTenantId}
-    //   Authorization: Bearer <token>
-    //   Content-Type: application/json
-    // See https://pages.github.tools.sap/AI/agent-gateway-documentation/ (MCP endpoint).
+    // TODO: invoke the workflow behind the gateway with the exchanged token:
+    //   POST {gatewayUrl}/v1/mcp/{ordId}/{globalTenantId}, Authorization: Bearer <token>
     const { gatewayUrl, ordId, globalTenantId } = resolveAgentGatewayCredentials()
     LOG.warn(
       "Agent Gateway invocation is not yet implemented; the assertion token was obtained but not used.",
@@ -45,10 +31,7 @@ class N8nGatewayService extends N8nRestService {
   }
 }
 
-/**
- * Reads the forwarded user assertion header case-insensitively (CAP/Node header
- * maps may normalise casing depending on the transport).
- */
+// Header casing may be normalised depending on the transport.
 function readAssertionHeader(req) {
   const headers = req.headers ?? {}
   if (headers[USER_ASSERTION_HEADER]) return headers[USER_ASSERTION_HEADER]
