@@ -28,7 +28,8 @@
     "sap"
   ],
   "dependencies": {
-    "@sap-cloud-sdk/connectivity": "^4.5.1"
+    "@sap-cloud-sdk/connectivity": "^4.5.1",
+    "@sap/xssec": "^4"
   },
   "devDependencies": {
     "@cap-js/cds-test": "^1"

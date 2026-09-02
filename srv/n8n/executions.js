@@ -22,7 +22,7 @@ async function readExecutions(req) {
     return rows
   }
 
-  // No id in the where-clause — list with optional filters.
+  // No id in the where-clause - list with optional filters.
   const where = req.query.SELECT.from.ref.at(-1)?.where || req.query.SELECT.where
   const params = new URLSearchParams()
   const workflowId = getProperty(where, "workflowId")

@@ -1,5 +1,5 @@
 /**
- * n8n Public REST API — hand-written CDS shapes.
+ * n8n Public REST API - hand-written CDS shapes.
  *
  * Origin: https://github.com/n8n-io/n8n/blob/master/packages/cli/src/public-api/v1/openapi.yml
  */

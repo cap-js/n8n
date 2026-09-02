@@ -19,6 +19,7 @@ const {
   stopExecutions,
 } = require("./n8n/executions")
 const { n8nWebhookRequest } = require("../lib/api/connection")
+const { USER_ASSERTION_HEADER } = require("../lib/auth/token-exchange")
 
 const LOG = cds.log("n8n")
 
@@ -59,6 +60,9 @@ class N8nService extends cds.ApplicationService {
     }
   }
 
+  // Forwards the user JWT via `userJwt` (read from the assertion header since async
+  // delivery has no context). The connection layer proxies through the Agent Gateway
+  // when configured, otherwise ignores it.
   async _trigger(req) {
     const useTestWebhook = Boolean(cds.env.requires?.n8n?.useTestWebhook)
     const { path, payload, method = "POST" } = req.data ?? {}
@@ -70,10 +74,19 @@ class N8nService extends cds.ApplicationService {
     const response = await n8nWebhookRequest({
       method,
       path: webhookPath,
+      userJwt: readAssertionHeader(req),
       ...(bodyless || payload === undefined ? {} : { body: payload }),
     })
     return parseResponse(req, response)
   }
+}
+
+// Header casing may be normalised depending on the transport.
+function readAssertionHeader(req) {
+  const headers = req.headers ?? {}
+  if (headers[USER_ASSERTION_HEADER]) return headers[USER_ASSERTION_HEADER]
+  const match = Object.keys(headers).find((k) => k.toLowerCase() === USER_ASSERTION_HEADER)
+  return match ? headers[match] : undefined
 }
 
 module.exports = N8nService
