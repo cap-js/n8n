@@ -32,7 +32,7 @@ async function readWorkflows(req) {
     return rows
   }
 
-  // No id in the where-clause — list all with optional filters.
+  // No id in the where-clause - list all with optional filters.
   const where = req.query.SELECT.from.ref.at(-1)?.where || req.query.SELECT.where
   const params = new URLSearchParams()
   const active = getProperty(where, "active")
@@ -64,13 +64,13 @@ async function createWorkflow(req) {
   const created = await parseResponse(req, response)
 
   if (!created || typeof created !== "object" || !created.id) {
-    return created // error path — parseResponse already logged and returned {}
+    return created // error path - parseResponse already logged and returned {}
   }
   return writeResult([{ id: created.id }], 1)
 }
 
 // n8n's PUT /workflows/{id} rejects a request missing any of `name`,
-// `nodes`, `connections`, `settings`. CQL semantics are the opposite —
+// `nodes`, `connections`, `settings`. CQL semantics are the opposite -
 // a partial UPDATE leaves untouched columns alone. Bridge by fetching
 // the current row when the caller omits any PUT-mandatory field and
 // back-filling from that.

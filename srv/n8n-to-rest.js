@@ -60,14 +60,9 @@ class N8nService extends cds.ApplicationService {
     }
   }
 
-  /**
-   * Triggers an n8n webhook. When the SAP Agent Gateway is configured
-   * (SAP-managed n8n) the connection layer transparently proxies the call
-   * through the gateway and performs the IAS JWT-bearer assertion — hence the
-   * user's JWT is always forwarded via `userJwt`. It is read from the assertion
-   * header because async outbox delivery has no live user context; the direct
-   * (non-gateway) path simply ignores it.
-   */
+  // Forwards the user JWT via `userJwt` (read from the assertion header since async
+  // delivery has no context). The connection layer proxies through the Agent Gateway
+  // when configured, otherwise ignores it.
   async _trigger(req) {
     const useTestWebhook = Boolean(cds.env.requires?.n8n?.useTestWebhook)
     const { path, payload, method = "POST" } = req.data ?? {}
