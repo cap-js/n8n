@@ -19,11 +19,7 @@ const {
   stopExecutions,
 } = require("./n8n/executions")
 const { n8nWebhookRequest } = require("../lib/api/connection")
-const { exchangeUserToken, USER_ASSERTION_HEADER } = require("../lib/auth/token-exchange")
-const {
-  resolveAgentGatewayCredentials,
-  hasAgentGatewayCredentials,
-} = require("../lib/auth/agent-gateway-credentials")
+const { USER_ASSERTION_HEADER } = require("../lib/auth/token-exchange")
 
 const LOG = cds.log("n8n")
 
@@ -64,17 +60,15 @@ class N8nService extends cds.ApplicationService {
     }
   }
 
+  /**
+   * Triggers an n8n webhook. When the SAP Agent Gateway is configured
+   * (SAP-managed n8n) the connection layer transparently proxies the call
+   * through the gateway and performs the IAS JWT-bearer assertion — hence the
+   * user's JWT is always forwarded via `userJwt`. It is read from the assertion
+   * header because async outbox delivery has no live user context; the direct
+   * (non-gateway) path simply ignores it.
+   */
   async _trigger(req) {
-    // SAP-managed n8n: when the Agent Gateway business connector is configured,
-    // every invocation is gated behind the gateway. Branch to the IAS assertion
-    // path instead of calling the n8n webhook directly.
-    if (hasAgentGatewayCredentials()) {
-      return this._triggerViaGateway(req)
-    }
-    return this._triggerViaWebhook(req)
-  }
-
-  async _triggerViaWebhook(req) {
     const useTestWebhook = Boolean(cds.env.requires?.n8n?.useTestWebhook)
     const { path, payload, method = "POST" } = req.data ?? {}
     const prefix = useTestWebhook ? "/webhook-test" : "/webhook"
@@ -85,32 +79,10 @@ class N8nService extends cds.ApplicationService {
     const response = await n8nWebhookRequest({
       method,
       path: webhookPath,
+      userJwt: readAssertionHeader(req),
       ...(bodyless || payload === undefined ? {} : { body: payload }),
     })
     return parseResponse(req, response)
-  }
-
-  /**
-   * SAP-managed n8n adapter path. Every workflow invocation is gated behind the
-   * SAP Agent Gateway. This implements the first gate — the IAS JWT-bearer
-   * assertion; the Agent Gateway invocation itself is still a stub.
-   */
-  async _triggerViaGateway(req) {
-    const { path, payload, method = "POST" } = req.data ?? {}
-
-    const userJwt = readAssertionHeader(req)
-    const { token, expiresIn } = await exchangeUserToken(userJwt)
-    LOG.info("Agent Gateway assertion succeeded", { path, method, expiresIn })
-
-    // TODO: invoke the workflow behind the gateway with the exchanged token:
-    //   POST {gatewayUrl}/v1/mcp/{ordId}/{globalTenantId}, Authorization: Bearer <token>
-    const { gatewayUrl, ordId, globalTenantId } = resolveAgentGatewayCredentials()
-    LOG.warn(
-      "Agent Gateway invocation is not yet implemented; the assertion token was obtained but not used.",
-      { gatewayUrl, ordId, globalTenantId },
-    )
-
-    return { asserted: true, assertedToken: Boolean(token), payload: payload ?? {} }
   }
 }
 
