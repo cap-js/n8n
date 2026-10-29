@@ -1,6 +1,6 @@
 services:
   n8n:
-    image: n8nio/n8n:2.36.6@sha256:ac17f6df352c221d17ad2d566e5e61835bcc36de1e912650c8dced43d8cccf76
+    image: n8nio/n8n:2.45.4@sha256:80e23ced901f0e22597d4f3464e3aaf9d835372262ea6f08ef760d8ca35df25c
     container_name: bookshop-n8n
     # Run as the host user so bind-mounted ./.n8n-data is writable regardless of
     # host UID/GID. In CI, N8N_UID/N8N_GID are exported before `docker compose up`.
