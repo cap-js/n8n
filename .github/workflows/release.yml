@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v7.1.0
         with:
           node-version: ${{ matrix.node-version }}
       - run: npm i -g @sap/cds-dk@${{ matrix.cds-version }}
@@ -34,7 +34,7 @@ jobs:
     environment: npmjs:@cap-js/n8n
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org/
@@ -44,7 +44,7 @@ jobs:
         uses: martinbeentjes/npm-get-version-action@v1.3.1
       - name: Parse changelog
         id: parse-changelog
-        uses: schwma/parse-changelog-action@v1.2.0
+        uses: schwma/parse-changelog-action@v1.2.1
         with:
           version: "${{ steps.package-version.outputs.current-version }}"
       - name: Create a GitHub release
